@@ -1,8 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
+import { codeAssist } from "./utils/GeminiAi.js";
 
 dotenv.config();
 
@@ -47,8 +46,8 @@ app.get("/ask-aethria", async (req, res) => {
     }
     
     // TODO: Integrate with Aethria AI or your AI service here
-    // For now, returning a placeholder response
-    const aethraResponse = `This code appears to be ${language} code.\nAnalysis: Review your logic and add error handling.`;
+    const response = await codeAssist(code, language);
+    const aethraResponse = `${response}`;
     
     return res.status(200).json({ 
       response: aethraResponse 
