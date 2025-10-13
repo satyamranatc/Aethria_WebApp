@@ -16,7 +16,7 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/code-assistant" element={<CodeAssistant />} />
+          <Route path="/codeassistant" element={<CodeAssistant />} />
           <Route path="/practise" element={<Practise />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
