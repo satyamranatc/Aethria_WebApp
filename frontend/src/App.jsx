@@ -7,7 +7,7 @@ import Practise from './pages/Practise.jsx'
 import Profile from './pages/Profile.jsx'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import PrivateRoute from './components/PrivateRoute.jsx'
+
 
 export default function App() {
   return (
@@ -16,16 +16,8 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/codeassistant" element={
-            <PrivateRoute>
-              <CodeAssistant />
-            </PrivateRoute>
-          } />
-          <Route path="/practise" element={
-            <PrivateRoute>
-              <Practise />
-            </PrivateRoute>
-          } />
+          <Route path="/code-assistant" element={<CodeAssistant />} />
+          <Route path="/practise" element={<Practise />} />
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </BrowserRouter>

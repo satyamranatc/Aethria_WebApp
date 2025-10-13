@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Code, Menu, X, User, LogOut, Home, Zap } from 'lucide-react';
 
 export default function NavBar() {
@@ -51,7 +52,7 @@ export default function NavBar() {
     return currentPath === path;
   };
 
-  const NavLink = ({ to, children, icon: Icon, onClick }) => {
+  const Link = ({ to, children, icon: Icon, onClick }) => {
     const active = isActive(to);
     
     if (onClick) {
@@ -103,18 +104,18 @@ export default function NavBar() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-2">
-            <NavLink to="/" icon={Home}>
+            <Link to="/" icon={Home}>
               Home
-            </NavLink>
-            <NavLink to="/codeassistant" icon={Zap}>
+            </Link>
+            <Link to="/codeassistant" icon={Zap}>
               Code Assistant
-            </NavLink>
-            <NavLink to="/practise" icon={Zap}>
+            </Link>
+            <Link to="/practise" icon={Zap}>
               Practise
-            </NavLink>
-            <NavLink to="/profile" icon={User}>
+            </Link>
+            <Link to="/profile" icon={User}>
               Profile
-            </NavLink>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -135,18 +136,18 @@ export default function NavBar() {
       {isMobileMenuOpen && (
         <div className="lg:hidden absolute top-full left-0 right-0 bg-gradient-to-r from-indigo-600 to-blue-600 border-t border-white/20 shadow-xl">
           <div className="px-4 py-4 space-y-2">
-            <NavLink to="/" icon={Home}>
+            <Link to="/" icon={Home}>
               Home
-            </NavLink>
-            <NavLink to="/codeassistant" icon={Zap}>
+            </Link>
+            <Link to="/codeassistant" icon={Zap}>
               Code Assistant
-            </NavLink>
-            <NavLink to="/practise" icon={Zap}>
+            </Link>
+            <Link to="/practise" icon={Zap}>
               Practice
-            </NavLink>
-            <NavLink to="/profile" icon={User}>
+            </Link>
+            <Link to="/profile" icon={User}>
               Profile
-            </NavLink>
+            </Link>
                     
                 
           </div>
