@@ -1,5 +1,6 @@
 import React,{ useState, useEffect} from 'react'
 import axios from 'axios'
+let ApiUrl = import.meta.env.VITE_API_URL
 
 export default function Practise() {
   let Questions = [
@@ -19,7 +20,7 @@ export default function Practise() {
 
 async function solveInVsCode(question) {
   try {
-    const response = await axios.post("http://localhost:5500/upload-code", question);
+    const response = await axios.post(`${ApiUrl}/upload-code`, question);
     if (response.status === 200) {
       alert("Sent to VS Code!");
     }
