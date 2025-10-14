@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Code, Menu, X, Home, Zap, User } from 'lucide-react';
+import { Code, Menu, X, Home, Zap, User, Sparkles } from 'lucide-react';
 
 export default function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,6 +39,7 @@ export default function NavBar() {
             <NavLink to="/" icon={Home} label="Home" />
             <NavLink to="/codeassistant" icon={Zap} label="Code Assistant" />
             <NavLink to="/practise" icon={Zap} label="Practice" />
+            <NavLink to="/results" icon={Sparkles} label="Results" />
             <NavLink to="/profile" icon={User} label="Profile" />
           </div>
 
@@ -59,6 +60,7 @@ export default function NavBar() {
             <NavLink to="/" icon={Home} label="Home" onClick={toggleMobileMenu} />
             <NavLink to="/codeassistant" icon={Zap} label="Code Assistant" onClick={toggleMobileMenu} />
             <NavLink to="/practise" icon={Zap} label="Practice" onClick={toggleMobileMenu} />
+            <NavLink to="/Results" icon={Sparkles} label="Results" onClick={toggleMobileMenu} />
             <NavLink to="/profile" icon={User} label="Profile" onClick={toggleMobileMenu} />
           </div>
         </div>

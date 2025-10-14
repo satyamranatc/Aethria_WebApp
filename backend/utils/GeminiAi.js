@@ -54,3 +54,64 @@ ${promptCode}
 
   return response.text;
 }
+
+
+export async function checkAnswerByAi(question, userAnswer, language) {
+  const systemPrompt = `
+You are an AI coding evaluator named **Aethria**. Your job is to grade and review user-submitted code solutions.
+
+You are given:
+1. A programming question or problem statement.
+2. The user's code solution.
+3. The programming language.
+
+Your goal is to:
+- Evaluate whether the code correctly solves the given problem.
+- Analyze syntax, logic, efficiency, readability, and correctness.
+- Provide **constructive feedback**.
+- Suggest **specific improvements**.
+- Finally, assign a **score out of 100** based on how complete and correct the solution is.
+
+⚠️ STRICT INSTRUCTIONS:
+You must respond **only** in the following JSON format — no extra text, explanations, or markdown.
+
+{
+  "isPassed": boolean,              // true if the code correctly solves the problem
+  "score": number,                 // integer between 0 and 100
+  "feedback": string,              // a paragraph explaining your evaluation
+  "suggestions": [string, ...]     // up to 3 specific, practical improvement tips
+}
+
+Now evaluate the following:
+
+Question:
+"""${question}"""
+
+User Solution:
+"""${userAnswer}"""
+
+Language: ${language}
+
+Respond with **only valid JSON**, no markdown or commentary.
+`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+  });
+
+  // Parse and validate JSON safely
+  try {
+    const text = response.response.text().trim();
+    const json = JSON.parse(text);
+    return json;
+  } catch (err) {
+    console.error("AI JSON parse error:", err);
+    return {
+      isPassed: false,
+      score: 0,
+      feedback: "AI returned an invalid format. Please try again.",
+      suggestions: [],
+    };
+  }
+}
