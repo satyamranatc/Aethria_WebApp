@@ -96,6 +96,7 @@ export const getAllCode = async (req, res) => {
 
 // Get all Result for a user
 export const getAllResult = async (req, res) => {
+  console.log("Hi By result");
   try {
     const { email } = req.query;
     console.log(email);

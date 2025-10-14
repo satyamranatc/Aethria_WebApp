@@ -7,7 +7,7 @@ export default function ResultStats() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const email = localStorage.getItem("email"); // or pass as prop if needed
+  const email = "satyamranatc@gmail.com"; // or pass as prop if needed
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -32,7 +32,7 @@ export default function ResultStats() {
     };
 
     fetchResults();
-  }, [email]);
+  }, []);
 
   if (loading) {
     return <div className="p-6 text-center text-gray-500">Loading results...</div>;

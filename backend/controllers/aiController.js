@@ -33,8 +33,7 @@ export const checkAnswer = async (req, res) => {
 
     // Get AI evaluation (expected JSON string or object)
     const evaluationResponse = await checkAnswerByAi(question, userAnswer, language);
-
-    // Ensure the AI response is valid JSON
+      // Ensure the AI response is valid JSON
     let evaluation;
     try {
       evaluation = typeof evaluationResponse === "string"
