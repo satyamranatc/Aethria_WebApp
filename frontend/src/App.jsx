@@ -2,7 +2,7 @@ import React from 'react'
 
 import NavBar from './components/NavBar.jsx'
 import Home from './pages/Home.jsx'
-import CodeAssistant from './pages/CodeAssistant.jsx'
+import ProjectAssistant from './pages/ProjectAssistant/ProjectAssistant.jsx'
 import Practise from './pages/Practise.jsx'
 import ResultStats from './pages/ResultStats.jsx'
 import Profile from './pages/Profile.jsx'
@@ -17,7 +17,7 @@ export default function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/codeassistant" element={<CodeAssistant />} />
+          <Route path="/ProjectAssistant" element={<ProjectAssistant />} />
           <Route path="/practise" element={<Practise />} />
           <Route path="/results" element={<ResultStats />} />
           <Route path="/profile" element={<Profile />} />
