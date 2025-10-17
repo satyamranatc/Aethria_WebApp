@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useUser } from '@clerk/clerk-react'
-import { Code, CheckCircle, XCircle, Send, Sparkles, ArrowLeft } from 'lucide-react'
+import { Code, CheckCircle, XCircle, Send, Sparkles, ArrowLeft, Download } from 'lucide-react'
 
 let ApiUrl = import.meta.env.VITE_API_URL
 
@@ -11,6 +11,7 @@ export default function Practice() {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [isChecking, setIsChecking] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [result, setResult] = useState(null);
 
   const Questions = [
@@ -247,9 +248,35 @@ export default function Practice() {
     }
   }
 
+  async function fetchFromVsCode() {
+    if (!email.trim()) {
+      alert("Please sign in first!");
+      return;
+    }
+
+    setIsFetching(true);
+
+    try {
+      const response = await axios.get(`${ApiUrl}/get-solution`, {
+        params: { email }
+      });
+
+      if (response.data.code) {
+        setUserAnswer(response.data.code);
+        alert("✅ Code fetched from VS Code!");
+      } else {
+        alert("⚠️ No solution found. Make sure you're writing code in VS Code!");
+      }
+    } catch (error) {
+      alert("❌ Error fetching code: " + (error.response?.data?.message || error.message));
+    } finally {
+      setIsFetching(false);
+    }
+  }
+
   async function checkAnswer() {
     if (!userAnswer.trim()) {
-      alert("Please paste your code solution!");
+      alert("Please paste your code or fetch it from VS Code!");
       return;
     }
 
@@ -358,13 +385,32 @@ export default function Practice() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Paste Your Solution:
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Your Solution:
+                    </label>
+                    <button
+                      onClick={fetchFromVsCode}
+                      disabled={isFetching}
+                      className="flex items-center bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      {isFetching ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Fetching...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Fetch from VS Code
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <textarea
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
-                    placeholder="Paste your code here..."
+                    placeholder="Paste your code here or click 'Fetch from VS Code' button..."
                     className="w-full h-96 p-4 border-2 border-gray-200 rounded-lg font-mono text-sm focus:border-indigo-500 focus:outline-none resize-none"
                   />
                 </div>
