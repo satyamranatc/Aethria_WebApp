@@ -6,6 +6,7 @@ import ProjectAssistant from './pages/ProjectAssistant/ProjectAssistant.jsx'
 import Practise from './pages/Practise.jsx'
 import ResultStats from './pages/ResultStats.jsx'
 import Profile from './pages/Profile.jsx'
+import Test from './pages/Test.jsx'
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
@@ -16,7 +17,7 @@ export default function App() {
       <BrowserRouter>
         <NavBar />
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Test />} />
           <Route path="/ProjectAssistant" element={<ProjectAssistant />} />
           <Route path="/practise" element={<Practise />} />
           <Route path="/results" element={<ResultStats />} />

@@ -1,5 +1,6 @@
 import express from "express";
 import { uploadCode, getCode, getAllCode, getAllResult } from "../controllers/codeController.js";
+import { uploadSolution, getSolution } from "../controllers/codeController.js";
 
 
 const router = express.Router();
@@ -15,5 +16,11 @@ router.get("/all-code", getAllCode);
 
 // GET /all-Result?email=xyz@gmail.com - Get all Result for a user
 router.get("/all-result", getAllResult);
+
+// Extension → Server (solution submission)
+router.post("/upload-solution", uploadSolution);
+
+// React → Server (fetch solution)
+router.get("/get-solution", getSolution);
 
 export default router;

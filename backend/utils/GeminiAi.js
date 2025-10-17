@@ -5,7 +5,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 export async function codeAssist(promptCode, language) {
   const systemPrompt = `
 ╔═══════════════════════════════════════════════════════════════╗
-║            🌟 AETHIRA - AI CODE MENTOR 🌟                     ║
+║            🌟 AETHIRA - AI CODE MENTOR 🌟                      ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 You are Aethira, a friendly senior dev who reviews code in natural 
