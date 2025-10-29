@@ -1,6 +1,6 @@
 import express from "express";
-import { uploadCode, getCode, getAllCode, getAllResult } from "../controllers/codeController.js";
-import { uploadSolution, getSolution } from "../controllers/codeController.js";
+import { uploadCode, getCode, getAllCode, getAllResult, uploadSolution, getSolution } from "../controllers/codeController.js";
+
 
 
 const router = express.Router();

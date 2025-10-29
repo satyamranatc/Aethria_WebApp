@@ -18,13 +18,13 @@ const complexitySchema = new mongoose.Schema({
     type: String,
     enum: ["Simple", "Moderate", "Complex", "Highly Complex"],
   },
-  timeComplexity: { type: String }, // e.g., "O(n)", "O(n²)"
-  spaceComplexity: { type: String }, // e.g., "O(1)", "O(n)"
+  timeComplexity: { type: String },
+  spaceComplexity: { type: String },
 }, { _id: false });
 
 const skillAnalysisSchema = new mongoose.Schema({
-  strengths: [{ type: String }], // 2-4 specific skills done well
-  weaknesses: [{ type: String }], // 2-4 areas needing improvement
+  strengths: [{ type: String }],
+  weaknesses: [{ type: String }],
   masteryLevel: {
     type: String,
     enum: ["Novice", "Learning", "Competent", "Proficient", "Expert"],
@@ -32,15 +32,15 @@ const skillAnalysisSchema = new mongoose.Schema({
 }, { _id: false });
 
 const feedbackSchema = new mongoose.Schema({
-  summary: { type: String }, // 2-3 sentence overall assessment
-  whatWorked: { type: String }, // Positive reinforcement
-  whatNeedsWork: { type: String }, // Constructive criticism
-  keyIssues: [{ type: String }], // 1-3 critical problems (if any)
-  improvementTips: [{ type: String }], // 3-5 actionable suggestions
+  summary: { type: String },
+  whatWorked: { type: String },
+  whatNeedsWork: { type: String },
+  keyIssues: [{ type: String }],
+  improvementTips: [{ type: String }],
 }, { _id: false });
 
 const analyticsSchema = new mongoose.Schema({
-  estimatedProficiency: { type: Number, min: 0, max: 100 }, // Overall coding skill
+  estimatedProficiency: { type: Number, min: 0, max: 100 },
   learningTrajectory: {
     type: String,
     enum: ["Struggling", "Developing", "Progressing", "Excelling"],
@@ -49,9 +49,9 @@ const analyticsSchema = new mongoose.Schema({
     type: String,
     enum: ["Beginner", "Intermediate", "Advanced", "Expert"],
   },
-  estimatedTimeToNextLevel: { type: String }, // e.g., "2-3 weeks"
-  focusAreas: [{ type: String }], // Top 3 topics to practice
-  strongConcepts: [{ type: String }], // Top 3 concepts mastered
+  estimatedTimeToNextLevel: { type: String },
+  focusAreas: [{ type: String }],
+  strongConcepts: [{ type: String }],
 }, { _id: false });
 
 const codeMetricsSchema = new mongoose.Schema({
@@ -71,7 +71,7 @@ const comparativeAnalysisSchema = new mongoose.Schema({
     type: String,
     enum: ["Much Worse", "Below Average", "Average", "Above Average", "Exceptional"],
   },
-  estimatedPercentile: { type: Number, min: 0, max: 100 }, // 0-100 compared to peers
+  estimatedPercentile: { type: Number, min: 0, max: 100 },
   isOptimal: { type: Boolean },
 }, { _id: false });
 
@@ -93,7 +93,14 @@ const evaluationSchema = new mongoose.Schema({
 
 const resultSchema = new mongoose.Schema({
   email: { type: String, required: true, lowercase: true },
-  questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question" },
+  // ✅ FIX: Make questionId optional and allow null values
+  questionId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Question",
+    required: false,
+    default: null
+  },
+  
   question: { type: String, required: true },
   userAnswer: { type: String, required: true },
   language: { type: String, required: true },
@@ -105,6 +112,7 @@ const resultSchema = new mongoose.Schema({
 // Index for efficient queries
 resultSchema.index({ email: 1, createdAt: -1 });
 resultSchema.index({ questionId: 1 });
+resultSchema.index({ questionNumber: 1 });
 
 const Result = mongoose.model("Result", resultSchema);
 

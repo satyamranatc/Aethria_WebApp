@@ -1,3 +1,5 @@
+
+
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -351,3 +353,33 @@ Now evaluate the submission:
   }
 }
 
+export async function explainCode(code) {
+  return ai.models.generateContent({
+    model: "gemini-2.5-explain",
+    contents: `
+    You are a code explanation assistant, your task is to explain code in natural language, in a way that is easy to understand line by line.
+    code: ${code},
+    STRICTLY FOOLOW THESE RULES:
+    - Use proper JSON format.
+    - No Use of Markdown and backticks.
+    - Use Sense of humor to explain the code.
+    - the output must be a JSON object like this:
+    {
+      "explanation": "Explanation of the code",
+      "code": "${code}",
+      numberOfLines: ${code.split("\n").length}
+      numberOfFunctions: count the number of functions in the whole code
+      numberOfVariables: count the number of variables in the whole code
+      numberOfComments: count the number of comments in the whole code
+      number of classes: count the number of classes in the whole code
+      number of imports: count the number of imports in the whole code
+    }
+
+    `
+  }).then((response) => {
+    return response.text.trim();
+  }).catch((error) => {
+    console.error("AI error:", error);
+    return "AI error: " + error.message;
+  });
+}

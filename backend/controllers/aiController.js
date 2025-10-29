@@ -1,5 +1,6 @@
-import { codeAssist, checkAnswerByAi } from "../utils/GeminiAi.js";
+import { codeAssist, checkAnswerByAi,explainCode } from "../utils/GeminiAi.js";
 import Result from "../models/resultModel.js";
+import mongoose from "mongoose";
 
 // Ask Aethria AI for code assistance
 export const askAethria = async (req, res) => {
@@ -21,6 +22,7 @@ export const askAethria = async (req, res) => {
     });
   }
 };
+
 // Evaluate user's answer and save result
 export const checkAnswer = async (req, res) => {
   try {
@@ -71,10 +73,22 @@ export const checkAnswer = async (req, res) => {
       });
     }
 
+    // ✅ FIX: Validate and sanitize questionId before saving
+    let validQuestionId = null;
+    if (questionId) {
+      // Check if questionId is a valid MongoDB ObjectId
+      if (mongoose.Types.ObjectId.isValid(questionId)) {
+        // Further check if it's a proper 24-char hex string
+        if (String(questionId).match(/^[0-9a-fA-F]{24}$/)) {
+          validQuestionId = questionId;
+        }
+      }
+    }
+
     // Create and save result document
     const result = new Result({
       email: email.toLowerCase(),
-      questionId: questionId || null,
+      questionId: validQuestionId, // ✅ Use validated ObjectId or null
       question: question.trim(),
       userAnswer: userAnswer.trim(),
       language: language.trim(),
@@ -131,3 +145,31 @@ export const checkAnswer = async (req, res) => {
     });
   }
 };
+
+
+export async function explain_Code(req, res) {
+  try {
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.status(400).json({ message: "No code provided" });
+    }
+
+    const response = await explainCode(code);
+    
+    // Parse the JSON response from AI
+    const explanation = JSON.parse(response.replace(/```json\s*/g, '').replace(/```\s*/g, ''));
+    
+    return res.status(200).json({ 
+      success: true,
+      data: explanation 
+    });
+    
+  } catch (error) {
+    console.error("AI error:", error);
+    return res.status(500).json({ 
+      message: "Error processing request", 
+      error: error.message 
+    });
+  }
+}
