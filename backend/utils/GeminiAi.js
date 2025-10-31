@@ -352,34 +352,63 @@ Now evaluate the submission:
     };
   }
 }
-
 export async function explainCode(code) {
-  return ai.models.generateContent({
-    model: "gemini-2.5-explain",
-    contents: `
-    You are a code explanation assistant, your task is to explain code in natural language, in a way that is easy to understand line by line.
-    code: ${code},
-    STRICTLY FOOLOW THESE RULES:
-    - Use proper JSON format.
-    - No Use of Markdown and backticks.
-    - Use Sense of humor to explain the code.
-    - the output must be a JSON object like this:
-    {
-      "explanation": "Explanation of the code",
-      "code": "${code}",
-      numberOfLines: ${code.split("\n").length}
-      numberOfFunctions: count the number of functions in the whole code
-      numberOfVariables: count the number of variables in the whole code
-      numberOfComments: count the number of comments in the whole code
-      number of classes: count the number of classes in the whole code
-      number of imports: count the number of imports in the whole code
-    }
+  const prompt = `
+You are Aethira — a humorous, clear, and smart AI code explainer.
 
-    `
-  }).then((response) => {
-    return response.text.trim();
-  }).catch((error) => {
-    console.error("AI error:", error);
-    return "AI error: " + error.message;
-  });
+Explain the given code line by line, highlighting purpose, logic, and structure
+in a way that's beginner-friendly and a bit fun 😄.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CODE TO EXPLAIN:
+${code}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STRICT RULES:
+1️⃣ Return only valid JSON — no markdown, no backticks, no prose.
+2️⃣ Use this exact structure:
+{
+  "explanation": "Detailed yet funny explanation of what this code does.",
+  "code": "<original code here>",
+  "numberOfLines": <count of lines>,
+  "numberOfFunctions": <count of functions>,
+  "numberOfVariables": <count of variables>,
+  "numberOfComments": <count of comments>,
+  "numberOfClasses": <count of classes>,
+  "numberOfImports": <count of import statements>
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Give thoughtful, humorous explanations (like a friendly mentor helping a student). 
+DO NOT include Markdown formatting or extra text before or after the JSON.
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash", // ✅ valid and fast
+      contents: prompt,
+    });
+
+    let text = response.text.trim();
+
+    // Remove markdown code blocks if Gemini adds them
+    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+
+    // Try parsing to ensure valid JSON
+    const parsed = JSON.parse(text);
+    return parsed;
+  } catch (error) {
+    console.error("AI explainCode error:", error);
+    return {
+      explanation: "AI failed to explain the code.",
+      code,
+      numberOfLines: code.split("\n").length,
+      numberOfFunctions: 0,
+      numberOfVariables: 0,
+      numberOfComments: 0,
+      numberOfClasses: 0,
+      numberOfImports: 0,
+      error: error.message
+    };
+  }
 }

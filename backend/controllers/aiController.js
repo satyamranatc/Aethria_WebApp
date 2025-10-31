@@ -145,8 +145,6 @@ export const checkAnswer = async (req, res) => {
     });
   }
 };
-
-
 export async function explain_Code(req, res) {
   try {
     const { code } = req.query;
@@ -156,15 +154,30 @@ export async function explain_Code(req, res) {
     }
 
     const response = await explainCode(code);
-    
-    // Parse the JSON response from AI
-    const explanation = JSON.parse(response.replace(/```json\s*/g, '').replace(/```\s*/g, ''));
-    
+
+    // Ensure the response is a string before processing
+    let cleanedResponse;
+
+    if (typeof response === "string") {
+      cleanedResponse = response
+        .replace(/```json\s*/g, "")
+        .replace(/```/g, "")
+        .trim();
+    } else if (typeof response === "object") {
+      // If already a JSON object, just use it directly
+      cleanedResponse = JSON.stringify(response);
+    } else {
+      throw new Error("Unexpected response type from explainCode()");
+    }
+
+    // Parse safely
+    const explanation = JSON.parse(cleanedResponse);
+
     return res.status(200).json({ 
       success: true,
       data: explanation 
     });
-    
+
   } catch (error) {
     console.error("AI error:", error);
     return res.status(500).json({ 
