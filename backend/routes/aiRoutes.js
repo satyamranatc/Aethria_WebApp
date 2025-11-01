@@ -9,7 +9,7 @@ const router = express.Router();
 // GET /ask-aethria?code=...&language=... - Ask Aethria for code assistance
 router.get("/ask-aethria", askAethria);
 router.post("/check-answer", checkAnswer);
-router.get("/explain-code", explain_Code);
+router.post("/explain-code", explain_Code);
 
 
 export default router;

@@ -147,7 +147,7 @@ export const checkAnswer = async (req, res) => {
 };
 export async function explain_Code(req, res) {
   try {
-    const { code } = req.query;
+    const { code } = req.body;
     
     if (!code) {
       return res.status(400).json({ message: "No code provided" });
