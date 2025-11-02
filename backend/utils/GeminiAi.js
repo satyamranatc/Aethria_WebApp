@@ -354,60 +354,89 @@ Now evaluate the submission:
 }
 export async function explainCode(code) {
   const prompt = `
-You are Aethira — a humorous, clear, and smart AI code explainer.
+You are **Aethria**, a funny, empathetic, and insightful AI mentor who helps developers understand code like a friend who actually *cares*.
 
-Explain the given code line by line, highlighting purpose, logic, and structure
-in a way that's beginner-friendly and a bit fun 😄.
+Your mission:
+→ Analyze the given code deeply.
+→ Explain what it does, line by line if needed.
+→ Then, provide a humorous but insightful commentary on how it could be improved, optimized, or simplified.
+→ Include statistics and a “developer vibe” summary.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CODE TO EXPLAIN:
+CODE TO ANALYZE:
 ${code}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STRICT RULES:
-1️⃣ Return only valid JSON — no markdown, no backticks, no prose.
-2️⃣ Use this exact structure:
+STRICT RULES — OUTPUT MUST BE PURE JSON ONLY:
 {
-  "explanation": "Detailed yet funny explanation of what this code does.",
-  "code": "<original code here>",
-  "numberOfLines": <count of lines>,
-  "numberOfFunctions": <count of functions>,
-  "numberOfVariables": <count of variables>,
-  "numberOfComments": <count of comments>,
-  "numberOfClasses": <count of classes>,
-  "numberOfImports": <count of import statements>
+  "summary": "One-liner summary of what this code is about.",
+  "explanation": "Detailed, line-by-line or section-by-section explanation of what the code does, in a friendly, funny and clear tone.",
+  "codeStats": {
+    "numberOfLines": <integer>,
+    "numberOfFunctions": <integer>,
+    "numberOfVariables": <integer>,
+    "numberOfComments": <integer>,
+    "numberOfClasses": <integer>,
+    "numberOfImports": <integer>,
+    "complexityLevel": "Low | Moderate | High",
+    "efficiencyScore": <0–100>,
+    "readabilityScore": <0–100>,
+    "maintainabilityScore": <0–100>
+  },
+  "developerMood": {
+    "vibe": "🔥 Chill Genius | 😵‍💫 Overthinking Coder | 🧘 Zen Developer | 🧑‍🚀 Code Astronaut",
+    "comment": "Fun, human-like interpretation of what kind of developer probably wrote this."
+  },
+  "improvementSuggestions": [
+    "First practical, developer-level suggestion.",
+    "Second improvement idea (performance, readability, or refactor)."
+  ],
+  "funFact": "A quirky or humorous insight related to the code or programming concept."
 }
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Give thoughtful, humorous explanations (like a friendly mentor helping a student). 
-DO NOT include Markdown formatting or extra text before or after the JSON.
+NOTES:
+- Absolutely no Markdown, no triple backticks.
+- All values must be valid JSON.
+- Use humor subtly — like a cool senior dev, not a clown 🤓.
 `;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // ✅ valid and fast
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
     let text = response.text.trim();
+    text = text.replace(/```json\s*/g, "").replace(/```/g, "").trim();
 
-    // Remove markdown code blocks if Gemini adds them
-    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-
-    // Try parsing to ensure valid JSON
     const parsed = JSON.parse(text);
     return parsed;
   } catch (error) {
     console.error("AI explainCode error:", error);
     return {
-      explanation: "AI failed to explain the code.",
-      code,
-      numberOfLines: code.split("\n").length,
-      numberOfFunctions: 0,
-      numberOfVariables: 0,
-      numberOfComments: 0,
-      numberOfClasses: 0,
-      numberOfImports: 0,
+      summary: "Aethria ran into an error while decoding this code 🛠️",
+      explanation: "The AI couldn’t fully analyze the code due to an internal issue.",
+      codeStats: {
+        numberOfLines: code.split("\n").length,
+        numberOfFunctions: (code.match(/function|=>/g) || []).length,
+        numberOfVariables: (code.match(/\b(let|const|var)\b/g) || []).length,
+        numberOfComments: (code.match(/\/\//g) || []).length,
+        numberOfClasses: (code.match(/\bclass\b/g) || []).length,
+        numberOfImports: (code.match(/\bimport\b/g) || []).length,
+        complexityLevel: "Unknown",
+        efficiencyScore: 0,
+        readabilityScore: 0,
+        maintainabilityScore: 0
+      },
+      developerMood: {
+        vibe: "🤔 Confused but Curious",
+        comment: "Aethria couldn’t decode it, but you seem adventurous!"
+      },
+      improvementSuggestions: [
+        "Try simplifying logic and ensuring syntax validity.",
+        "Consider isolating problem areas for clearer analysis."
+      ],
+      funFact: "AI models also get 'stack overflow' sometimes 😅",
       error: error.message
     };
   }
