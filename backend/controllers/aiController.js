@@ -3,11 +3,17 @@ import Result from "../models/resultModel.js";
 import mongoose from "mongoose";
 
 // Ask Aethria AI for code assistance
+// Ask Aethria AI for code assistance
 export const askAethria = async (req, res) => {
   try {
-    const { code, language } = req.query;
+    // Support both POST (body) and GET (query) for flexibility
+    const code = req.body.code || req.query.code;
+    const language = req.body.language || req.query.language;
+
+    console.log(`[AskAethria] Request received. Language: ${language}, Code length: ${code?.length}`);
 
     if (!code) {
+      console.warn("[AskAethria] Missing code in request");
       return res.status(400).json({ message: "No code provided" });
     }
 
@@ -15,10 +21,11 @@ export const askAethria = async (req, res) => {
     return res.status(200).json({ response });
 
   } catch (error) {
-    console.error("AI error:", error);
+    console.error("[AskAethria] AI Controller Error:", error);
     return res.status(500).json({ 
       message: "Error processing request", 
-      error: error.message 
+      error: error.message,
+      details: "Check server logs for more info"
     });
   }
 };
