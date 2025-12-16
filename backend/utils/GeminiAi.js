@@ -90,7 +90,7 @@ Keep it concise, visual, and humarfully friendly! 🌟
 `;
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.5-flash",
     contents: systemPrompt,
   });
 
@@ -220,7 +220,7 @@ Now evaluate the submission:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
     });
 
@@ -402,7 +402,7 @@ NOTES:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
