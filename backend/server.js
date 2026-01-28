@@ -15,11 +15,21 @@ const app = express();
 const PORT = process.env.PORT || 5500;
 
 // Middleware
-app.use(cors({
-  origin: true, // Reflects the request origin, effectively allowing all
-  credentials: true
-}));
-app.options(/.*/, cors({ origin: true, credentials: true })); // Pre-flight for all
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://aethria-frontend.onrender.com",
+    "https://aethria.in",
+    process.env.FRONTEND_URL
+  ].filter(Boolean), // Remove undefined values
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions)); // Pre-flight for all routes
 
 // Security Middleware
 app.use(helmet());
@@ -40,8 +50,15 @@ import { Server } from "socket.io";
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174", process.env.FRONTEND_URL],
-    methods: ["GET", "POST"]
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://aethria-frontend.onrender.com",
+      "https://aethria.in",
+      process.env.FRONTEND_URL
+    ].filter(Boolean),
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
