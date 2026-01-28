@@ -21,6 +21,7 @@ const corsOptions = {
     "http://localhost:5174",
     "https://aethria-frontend.onrender.com",
     "https://aethria.in",
+    "https://www.aethria.in",
     process.env.FRONTEND_URL
   ].filter(Boolean), // Remove undefined values
   credentials: true,
@@ -55,6 +56,7 @@ const io = new Server(httpServer, {
       "http://localhost:5174",
       "https://aethria-frontend.onrender.com",
       "https://aethria.in",
+      "https://www.aethria.in",
       process.env.FRONTEND_URL
     ].filter(Boolean),
     methods: ["GET", "POST"],
