@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import axios from "axios";
 import { useUser } from "@clerk/clerk-react";
 import Editor from "@monaco-editor/react";
+import apiClient from "../../api/apiClient";
+import {
+  calculateSmartDiff,
+  resolveConflicts,
+  applyResolutions,
+  hashCode,
+} from "../../utils/smartDiff";
 import {
   Mic,
   MicOff,
@@ -25,8 +31,6 @@ import {
   Terminal,
   Play,
 } from "lucide-react";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5500";
 
 export default function ProjectAssistant() {
   const { user, isLoaded, isSignedIn } = useUser();
@@ -241,6 +245,28 @@ export default function ProjectAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Complete microphone cleanup
+  const cleanupMicrophone = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+      } catch (e) {
+        console.log("Recognition cleanup error:", e);
+      }
+    }
+    setIsListening(false);
+  };
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      cleanupMicrophone();
+    };
+  }, []);
+
   const toggleListening = () => {
     if (isListening) {
       if (isVoiceMode) {
@@ -248,10 +274,10 @@ export default function ProjectAssistant() {
         // Or just temporary pause. Let's toggle the mode actually.
         if (confirm("Exit Voice Mode?")) {
           setIsVoiceMode(false);
-          recognitionRef.current?.stop();
+          cleanupMicrophone();
         }
       } else {
-        recognitionRef.current?.stop();
+        cleanupMicrophone();
       }
     } else {
       setError(null);
@@ -328,7 +354,7 @@ export default function ProjectAssistant() {
         : text;
 
       // Call API
-      const aiRes = await axios.post(`${API_URL}/ask-aethria`, {
+      const aiRes = await apiClient.post(`/ask-aethria`, {
         code: prompt,
         language: editorLanguage,
         mode: isVoiceMode ? "voice" : "chat", // Pass mode to backend
@@ -401,6 +427,24 @@ export default function ProjectAssistant() {
           },
         ]);
 
+        // Auto-sync fixed code to VS Code if available
+        if (analysis.fixedCode && isVoiceMode) {
+          setTimeout(() => {
+            applyCodeToEditor(analysis.fixedCode);
+            setTimeout(() => {
+              syncCodeToVSCode();
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "system",
+                  content: "✅ Fixed code auto-synced to VS Code",
+                  isSystem: true,
+                },
+              ]);
+            }, 500);
+          }, 1000);
+        }
+
         // Auto-play
         setTimeout(() => setIsPlaying(true), 500);
       } else {
@@ -440,7 +484,7 @@ export default function ProjectAssistant() {
   };
 
   const triggerExtensionCommand = async (email, type, payload) => {
-    const createRes = await axios.post(`${API_URL}/create-command`, {
+    const createRes = await apiClient.post(`/create-command`, {
       email,
       type,
       payload,
@@ -460,7 +504,7 @@ export default function ProjectAssistant() {
           );
         }
 
-        const statusRes = await axios.get(`${API_URL}/command-status`, {
+        const statusRes = await apiClient.get(`/command-status`, {
           params: { commandId },
         });
         if (statusRes.data.status === "COMPLETED") {
@@ -522,32 +566,6 @@ export default function ProjectAssistant() {
     ]);
   };
 
-  // Calculate line-based diff for incremental sync
-  const calculateLineDiff = (original, edited) => {
-    const originalLines = original.split("\n");
-    const editedLines = edited.split("\n");
-    const changes = [];
-
-    // Find changed, added, or deleted lines
-    const maxLength = Math.max(originalLines.length, editedLines.length);
-
-    for (let i = 0; i < maxLength; i++) {
-      const origLine = originalLines[i];
-      const editLine = editedLines[i];
-
-      if (origLine !== editLine) {
-        changes.push({
-          lineNumber: i + 1, // 1-indexed
-          oldText: origLine || "",
-          newText: editLine || "",
-          type: !origLine ? "added" : !editLine ? "deleted" : "modified",
-        });
-      }
-    }
-
-    return changes;
-  };
-
   const syncCodeToVSCode = async () => {
     const email = user?.primaryEmailAddress?.emailAddress;
     if (!email) return;
@@ -556,37 +574,100 @@ export default function ProjectAssistant() {
     setError(null);
 
     try {
-      // Calculate only the changed lines
-      const changes = calculateLineDiff(originalCode, editorCode);
+      // Step 1: Fetch current VS Code state
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "system",
+          content: "📡 Fetching current VS Code state...",
+          isSystem: true,
+        },
+      ]);
 
-      if (changes.length === 0) {
+      const currentVSCodeState = await triggerExtensionCommand(
+        email,
+        "FETCH_CODE",
+        {},
+      );
+
+      // Step 2: Calculate smart diff (3-way merge)
+      const diffResult = calculateSmartDiff(
+        originalCode, // Last known state
+        currentVSCodeState, // Current VS Code state
+        editorCode, // Web app edited state
+      );
+
+      // Step 3: Check for conflicts
+      if (diffResult.conflicts.length > 0) {
+        const userChoice = window.confirm(
+          `⚠️ ${diffResult.conflicts.length} conflict(s) detected!\n\nVS Code has changes that differ from your web edits.\n\nClick OK to use Web App version, Cancel to keep VS Code version.`,
+        );
+
+        if (!userChoice) {
+          // User chose to keep VS Code version
+          setEditorCode(currentVSCodeState);
+          setOriginalCode(currentVSCodeState);
+          setHasUnsavedChanges(false);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "system",
+              content: "✅ Kept VS Code version - web editor updated",
+              isSystem: true,
+            },
+          ]);
+          setIsSyncing(false);
+          return;
+        }
+
+        // Resolve conflicts in favor of web app
+        const resolved = resolveConflicts(
+          diffResult.conflicts,
+          "prefer-webapp",
+        );
+        diffResult.editScript = applyResolutions(
+          diffResult.editScript,
+          resolved,
+        );
+      }
+
+      // Step 4: Check if any changes needed
+      if (diffResult.editScript.length === 0) {
         setMessages((prev) => [
           ...prev,
-          { role: "bot", content: "No changes to sync.", isSystem: true },
+          {
+            role: "system",
+            content: "✅ Code already in sync - no changes needed",
+            isSystem: true,
+          },
         ]);
         setIsSyncing(false);
         return;
       }
 
-      // Send incremental changes instead of full code
-      await triggerExtensionCommand(email, "APPLY_INCREMENTAL_EDIT", {
-        changes,
-        fullCode: editorCode, // Fallback in case extension doesn't support incremental
+      // Step 5: Send smart patch to VS Code
+      await triggerExtensionCommand(email, "APPLY_SMART_PATCH", {
+        editScript: diffResult.editScript,
+        originalHash: hashCode(originalCode),
+        targetHash: hashCode(editorCode),
+        fallbackCode: editorCode,
       });
 
+      // Step 6: Update local state
       setOriginalCode(editorCode);
       setHasUnsavedChanges(false);
 
+      // Step 7: Show success message
       setMessages((prev) => [
         ...prev,
         {
-          role: "bot",
-          content: `✓ Synced ${changes.length} line change(s) to VS Code!`,
+          role: "system",
+          content: `✅ Smart sync complete! ${diffResult.stats.added} added, ${diffResult.stats.modified} modified, ${diffResult.stats.deleted} deleted`,
           isSystem: true,
         },
       ]);
     } catch (err) {
-      setError(err.message);
+      setError(`Sync failed: ${err.message}`);
     } finally {
       setIsSyncing(false);
     }

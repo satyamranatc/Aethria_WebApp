@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useUser } from "@clerk/clerk-react";
 import { useSocket } from "../context/SocketContext";
+import apiClient from "../api/apiClient";
+import { hashCode } from "../utils/smartDiff";
 import {
   Code,
   CheckCircle,
@@ -16,8 +18,6 @@ import {
   Cpu,
   ArrowRight,
 } from "lucide-react";
-
-let ApiUrl = import.meta.env.VITE_API_URL;
 
 export default function Practice() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -250,13 +250,12 @@ export default function Practice() {
   const triggerExtensionCommand = async (type, payload) => {
     if (!email) return;
     try {
-      await axios.post(`${ApiUrl}/create-command`, {
+      await apiClient.post(`/create-command`, {
         email,
         type,
         payload,
       });
     } catch (error) {
-      console.error("Command trigger error:", error);
       throw error;
     }
   };
@@ -272,9 +271,12 @@ export default function Practice() {
 
       const codeContent = `// PROBLEM: ${question.q}\n// HINT: ${question.hint}\n// LANGUAGE: ${question.language}\n\n// Write your solution below:\n\nfunction solution() {\n  // TODO\n}`;
 
-      // 1. Send via Command System (for polling extension)
-      await triggerExtensionCommand("APPLY_EDIT", {
-        code: codeContent,
+      // 1. Send via Smart Sync Protocol (Replaces APPLY_EDIT)
+      await triggerExtensionCommand("APPLY_SMART_PATCH", {
+        editScript: [], // Empty script + hash mismatch = Full Replace fallback
+        originalHash: "FORCE_FALLBACK",
+        targetHash: hashCode(codeContent),
+        fallbackCode: codeContent,
       });
 
       setSelectedQuestion(question);
@@ -297,7 +299,7 @@ export default function Practice() {
     setIsFetching(true);
     try {
       // 1. Ask extension to fetch code via command
-      const cmdRes = await axios.post(`${ApiUrl}/create-command`, {
+      const cmdRes = await apiClient.post(`/create-command`, {
         email,
         type: "FETCH_CODE",
         payload: {},
@@ -318,7 +320,7 @@ export default function Practice() {
         }
 
         try {
-          const statusRes = await axios.get(`${ApiUrl}/command-status`, {
+          const statusRes = await apiClient.get(`/command-status`, {
             params: { commandId },
           });
           if (statusRes.data.status === "COMPLETED") {
@@ -357,7 +359,7 @@ export default function Practice() {
         language: selectedQuestion.language,
       };
 
-      const response = await axios.post(`${ApiUrl}/check-answer`, payload);
+      const response = await apiClient.post(`/check-answer`, payload);
 
       if (response.status === 200 || response.status === 201) {
         const apiData = response.data.data;

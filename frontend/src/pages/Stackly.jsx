@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
+import { useUser } from "@clerk/clerk-react";
+import apiClient from "../api/apiClient";
+import { hashCode } from "../utils/smartDiff";
 import {
   Send,
   Code as CodeIcon,
@@ -8,8 +9,6 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-
-const ApiUrl = import.meta.env.VITE_API_URL;
 
 export default function Stackly() {
   const { user, isSignedIn } = useUser();
@@ -29,12 +28,15 @@ export default function Stackly() {
     try {
       setIsSending(true);
 
-      // Use Command System (Robust polling-based sync)
-      await axios.post(`${ApiUrl}/create-command`, {
+      // Use Smart Sync Protocol (Replaces APPLY_EDIT)
+      await apiClient.post(`/create-command`, {
         email,
-        type: "APPLY_EDIT",
+        type: "APPLY_SMART_PATCH",
         payload: {
-          code: code,
+          editScript: [], // Force fallback for full replace
+          originalHash: "FORCE_FALLBACK",
+          targetHash: hashCode(code),
+          fallbackCode: code,
         },
       });
 

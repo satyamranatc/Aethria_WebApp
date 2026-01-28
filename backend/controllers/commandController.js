@@ -17,7 +17,6 @@ export const createCommand = async (req, res) => {
       commandId: newCommand._id
     });
   } catch (error) {
-    console.error("Create command error:", error);
     return res.status(500).json({ message: "Error creating command", error: error.message });
   }
 };
@@ -31,7 +30,7 @@ export const getPendingCommands = async (req, res) => {
       return res.status(400).json({ message: "Email required" });
     }
 
-    // Find first pending command
+    // Find first pending command and mark as processing
     const command = await Command.findOneAndUpdate(
       { email, status: "PENDING" },
       { status: "PROCESSING" },
@@ -51,7 +50,6 @@ export const getPendingCommands = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Get pending commands error:", error);
     return res.status(500).json({ message: "Error fetching commands", error: error.message });
   }
 };
@@ -80,7 +78,6 @@ export const updateCommandResult = async (req, res) => {
       command: updatedCommand
     });
   } catch (error) {
-    console.error("Update command error:", error);
     return res.status(500).json({ message: "Error updating command", error: error.message });
   }
 };
@@ -105,7 +102,6 @@ export const getCommandStatus = async (req, res) => {
       result: command.result
     });
   } catch (error) {
-    console.error("Get command status error:", error);
     return res.status(500).json({ message: "Error fetching status", error: error.message });
   }
 };
