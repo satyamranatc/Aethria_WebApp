@@ -14,12 +14,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5500;
 
+// Middleware
+app.use(cors({
+  origin: true, // Reflects the request origin, effectively allowing all
+  credentials: true
+}));
+app.options(/.*/, cors({ origin: true, credentials: true })); // Pre-flight for all
+
 // Security Middleware
 app.use(helmet());
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 5000, // Increased limit for heavy polling in development
+  skip: (req) => req.ip === '::1' || req.ip === '127.0.0.1',
   message: "Too many requests from this IP, please try again later."
 });
 app.use(limiter);
@@ -28,10 +36,11 @@ app.use(limiter);
 import { createServer } from "http";
 import { Server } from "socket.io";
 
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "*", // Use env var or allow all for dev
+    origin: ["http://localhost:5173", "http://localhost:5174", process.env.FRONTEND_URL],
     methods: ["GET", "POST"]
   }
 });
@@ -61,9 +70,7 @@ io.on("connection", (socket) => {
 Db();
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "*", // Restrict in production
-}));
+// CORS already applied at the top
 app.use(express.json());
 
 // Routes

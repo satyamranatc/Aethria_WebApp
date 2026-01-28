@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useUser } from "@clerk/clerk-react";
 import Editor from "@monaco-editor/react";
@@ -29,6 +30,20 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5500";
 
 export default function ProjectAssistant() {
   const { user, isLoaded, isSignedIn } = useUser();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode");
+
+  // Voice Mode State - Initialize from URL to prevent flash
+  const [isVoiceMode, setIsVoiceMode] = useState(
+    () => searchParams.get("mode") === "voice",
+  );
+
+  useEffect(() => {
+    if (mode === "voice") {
+      setIsVoiceMode(true);
+      setViewMode("chat");
+    }
+  }, [mode]);
 
   // Chat state
   const [messages, setMessages] = useState([
@@ -105,25 +120,122 @@ export default function ProjectAssistant() {
       const SpeechRecognition =
         window.SpeechRecognition || window.webkitSpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
+      recognitionRef.current.continuous = true; // Changed to match "Continuous Listening" requirement
+      recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = "en-US";
 
+      let silenceTimer;
       recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInputText(transcript);
-        handleSend(transcript);
-        setIsListening(false);
+        let interimTranscript = "";
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const currentText = finalTranscript || interimTranscript;
+        if (currentText) {
+          setInputText(currentText);
+
+          // Smooth Logic: If we have a final result, or if using interim with a pause
+          // Clear any existing timer
+          clearTimeout(silenceTimer);
+
+          // Wait for 2.0s of silence before processing
+          silenceTimer = setTimeout(() => {
+            if (currentText.trim().length > 3) {
+              handleSend(currentText);
+            }
+          }, 2000);
+        }
       };
 
       recognitionRef.current.onerror = (event) => {
         setIsListening(false);
-        setError("Voice recognition error. Please try again.");
+        // Auto-restart if in Voice Mode (unless error is "not-allowed")
+        if (isVoiceMode && event.error !== "not-allowed") {
+          setTimeout(() => {
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (e) {
+              /* ignore already started */
+            }
+          }, 1000);
+        } else {
+          setError("Voice recognition error. Please try again.");
+        }
       };
 
-      recognitionRef.current.onend = () => setIsListening(false);
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+        // Auto-restart for Voice Mode
+        if (isVoiceMode) {
+          setTimeout(() => {
+            try {
+              recognitionRef.current.start();
+              setIsListening(true);
+            } catch (e) {
+              /* ignore already started */
+            }
+          }, 500);
+        }
+      };
     }
-  }, []);
+  }, []); // Re-run if isVoiceMode changes? No, controlled by state in onend
+
+  // Auto-start listening when Voice Mode is active
+  useEffect(() => {
+    const triggerStart = () => {
+      if (isVoiceMode && !isListening && recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+          setIsListening(true);
+        } catch (e) {
+          // Already started or background error
+        }
+      }
+    };
+
+    if (isVoiceMode) {
+      // Try immediately
+      triggerStart();
+      // and a small delay in case recognitionRef was just initialized
+      const timer = setTimeout(triggerStart, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVoiceMode, isListening]);
+
+  // Auto-Sync Polling Effect for Voice Mode
+  useEffect(() => {
+    let syncInterval;
+    if (isVoiceMode && isSignedIn) {
+      // Start polling code from VS Code every 2 seconds
+      syncInterval = setInterval(() => {
+        // "Silent" fetch - don't show loading spinners for this background sync
+        const email = user?.primaryEmailAddress?.emailAddress;
+        if (email) {
+          // Use a silent version of triggerExtensionCommand or handle loading state carefully
+          // Here we just fire and forget, updating editorCode on success
+          triggerExtensionCommand(email, "FETCH_CODE", {})
+            .then((code) => {
+              if (code && code !== editorCode) {
+                setEditorCode(code);
+                setOriginalCode(code); // Assume sync is "clean"
+              }
+            })
+            .catch(() => {
+              /* ignore silent sync errors */
+            });
+        }
+      }, 2000);
+    }
+    return () => clearInterval(syncInterval);
+  }, [isVoiceMode, isSignedIn, user, editorCode]); // Dep on editorCode might cause re-renders, but needed for comparison. Maybe optimize later.
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -131,7 +243,16 @@ export default function ProjectAssistant() {
 
   const toggleListening = () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      if (isVoiceMode) {
+        // If in Voice Mode, "stopping" might mean disabling voice mode entirely?
+        // Or just temporary pause. Let's toggle the mode actually.
+        if (confirm("Exit Voice Mode?")) {
+          setIsVoiceMode(false);
+          recognitionRef.current?.stop();
+        }
+      } else {
+        recognitionRef.current?.stop();
+      }
     } else {
       setError(null);
       recognitionRef.current?.start();
@@ -163,26 +284,43 @@ export default function ProjectAssistant() {
 
     try {
       let contextCode = "";
+
+      // VOICE MODE: Always fetch latest code before processing to ensure context
+      if (isVoiceMode) {
+        try {
+          contextCode = await triggerExtensionCommand(email, "FETCH_CODE", {});
+          if (contextCode) {
+            setEditorCode(contextCode);
+            setOriginalCode(contextCode);
+          }
+        } catch (e) {
+          console.error("Context fetch failed", e);
+        }
+      }
+
       const lineMatch = text.match(/line (?:no )?(\\d+)/i);
       const fullCodeMatch = text.match(
         /current code|whole code|my code|this code|explain|fix|debug/i,
       );
 
-      if (lineMatch) {
-        const lineNo = parseInt(lineMatch[1]);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "bot",
-            content: `Fetching line ${lineNo} from VS Code...`,
-            isSystem: true,
-          },
-        ]);
-        contextCode = await triggerExtensionCommand(email, "FETCH_LINE", {
-          lineNo,
-        });
-      } else if (fullCodeMatch || editorCode.length > 50) {
-        contextCode = editorCode;
+      if (!contextCode) {
+        // If not already fetched or not in voice mode
+        if (lineMatch) {
+          const lineNo = parseInt(lineMatch[1]);
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "bot",
+              content: `Fetching line ${lineNo} from VS Code...`,
+              isSystem: true,
+            },
+          ]);
+          contextCode = await triggerExtensionCommand(email, "FETCH_LINE", {
+            lineNo,
+          });
+        } else if (fullCodeMatch || editorCode.length > 50) {
+          contextCode = editorCode;
+        }
       }
 
       const prompt = contextCode
@@ -193,13 +331,55 @@ export default function ProjectAssistant() {
       const aiRes = await axios.post(`${API_URL}/ask-aethria`, {
         code: prompt,
         language: editorLanguage,
+        mode: isVoiceMode ? "voice" : "chat", // Pass mode to backend
       });
 
       const responseData = aiRes.data;
 
-      if (responseData.type === "analysis") {
-        // New Project Assistant Flow
+      if (isVoiceMode && responseData.type === "ACTION") {
+        // Handle Voice Actions (e.g. Insert Comment)
+        const action = responseData.data;
+
+        if (action.actionType === "INSERT_COMMENT") {
+          const { line, text } = action;
+          // Insert comment into editorCode
+          const lines = editorCode.split("\n");
+          // Insert at index (line - 1) + 1 to be "below" the line, or just at the line
+          // "Below line 5" means index 5 (since 0-indexed line 5 is the 6th line).
+          // Let's assume 'line' is 1-indexed.
+          const insertIndex = line;
+          const indentation = lines[line - 1]
+            ? lines[line - 1].match(/^\s*/)[0]
+            : "";
+
+          lines.splice(insertIndex, 0, `${indentation}// 🤖 AI: ${text}`);
+          const newCode = lines.join("\n");
+
+          applyCodeToEditor(newCode); // Updates editor and sets unsaved changes
+
+          // Auto-save/sync back to VS Code for "Real-time" feel
+          // We need to trigger the sync immediately
+          setTimeout(() => {
+            syncCodeToVSCode();
+            // Also add a chat message so user sees history
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "bot",
+                content: `(Voice Action) Added comment on line ${line}: "${text}"`,
+              },
+            ]);
+          }, 500);
+        } else if (action.actionType === "CHAT") {
+          setMessages((prev) => [
+            ...prev,
+            { role: "bot", content: action.text },
+          ]);
+        }
+      } else if (responseData.type === "analysis") {
+        // New Project Assistant Flow -> Visualizer
         const analysis = responseData.data;
+        // ... (rest of visualizer logic)
         setExecutionFlow(analysis.executionFlow || []);
         setFixedCode(analysis.fixedCode);
         setErrorSummary(analysis.errorSummary || []);
@@ -226,6 +406,7 @@ export default function ProjectAssistant() {
       } else {
         // Legacy Text/Comment Flow
         const responseText = responseData.response || "";
+        // ... (rest of legacy flow)
 
         // Extract code blocks from AI response
         const codeBlockMatches = responseText.match(
@@ -433,9 +614,20 @@ export default function ProjectAssistant() {
               <Terminal className="text-white" size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
                 Project Assistant
               </h1>
+              {isVoiceMode && (
+                <div className="ml-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                  </span>
+                  <span className="text-xs font-semibold text-red-600">
+                    Voice Mode Active
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <CheckCircle size={14} className="text-green-500" />
                 <span>
@@ -452,12 +644,14 @@ export default function ProjectAssistant() {
               >
                 Chat
               </button>
-              <button
-                onClick={() => setViewMode("visualizer")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "visualizer" ? "bg-white shadow-sm text-indigo-600" : "text-gray-600 hover:text-gray-900"}`}
-              >
-                Visualizer
-              </button>
+              {!isVoiceMode && (
+                <button
+                  onClick={() => setViewMode("visualizer")}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "visualizer" ? "bg-white shadow-sm text-indigo-600" : "text-gray-600 hover:text-gray-900"}`}
+                >
+                  Visualizer
+                </button>
+              )}
               <button
                 onClick={() => setViewMode("editor")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "editor" ? "bg-white shadow-sm text-indigo-600" : "text-gray-600 hover:text-gray-900"}`}
@@ -482,6 +676,7 @@ export default function ProjectAssistant() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left/Main Pane - Dynamic based on View Mode */}
+        {/* Left/Main Pane - Dynamic based on View Mode */}
         {viewMode === "chat" && (
           <div className="flex-1 flex flex-col bg-white border-r border-gray-200 lg:max-w-[40%]">
             {/* Chat Messages */}
@@ -504,31 +699,101 @@ export default function ProjectAssistant() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
+            {/* Input Area / Voice HUD */}
             <div className="p-4 border-t border-gray-200">
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl p-2">
-                <button
-                  onClick={toggleListening}
-                  className={`p-2 rounded-lg ${isListening ? "text-red-500 animate-pulse" : "text-gray-500"}`}
-                >
-                  <Mic size={20} />
-                </button>
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="Type or speak (e.g. 'Explain this code', 'Fix bug on line 5')"
-                  className="flex-1 bg-transparent border-none focus:outline-none placeholder:text-gray-500"
-                />
-                <button
-                  onClick={() => handleSend()}
-                  disabled={isProcessing}
-                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                >
-                  <Send size={20} />
-                </button>
-              </div>
+              {isVoiceMode ? (
+                // VOICE HUD
+                <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-2xl ring-4 ring-indigo-500/20 flex flex-col items-center gap-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">
+                      Voice Mode Active
+                    </span>
+                    {isSyncing ? (
+                      <span className="text-xs flex items-center gap-1 text-indigo-300">
+                        <RefreshCw size={12} className="animate-spin" /> Syncing
+                        VS Code
+                      </span>
+                    ) : (
+                      <span className="text-xs flex items-center gap-1 text-emerald-400">
+                        <CheckCircle size={12} /> Synced
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Audio Visualizer (Simulated) */}
+                  <div className="flex items-center gap-1 h-12">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-1.5 bg-indigo-500 rounded-full transition-all duration-100 ${isListening ? "animate-[pulse_1s_ease-in-out_infinite]" : "h-2"}`}
+                        style={{
+                          height: isListening
+                            ? `${Math.random() * 24 + 8}px`
+                            : "8px",
+                          animationDelay: `${i * 0.1}s`,
+                        }}
+                      ></div>
+                    ))}
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-lg font-medium text-white mb-1">
+                      {isProcessing
+                        ? isSyncing
+                          ? "Syncing Context..."
+                          : "Processing Command..."
+                        : inputText || "Listening..."}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {isProcessing
+                        ? "AI is analyzing your code..."
+                        : "Say 'Add comment on line 5...' or 'Explain this code'"}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 mt-2 w-full">
+                    <button
+                      onClick={() => toggleListening()}
+                      className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+                    >
+                      <MicOff size={16} /> Stop Voice Mode
+                    </button>
+                    {/* Force Trigger Button if silence detection fails */}
+                    <button
+                      onClick={() => handleSend(inputText)}
+                      disabled={!inputText || isProcessing}
+                      className="px-4 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // STANDARD CHAT INPUT
+                <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl p-2">
+                  <button
+                    onClick={toggleListening}
+                    className={`p-2 rounded-lg ${isListening ? "text-red-500 animate-pulse" : "text-gray-500"}`}
+                  >
+                    <Mic size={20} />
+                  </button>
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleSend()}
+                    placeholder="Type or speak (e.g. 'Explain this code', 'Fix bug on line 5')"
+                    className="flex-1 bg-transparent border-none focus:outline-none placeholder:text-gray-500"
+                  />
+                  <button
+                    onClick={() => handleSend()}
+                    disabled={isProcessing}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                  >
+                    <Send size={20} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -730,7 +995,7 @@ export default function ProjectAssistant() {
                 <button
                   onClick={fetchCodeFromVSCode}
                   className="px-3 py-1 text-gray-600 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50"
-                > 
+                >
                   Fetch
                 </button>
                 <button

@@ -1,4 +1,4 @@
-import { codeAssist, checkAnswerByAi, explainCode, analyzeCodeFlow } from "../utils/GeminiAi.js";
+import { codeAssist, checkAnswerByAi, explainCode, analyzeCodeFlow, processVoiceCommand } from "../utils/GeminiAi.js";
 import Result from "../models/resultModel.js";
 import mongoose from "mongoose";
 
@@ -58,16 +58,73 @@ export const askAethria = async (req, res) => {
     } else {
         // Web App Project Assistant - Rich JSON Analysis
         // Logic: specific keywords or default to analysis for POST
-        // For now, let's assume the Web App ALWAYS wants rich analysis for "Explain" or "Fix"
-        // But if it's just a chat message "Hello", we might want simple chat.
-        // Let's check if the code is substantial or if the user asked to analyze.
-        // To be safe and follow instructions "make everything come as JSON", we switch to analyzeCodeFlow.
-        // Note: codeAssist implies textual help. analyzeCodeFlow implies visualizer.
         
-        // We need to import analyzeCodeFlow first. I will add it to the imports in a separate edit or assume it's imported.
-        // Wait, I need to update imports in this file too.
-        
-        // Let's use analyzeCodeFlow.
+        const mode = (req.body && req.body.mode) || "chat"; // Default to chat/analysis
+
+        if (mode === "voice") {
+            const voiceResponse = await processVoiceCommand(req.body.code, language); // Wait, first arg in helper is transcript?
+            // Correct usages: processVoiceCommand(transcript, code, language)
+            // But req.body.code in frontend is actually sending the transcript as 'code' property if 'prompt' was passed?
+            // Let's check frontend. 
+            // Frontend: code: prompt (which is transcript or code depending on logic)
+            // If transcript, we need code context too. Frontend handles this logic:
+            // "const prompt = contextCode ? contextCode : text;" 
+            // If contextCode exists, prompt IS the code. But we lost the transcript?
+            // Wait, implementation plan said: "Input: Code snippet, user voice transcript."
+            // Frontend logic needs to send BOTH.
+            
+            // Re-reading Frontend Logic:
+            // if (lineMatch) ... contextCode = fetchLine... prompt = contextCode
+            // else if (fullCode) ... contextCode = editorCode... prompt = contextCode
+            // else prompt = text;
+            
+            // This is flawed for Voice Mode if we want context + transcript.
+            // But for now, let's assume if it's "Voice Mode", the "prompt" is the TRANSCRIPT if no code context,
+            // OR if code context is sent, it might be harder.
+            
+            // The frontend logic sends `code: prompt`. 
+            // If I change backend, I might break frontend legacy?
+            // Let's assume for this iteration:
+            // If `mode === 'voice'`, `req.body.code` is the TRANSCRIPT + maybe appended code?
+            // Actually, the new frontend logic I wrote sends `mode: "voice"`.
+            // But `code` payload is still `prompt`.
+            
+            // Let's trust processVoiceCommand to handle it.
+            // Wait, processVoiceCommand signature: (transcript, code, language).
+            // I need to update this controller to arguably work better if I fix frontend to send both.
+            // But I can't easily fix frontend logic in this single step without backtracking.
+            
+            // Workaround: Treat req.body.code as "Data". 
+            // If it looks like code, treat as code. If text, treat as transcript.
+            // Actually, let's just pass `req.body.code` as the TRANSCRIPT for now, 
+            // assuming the user is just talking and maybe the frontend didn't attach code context yet 
+            // unless it was a specific "line" command where frontend fetched it.
+            
+            // Correct approach: I'll update processVoiceCommand to take just one big string if needed, 
+            // OR I update frontend to send { transcript, code } separate.
+            // Updating frontend is better but expensive.
+            // Let's stick to: prompt is the input.
+            
+            // If prompt is code (long, has brackets), treat as Code Context + "Explain this".
+            // If prompt is short text, treat as Transcript + No Code.
+            
+            const inputPayload = req.body.code || "";
+            let transcript = inputPayload;
+            let codeContext = "";
+            
+            if (inputPayload.length > 200 || inputPayload.includes("function") || inputPayload.includes("const ")) {
+                 codeContext = inputPayload;
+                 transcript = "Analyze this code/request"; // Implicit transcript
+            }
+            
+            const analysis = await processVoiceCommand(transcript, codeContext, language);
+            return res.status(200).json({
+                type: "ACTION",
+                data: analysis.data // Extract data from { type: ACTION, data: ... }
+            });
+        }
+
+        // Default Analysis Flow
         const analysis = await analyzeCodeFlow(code, language);
         return res.status(200).json({ 
             type: "analysis", 

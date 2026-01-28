@@ -513,3 +513,76 @@ RULES:
     throw error;
   }
 }
+// ---------------------------------------------------------------------------
+// NEW: Voice Command Processor
+// ---------------------------------------------------------------------------
+export async function processVoiceCommand(transcript, code, language) {
+  const prompt = `
+  You are Aethria's Voice Mode Action Engine.
+  Your goal is to interpret a developer's spoken command and decide on a CODE ACTION (like inserting a comment) or a CHAT RESPONSE.
+
+  INPUT:
+   Transcript: "${transcript}"
+   Code Context: 
+  ${code ? code.slice(0, 5000) : "(No code context provided)"}
+  
+  DECISION LOGIC:
+  1. Does the user ask to add a comment or ask about a specific line? 
+     - Example: "Add a comment on line 5 saying hello" -> ACTION: INSERT_COMMENT
+     - Example: "What is on line 10?" -> ACTION: INSERT_COMMENT (Explain line 10)
+     - Example: "Explain this function" -> ACTION: CHAT (General explanation)
+  
+  OUTPUT FORMAT (Strict JSON):
+  
+  IF INSERTING COMMENT:
+  {
+      "type": "ACTION",
+      "data": {
+          "actionType": "INSERT_COMMENT",
+          "line": <number>, // The line number referenced or best guess
+          "text": "<The comment text to insert>"
+      }
+  }
+  
+  IF GENERAL CHAT:
+  {
+      "type": "ACTION", 
+      "data": {
+          "actionType": "CHAT",
+          "text": "<The helpful response>"
+      }
+  }
+
+  RULES:
+  - If user asks focused question on a line, prefer INSERT_COMMENT so it appears right there.
+  - Comment text should be short, friendly, and helpful.
+  `;
+
+  try {
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+    });
+
+    let text = response.text.trim();
+    text = text.replace(/```json\s*/g, "").replace(/```/g, "").trim();
+    
+    // Cleanup
+    if (text.startsWith('`')) text = text.replace(/`/g, '');
+    
+    return JSON.parse(text);
+
+  } catch (error) {
+    console.error("AI processVoiceCommand error:", error);
+    // Fallback to chat
+    return {
+        type: "ACTION",
+        data: {
+            actionType: "CHAT",
+            text: "Sorry, I didn't catch that specific command. Could you repeat?"
+        }
+    };
+  }
+}

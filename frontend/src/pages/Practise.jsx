@@ -27,7 +27,7 @@ export default function Practice() {
   const [userAnswer, setUserAnswer] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [sendingQuestionId, setSendingQuestionId] = useState(null);
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("editor"); // editor | output
 
@@ -268,7 +268,7 @@ export default function Practice() {
         return;
       }
 
-      setIsSending(true);
+      setSendingQuestionId(question.id);
 
       const codeContent = `// PROBLEM: ${question.q}\n// HINT: ${question.hint}\n// LANGUAGE: ${question.language}\n\n// Write your solution below:\n\nfunction solution() {\n  // TODO\n}`;
 
@@ -284,7 +284,7 @@ export default function Practice() {
     } catch (error) {
       alert("❌ Error sending to VS Code: " + error.message);
     } finally {
-      setIsSending(false);
+      setSendingQuestionId(null);
     }
   }
 
@@ -694,10 +694,10 @@ export default function Practice() {
                   e.stopPropagation();
                   solveInVsCode(question);
                 }}
-                disabled={isSending}
+                disabled={sendingQuestionId === question.id}
                 className="w-full py-2.5 rounded-xl bg-slate-50 text-slate-600 font-medium text-sm hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2 group/btn border border-slate-200 hover:border-indigo-200"
               >
-                {isSending ? (
+                {sendingQuestionId === question.id ? (
                   <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" />
                 ) : (
                   <>

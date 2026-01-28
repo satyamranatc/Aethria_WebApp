@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Code,
   Mic,
@@ -22,11 +23,7 @@ function FeatureText({ text }) {
 }
 
 export default function Home() {
-  const navigate = (path) => {
-    // Navigate logic
-    console.log(`Navigating to: ${path}`);
-    // Actual navigation would go here, e.g. history.push(path)
-  };
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
@@ -82,7 +79,7 @@ export default function Home() {
               </button>
 
               <button
-                onClick={() => alert("Voice Commands coming soon")}
+                onClick={() => navigate("/ProjectAssistant?mode=voice")}
                 className="group inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-gray-700 transition-all duration-200 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 shadow-sm"
               >
                 <Mic className="mr-2 h-5 w-5 text-gray-500 group-hover:text-indigo-600 transition-colors" />
