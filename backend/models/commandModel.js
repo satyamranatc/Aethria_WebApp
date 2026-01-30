@@ -9,7 +9,7 @@ const commandSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["FETCH_CODE", "FETCH_LINE", "APPLY_EDIT", "APPLY_INCREMENTAL_EDIT"],
+      enum: ["FETCH_CODE", "FETCH_LINE", "APPLY_EDIT", "APPLY_INCREMENTAL_EDIT", "APPLY_SMART_PATCH"],
       required: true,
     },
     payload: {

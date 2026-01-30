@@ -14,15 +14,17 @@ export const askAethria = async (req, res) => {
       return res.status(400).json({ message: "No code provided" });
     }
 
-    if (isGetRequest) {
-      // VS Code Extension - Hinglish Explanation Flow
+    const mode = (req.body && req.body.mode) || req.query.mode || (isGetRequest ? "explanation" : "chat");
+
+    if (mode === "explanation") {
+      // Automatic Hinglish Explanation for VS Code Extension or explicit requests
       const prompt = HINGLISH_EXPLANATION_PROMPT(language, code);
-      const response = await codeAssist(prompt, language);
-      return res.status(200).json({ response });
+      const aiResponse = await codeAssist(prompt, language);
+      return res.status(200).json({ response: aiResponse });
     }
 
     // Web App Flow
-    const mode = (req.body && req.body.mode) || "chat";
+    // mode is already defined above
 
     if (mode === "voice") {
       const inputPayload = req.body.code || "";

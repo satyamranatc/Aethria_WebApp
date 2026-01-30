@@ -1,7 +1,5 @@
-// PROBLEM: WAP to Add Two Numbers
-// HINT: javascript
-
 import express from "express";
+
 import {
   askAethria,
   checkAnswer,
