@@ -62,7 +62,7 @@ export default function Home() {
               understand code like never before —
               <span className="text-indigo-600 font-semibold">
                 {" "}
-                with the wisdom of AI
+                with the help of AI
               </span>
               .
             </p>
