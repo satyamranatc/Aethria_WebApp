@@ -177,6 +177,23 @@ export default function Home() {
           </button>
         </div>
       </section>
+
+      {/* Footer with Backlinks to Satyam Rana Official */}
+      <footer className="bg-gray-950 text-white border-t border-gray-800/80 py-12 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-gray-400">
+          <div>
+            <p className="font-semibold text-white">Aethria — Advanced AI Coding Companion</p>
+            <p className="mt-1 text-xs text-gray-500">Created & Engineered by <a href="https://www.satyamrana.in" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-white underline font-medium">Satyam Rana</a></p>
+          </div>
+          <div className="flex items-center space-x-6 text-xs">
+            <a href="https://www.satyamrana.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Satyam Rana Official</a>
+            <span>•</span>
+            <a href="https://www.krito.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Krito CLI</a>
+            <span>•</span>
+            <a href="https://marketplace.visualstudio.com/items?itemName=SatyamRana.krito" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">VS Code Marketplace</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
