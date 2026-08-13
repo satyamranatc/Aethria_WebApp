@@ -185,12 +185,12 @@ export default function Home() {
             <p className="font-semibold text-white">Aethria — Advanced AI Coding Companion</p>
             <p className="mt-1 text-xs text-gray-500">Created & Engineered by <a href="https://www.satyamrana.in" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-white underline font-medium">Satyam Rana</a></p>
           </div>
-          <div className="flex items-center space-x-6 text-xs">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
             <a href="https://www.satyamrana.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Satyam Rana Official</a>
             <span>•</span>
-            <a href="https://www.krito.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Krito CLI</a>
+            <a href="https://marketplace.visualstudio.com/items?itemName=SatyamRana.Aethria" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-white transition-colors font-medium">Aethria VS Code Extension</a>
             <span>•</span>
-            <a href="https://marketplace.visualstudio.com/items?itemName=SatyamRana.krito" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">VS Code Marketplace</a>
+            <a href="https://www.krito.in" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Krito CLI</a>
           </div>
         </div>
       </footer>
