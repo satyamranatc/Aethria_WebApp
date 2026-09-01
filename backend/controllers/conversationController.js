@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Conversation from "../models/Conversation.js";
 
 // @desc    Get all conversations for authenticated user
@@ -21,6 +22,36 @@ export const getConversations = async (req, res) => {
   } catch (error) {
     console.error("Get Conversations Error:", error);
     return res.status(500).json({ error: error.message || "Failed to fetch conversations." });
+  }
+};
+
+// @desc    Get single conversation by ID
+// @route   GET /api/conversations/:id
+export const getConversationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let conversation = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      conversation = await Conversation.findOne({ _id: id, userId: req.user._id });
+    }
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    return res.json({
+      success: true,
+      conversation: {
+        id: conversation._id.toString(),
+        title: conversation.title,
+        messages: conversation.messages,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error("Get Conversation Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to fetch conversation." });
   }
 };
 
@@ -59,16 +90,12 @@ export const updateConversation = async (req, res) => {
     const { id } = req.params;
     const { title, messages } = req.body;
 
-    let conversation;
-    // Check if id is a valid Mongo ObjectId, otherwise search by id or create
-    try {
+    let conversation = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
       conversation = await Conversation.findOne({ _id: id, userId: req.user._id });
-    } catch (e) {
-      conversation = null;
     }
 
     if (!conversation) {
-      // If it was a client-side temporary id, create a new record
       conversation = await Conversation.create({
         userId: req.user._id,
         title: title || "New Conversation",
@@ -102,10 +129,13 @@ export const deleteConversation = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const conversation = await Conversation.findOneAndDelete({
-      _id: id,
-      userId: req.user._id
-    });
+    let conversation = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      conversation = await Conversation.findOneAndDelete({
+        _id: id,
+        userId: req.user._id
+      });
+    }
 
     if (!conversation) {
       return res.status(404).json({ error: "Conversation not found or not owned by user." });

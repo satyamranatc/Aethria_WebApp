@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getConversations,
+  getConversationById,
   createConversation,
   updateConversation,
   deleteConversation
@@ -17,6 +18,7 @@ router.route("/")
   .post(createConversation);
 
 router.route("/:id")
+  .get(getConversationById)
   .put(updateConversation)
   .delete(deleteConversation);
 
