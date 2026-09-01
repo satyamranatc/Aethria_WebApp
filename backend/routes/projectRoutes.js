@@ -6,6 +6,10 @@ import {
   updateProject,
   getProjectFileTree,
   getProjectFileContent,
+  createProjectFile,
+  updateProjectFileContent,
+  deleteProjectFile,
+  renameProjectFile,
   syncProject,
   getProjectTasks,
   createProjectTask,
@@ -23,6 +27,8 @@ import {
   runComprehensiveCodeReview,
   getNextBestActionPlan,
   generateProjectTasksFromAi,
+  aiGenerateFile,
+  aiEditFile,
   chatWithProject
 } from "../controllers/projectAiController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -39,9 +45,17 @@ router.get("/:id", getProjectById);
 router.patch("/:id", updateProject);
 router.delete("/:id", deleteProject);
 
-// File tree & reader
+// File & Folder CRUD
 router.get("/:id/files", getProjectFileTree);
+router.post("/:id/files", createProjectFile);
 router.get("/:id/files/:fileId", getProjectFileContent);
+router.put("/:id/files/:fileId", updateProjectFileContent);
+router.delete("/:id/files/:fileId", deleteProjectFile);
+router.patch("/:id/files/:fileId/rename", renameProjectFile);
+
+// AI File Creation & Code Editing
+router.post("/:id/ai/generate-file", aiGenerateFile);
+router.post("/:id/ai/edit-file", aiEditFile);
 
 // Kanban Tasks
 router.get("/:id/tasks", getProjectTasks);

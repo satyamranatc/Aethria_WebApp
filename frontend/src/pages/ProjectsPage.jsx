@@ -36,7 +36,12 @@ import {
   Activity,
   Settings,
   GitCommit,
-  Bot
+  Bot,
+  Save,
+  Wand2,
+  FilePlus,
+  FolderPlus,
+  Edit3
 } from 'lucide-react';
 import {
   fetchUserProjects,
@@ -45,6 +50,12 @@ import {
   updateProjectDetails,
   fetchProjectFileTree,
   fetchProjectFileContent,
+  createProjectFile,
+  updateProjectFileContent,
+  deleteProjectFile,
+  renameProjectFile,
+  aiGenerateNewFile,
+  aiEditExistingFile,
   fetchProjectTasks,
   createProjectTask,
   updateProjectTask,
@@ -95,6 +106,17 @@ export default function ProjectsPage({ onBackToWorkspace, onOpenAuth, isAuthenti
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileContent, setFileContent] = useState('');
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  // File CRUD & AI Code Editing State
+  const [isCreatingFile, setIsCreatingFile] = useState(false);
+  const [newFilePath, setNewFilePath] = useState('');
+  const [isAiCreatingFile, setIsAiCreatingFile] = useState(false);
+  const [aiFilePrompt, setAiFilePrompt] = useState('');
+  const [isAiEditingCode, setIsAiEditingCode] = useState(false);
+  const [aiEditPrompt, setAiEditPrompt] = useState('');
+  const [isSavingCode, setIsSavingCode] = useState(false);
+  const [saveCodeSuccess, setSaveCodeSuccess] = useState(false);
+  const [isAiWorking, setIsAiWorking] = useState(false);
 
   // Tasks & Issues State
   const [tasks, setTasks] = useState([]);
@@ -174,7 +196,117 @@ export default function ProjectsPage({ onBackToWorkspace, onOpenAuth, isAuthenti
     }
   };
 
-  // Create Project
+  // =========================================================================
+  // FILE & CODE CRUD HANDLERS
+  // =========================================================================
+
+  // Create New File manually
+  const handleCreateFile = async (e) => {
+    e?.preventDefault();
+    if (!newFilePath.trim() || !selectedProject) return;
+
+    try {
+      const newFile = await createProjectFile(selectedProject._id, {
+        filePath: newFilePath.trim(),
+        content: `// ${newFilePath.trim()}\n`
+      });
+
+      if (newFile) {
+        const files = await fetchProjectFileTree(selectedProject._id);
+        setFileTree(files);
+        handleSelectFile(newFile, selectedProject._id);
+        setNewFilePath('');
+        setIsCreatingFile(false);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to create file');
+    }
+  };
+
+  // Save Code Edits Live
+  const handleSaveCode = async () => {
+    if (!selectedProject || !selectedFile || isSavingCode) return;
+    setIsSavingCode(true);
+    setSaveCodeSuccess(false);
+
+    try {
+      await updateProjectFileContent(selectedProject._id, selectedFile._id, fileContent);
+      setSaveCodeSuccess(true);
+      setTimeout(() => setSaveCodeSuccess(false), 2500);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to save code');
+    } finally {
+      setIsSavingCode(false);
+    }
+  };
+
+  // Delete File
+  const handleDeleteFile = async (fileId, filePath, e) => {
+    e?.stopPropagation();
+    if (!selectedProject) return;
+    if (!confirm(`Are you sure you want to delete ${filePath}?`)) return;
+
+    try {
+      await deleteProjectFile(selectedProject._id, fileId);
+      const files = await fetchProjectFileTree(selectedProject._id);
+      setFileTree(files);
+      if (selectedFile?._id === fileId) {
+        if (files.length > 0) handleSelectFile(files[0]);
+        else {
+          setSelectedFile(null);
+          setFileContent('');
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete file');
+    }
+  };
+
+  // AI Generate Brand New File
+  const handleAiGenerateFile = async (e) => {
+    e?.preventDefault();
+    if (!aiFilePrompt.trim() || !selectedProject || isAiWorking) return;
+
+    setIsAiWorking(true);
+    try {
+      const res = await aiGenerateNewFile(selectedProject._id, aiFilePrompt.trim());
+      if (res?.file) {
+        const files = await fetchProjectFileTree(selectedProject._id);
+        setFileTree(files);
+        handleSelectFile(res.file, selectedProject._id);
+        setAiFilePrompt('');
+        setIsAiCreatingFile(false);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to generate file');
+    } finally {
+      setIsAiWorking(false);
+    }
+  };
+
+  // AI Edit / Refactor Active File Code
+  const handleAiEditCode = async (e) => {
+    e?.preventDefault();
+    if (!aiEditPrompt.trim() || !selectedProject || !selectedFile || isAiWorking) return;
+
+    setIsAiWorking(true);
+    try {
+      const res = await aiEditExistingFile(selectedProject._id, selectedFile._id, aiEditPrompt.trim());
+      if (res?.file) {
+        setFileContent(res.file.content);
+        setAiEditPrompt('');
+        setIsAiEditingCode(false);
+        setSaveCodeSuccess(true);
+        setTimeout(() => setSaveCodeSuccess(false), 3000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to edit code');
+    } finally {
+      setIsAiWorking(false);
+    }
+  };
+
+  // Create Project via Wizard
   const handleCreateProject = async (payload) => {
     const created = await createNewProject(payload);
     await loadProjects();
@@ -658,62 +790,249 @@ export default function ProjectsPage({ onBackToWorkspace, onOpenAuth, isAuthenti
               </div>
             )}
 
-            {/* TAB 2: FILES & CODE EXPLORER */}
+            {/* TAB 2: FILES & CODE EXPLORER (WITH FULL CRUD & AI GENERATOR) */}
             {activeTab === 'files' && (
-              <div className="h-[75vh] flex rounded-3xl bg-white border border-black/[0.06] shadow-sm overflow-hidden">
-                {/* File Tree */}
-                <div className="w-64 bg-[#F8FAFC] border-r border-black/[0.06] p-3 overflow-y-auto space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#86868B] block px-1 mb-1">
-                    Files ({fileTree.length})
-                  </span>
-                  {fileTree.map((f) => (
-                    <button
-                      key={f._id}
-                      onClick={() => handleSelectFile(f)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-left text-xs transition-all cursor-pointer truncate ${
-                        selectedFile?._id === f._id
-                          ? 'bg-[#1D1D1F] text-white font-medium shadow-2xs'
-                          : 'text-[#475569] hover:bg-black/[0.04]'
-                      }`}
-                    >
-                      <FileCode className="w-3.5 h-3.5 opacity-70 flex-shrink-0" />
-                      <span className="truncate">{f.path}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="h-[78vh] flex flex-col rounded-3xl bg-white border border-black/[0.06] shadow-sm overflow-hidden space-y-0">
+                
+                {/* File Explorer + Editor Split */}
+                <div className="flex-1 flex overflow-hidden">
+                  
+                  {/* Left Column: File Explorer Tree & Action Toolbar */}
+                  <div className="w-72 bg-[#F8FAFC] border-r border-black/[0.06] flex flex-col overflow-hidden">
+                    
+                    {/* Explorer Top Toolbar */}
+                    <div className="p-3 border-b border-black/[0.05] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#86868B]">
+                          Files ({fileTree.length})
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setIsCreatingFile(true)}
+                            className="p-1 rounded-lg hover:bg-white text-[#6E6E73] hover:text-[#1D1D1F] border border-transparent hover:border-black/[0.06] transition-all cursor-pointer"
+                            title="Create new file"
+                          >
+                            <FilePlus className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setIsAiCreatingFile(true)}
+                            className="px-2 py-0.5 rounded-lg bg-[#EEF2FF] hover:bg-indigo-100 text-[#4F46E5] text-[10.5px] font-semibold flex items-center gap-1 border border-indigo-200 transition-all cursor-pointer"
+                            title="AI generate new file"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>AI File</span>
+                          </button>
+                        </div>
+                      </div>
 
-                {/* Code Viewer */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {selectedFile ? (
-                    <>
-                      <div className="h-10 px-5 bg-white border-b border-black/[0.06] flex items-center justify-between text-xs text-[#6E6E73]">
-                        <span className="font-semibold text-[#1D1D1F]">{selectedFile.path}</span>
-                        <button
-                          onClick={handleCopyCode}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#F5F5F7] hover:bg-[#EAEAEA] text-[#1D1D1F] text-[11px] font-medium"
-                        >
-                          {copiedCode ? <Check className="w-3 h-3 text-[#34C759]" /> : <Copy className="w-3 h-3" />}
-                          <span>{copiedCode ? 'Copied' : 'Copy'}</span>
-                        </button>
-                      </div>
-                      <div className="flex-1 overflow-auto p-4 font-mono text-xs text-[#0F172A] leading-relaxed bg-white">
-                        {isLoadingContent ? (
-                          <div className="flex items-center justify-center h-48 text-[#6E6E73] gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-[#4F46E5]" />
-                            <span>Loading code...</span>
+                      {/* Inline Manual File Creation Form */}
+                      {isCreatingFile && (
+                        <form onSubmit={handleCreateFile} className="space-y-1.5 p-2 bg-white rounded-xl border border-black/[0.08] shadow-2xs animate-fadeIn">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={newFilePath}
+                            onChange={(e) => setNewFilePath(e.target.value)}
+                            placeholder="e.g. src/utils/auth.ts"
+                            className="w-full px-2.5 py-1.5 bg-[#F5F5F7] border border-black/[0.06] rounded-lg text-xs outline-none focus:bg-white focus:border-[#4F46E5]"
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsCreatingFile(false)}
+                              className="px-2 py-1 text-[10.5px] text-[#86868B] hover:text-[#1D1D1F]"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-2.5 py-1 bg-[#1D1D1F] hover:bg-black text-white rounded-lg text-[10.5px] font-semibold"
+                            >
+                              Create
+                            </button>
                           </div>
-                        ) : (
-                          <pre className="whitespace-pre overflow-x-auto select-text">
-                            <code>{fileContent}</code>
-                          </pre>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center text-xs text-[#86868B]">
-                      Select a file to inspect code.
+                        </form>
+                      )}
+
+                      {/* Inline AI File Creation Form */}
+                      {isAiCreatingFile && (
+                        <form onSubmit={handleAiGenerateFile} className="space-y-1.5 p-2.5 bg-[#EEF2FF] rounded-xl border border-indigo-200 shadow-2xs animate-fadeIn">
+                          <span className="text-[10px] font-bold text-[#4F46E5] block">
+                            ✦ AI File Builder
+                          </span>
+                          <input
+                            type="text"
+                            autoFocus
+                            value={aiFilePrompt}
+                            onChange={(e) => setAiFilePrompt(e.target.value)}
+                            placeholder="e.g. Build JWT auth verification middleware"
+                            className="w-full px-2.5 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs outline-none"
+                            disabled={isAiWorking}
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsAiCreatingFile(false)}
+                              className="px-2 py-1 text-[10.5px] text-[#86868B]"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              disabled={isAiWorking || !aiFilePrompt.trim()}
+                              className="px-3 py-1 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-lg text-[10.5px] font-semibold flex items-center gap-1 disabled:opacity-50"
+                            >
+                              {isAiWorking && <Loader2 className="w-3 h-3 animate-spin" />}
+                              <span>Generate Code</span>
+                            </button>
+                          </div>
+                        </form>
+                      )}
                     </div>
-                  )}
+
+                    {/* File List Tree */}
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                      {fileTree.map((f) => (
+                        <div
+                          key={f._id}
+                          onClick={() => handleSelectFile(f)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer group ${
+                            selectedFile?._id === f._id
+                              ? 'bg-[#1D1D1F] text-white font-medium shadow-2xs'
+                              : 'text-[#475569] hover:bg-black/[0.04]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate mr-1">
+                            <FileCode className="w-3.5 h-3.5 opacity-70 flex-shrink-0" />
+                            <span className="truncate">{f.path}</span>
+                          </div>
+
+                          <button
+                            onClick={(e) => handleDeleteFile(f._id, f.path, e)}
+                            className={`opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/10 transition-opacity ${
+                              selectedFile?._id === f._id ? 'text-white/80 hover:text-white' : 'text-[#86868B] hover:text-[#FF3B30]'
+                            }`}
+                            title="Delete file"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Code Editor & AI Refactor Workspace */}
+                  <div className="flex-1 flex flex-col overflow-hidden bg-white">
+                    {selectedFile ? (
+                      <>
+                        {/* Editor Header Toolbar */}
+                        <div className="h-11 px-5 bg-white border-b border-black/[0.06] flex items-center justify-between text-xs text-[#6E6E73] flex-shrink-0">
+                          <div className="flex items-center gap-2">
+                            <FileCode className="w-4 h-4 text-[#4F46E5]" />
+                            <span className="font-semibold text-[#1D1D1F]">{selectedFile.path}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F5F5F7] border border-black/[0.06]">
+                              {selectedFile.language}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* AI Refactor Code Button */}
+                            <button
+                              onClick={() => setIsAiEditingCode(!isAiEditingCode)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#EEF2FF] hover:bg-indigo-100 text-[#4F46E5] text-xs font-semibold border border-indigo-200 transition-all cursor-pointer"
+                            >
+                              <Wand2 className="w-3.5 h-3.5" />
+                              <span>✦ AI Refactor</span>
+                            </button>
+
+                            {/* Copy Button */}
+                            <button
+                              onClick={handleCopyCode}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#F5F5F7] hover:bg-[#EAEAEA] text-[#1D1D1F] text-xs font-medium cursor-pointer"
+                            >
+                              {copiedCode ? <Check className="w-3.5 h-3.5 text-[#34C759]" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+                            </button>
+
+                            {/* Save Code Live */}
+                            <button
+                              onClick={handleSaveCode}
+                              disabled={isSavingCode}
+                              className={`flex items-center gap-1 px-4 py-1.5 rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer ${
+                                saveCodeSuccess
+                                  ? 'bg-[#10B981] text-white'
+                                  : 'bg-[#1D1D1F] hover:bg-black text-white'
+                              }`}
+                            >
+                              {isSavingCode ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : saveCodeSuccess ? (
+                                <Check className="w-3.5 h-3.5" />
+                              ) : (
+                                <Save className="w-3.5 h-3.5" />
+                              )}
+                              <span>{saveCodeSuccess ? 'Saved ✓' : 'Save Code'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Inline AI Code Refactoring Drawer */}
+                        {isAiEditingCode && (
+                          <form onSubmit={handleAiEditCode} className="p-3 bg-[#EEF2FF] border-b border-indigo-200 flex items-center gap-2 animate-fadeIn">
+                            <Sparkles className="w-4 h-4 text-[#4F46E5] flex-shrink-0" />
+                            <input
+                              type="text"
+                              autoFocus
+                              value={aiEditPrompt}
+                              onChange={(e) => setAiEditPrompt(e.target.value)}
+                              placeholder={`Describe edits for ${selectedFile.name} (e.g. Add TypeScript interfaces and error handling)...`}
+                              className="flex-1 px-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs outline-none"
+                              disabled={isAiWorking}
+                            />
+                            <button
+                              type="submit"
+                              disabled={isAiWorking || !aiEditPrompt.trim()}
+                              className="px-4 py-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                            >
+                              {isAiWorking && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                              <span>Apply AI Edit</span>
+                            </button>
+                          </form>
+                        )}
+
+                        {/* Editable Code Editor Area */}
+                        <div className="flex-1 flex overflow-hidden">
+                          {isLoadingContent ? (
+                            <div className="flex-1 flex items-center justify-center text-[#6E6E73] gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-[#4F46E5]" />
+                              <span>Loading file content...</span>
+                            </div>
+                          ) : (
+                            <div className="flex-1 flex bg-white font-mono text-xs text-[#0F172A] overflow-hidden">
+                              {/* Line Numbers Gutter */}
+                              <div className="w-12 bg-[#F8FAFC] border-r border-black/[0.04] p-4 text-right select-none text-[#94A3B8] overflow-hidden">
+                                {fileContent.split('\n').map((_, i) => (
+                                  <div key={i} className="leading-relaxed">{i + 1}</div>
+                                ))}
+                              </div>
+
+                              {/* Editable Code Buffer */}
+                              <textarea
+                                value={fileContent}
+                                onChange={(e) => setFileContent(e.target.value)}
+                                spellCheck="false"
+                                className="flex-1 p-4 bg-transparent outline-none resize-none leading-relaxed overflow-auto font-mono text-xs text-[#0F172A]"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center text-xs text-[#86868B]">
+                        Select or create a file to start editing code.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

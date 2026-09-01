@@ -26,7 +26,7 @@ export const deleteProject = async (projectId) => {
   return response.data;
 };
 
-// Files
+// Files & Folders CRUD
 export const fetchProjectFileTree = async (projectId) => {
   const response = await apiClient.get(`/api/projects/${projectId}/files`);
   return response.data?.files || [];
@@ -35,6 +35,37 @@ export const fetchProjectFileTree = async (projectId) => {
 export const fetchProjectFileContent = async (projectId, fileId) => {
   const response = await apiClient.get(`/api/projects/${projectId}/files/${fileId}`);
   return response.data?.file || null;
+};
+
+export const createProjectFile = async (projectId, { filePath, content = '' }) => {
+  const response = await apiClient.post(`/api/projects/${projectId}/files`, { filePath, content });
+  return response.data?.file || null;
+};
+
+export const updateProjectFileContent = async (projectId, fileId, content) => {
+  const response = await apiClient.put(`/api/projects/${projectId}/files/${fileId}`, { content });
+  return response.data?.file || null;
+};
+
+export const deleteProjectFile = async (projectId, fileId) => {
+  const response = await apiClient.delete(`/api/projects/${projectId}/files/${fileId}`);
+  return response.data;
+};
+
+export const renameProjectFile = async (projectId, fileId, newPath) => {
+  const response = await apiClient.patch(`/api/projects/${projectId}/files/${fileId}/rename`, { newPath });
+  return response.data?.file || null;
+};
+
+// AI File Creation & Code Refactoring
+export const aiGenerateNewFile = async (projectId, prompt, targetPath = '') => {
+  const response = await apiClient.post(`/api/projects/${projectId}/ai/generate-file`, { prompt, targetPath });
+  return response.data || null;
+};
+
+export const aiEditExistingFile = async (projectId, fileId, prompt) => {
+  const response = await apiClient.post(`/api/projects/${projectId}/ai/edit-file`, { fileId, prompt });
+  return response.data || null;
 };
 
 // Kanban Tasks

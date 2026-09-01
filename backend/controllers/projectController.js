@@ -1,8 +1,31 @@
+import crypto from "crypto";
+import path from "path";
 import Project from "../models/Project.js";
 import ProjectFile from "../models/ProjectFile.js";
 import ProjectChange from "../models/ProjectChange.js";
 import ProjectTask from "../models/ProjectTask.js";
 import ProjectIssue from "../models/ProjectIssue.js";
+
+// Helper to detect language from extension
+const getLanguageFromExt = (ext) => {
+  const map = {
+    ".js": "javascript",
+    ".jsx": "javascript",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".py": "python",
+    ".html": "html",
+    ".css": "css",
+    ".json": "json",
+    ".md": "markdown",
+    ".sql": "sql",
+    ".go": "go",
+    ".rs": "rust",
+    ".java": "java",
+    ".sh": "shell"
+  };
+  return map[ext.toLowerCase()] || "plaintext";
+};
 
 // List all projects with sorting and filtering
 export const getUserProjects = async (req, res) => {
@@ -21,7 +44,6 @@ export const getUserProjects = async (req, res) => {
 
     const projects = await Project.find(query).sort(sortOption);
 
-    // Compute active issue counts for each project
     const projectsWithCounts = await Promise.all(
       projects.map(async (p) => {
         const issueCount = await ProjectIssue.countDocuments({ projectId: p._id, status: "open" });
@@ -112,6 +134,36 @@ export const createProject = async (req, res) => {
 
     await project.save();
 
+    // Create starter files
+    const starterFiles = [
+      {
+        path: "README.md",
+        content: `# ${project.name}\n\n${project.description || "Created with Aethria Project Manager."}\n\n## Tech Stack\n${(project.technologies || []).map((t) => `- ${t}`).join("\n")}`
+      },
+      {
+        path: "src/index.ts",
+        content: `// ${project.name} - Entry Point\nconsole.log("${project.name} is running smoothly on Aethria.");\n`
+      }
+    ];
+
+    for (const sf of starterFiles) {
+      const ext = path.extname(sf.path);
+      const hash = crypto.createHash("sha256").update(sf.content).digest("hex");
+      await ProjectFile.create({
+        projectId: project._id,
+        path: sf.path,
+        name: path.basename(sf.path),
+        extension: ext,
+        language: getLanguageFromExt(ext),
+        size: Buffer.byteLength(sf.content),
+        hash,
+        content: sf.content
+      });
+    }
+
+    project.stats.totalFiles = starterFiles.length;
+    await project.save();
+
     // Seed initial starter tasks
     await ProjectTask.create([
       {
@@ -194,6 +246,10 @@ export const updateProject = async (req, res) => {
   }
 };
 
+// =========================================================================
+// FILE & FOLDER CRUD OPERATIONS
+// =========================================================================
+
 // Get project file tree
 export const getProjectFileTree = async (req, res) => {
   try {
@@ -224,6 +280,165 @@ export const getProjectFileContent = async (req, res) => {
   } catch (error) {
     console.error("Get File Content Error:", error);
     return res.status(500).json({ error: error.message || "Failed to fetch file content." });
+  }
+};
+
+// Create a new file or folder in the project
+export const createProjectFile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { filePath, content = "" } = req.body;
+
+    if (!filePath || !filePath.trim()) {
+      return res.status(400).json({ error: "File path is required." });
+    }
+
+    const cleanPath = filePath.trim().replace(/^\/+/, "");
+    const ext = path.extname(cleanPath);
+    const fileName = path.basename(cleanPath);
+    const hash = crypto.createHash("sha256").update(content).digest("hex");
+
+    // Check if file already exists
+    let file = await ProjectFile.findOne({ projectId: id, path: cleanPath });
+    if (file) {
+      return res.status(400).json({ error: "File already exists at this path." });
+    }
+
+    file = new ProjectFile({
+      projectId: id,
+      path: cleanPath,
+      name: fileName,
+      extension: ext,
+      language: getLanguageFromExt(ext),
+      size: Buffer.byteLength(content),
+      hash,
+      content
+    });
+
+    await file.save();
+
+    // Increment file count
+    await Project.findByIdAndUpdate(id, { $inc: { "stats.totalFiles": 1 } });
+
+    // Automatically queue change proposal for VS Code sync
+    await ProjectChange.create({
+      projectId: id,
+      path: cleanPath,
+      type: "create",
+      description: `Created new file: ${cleanPath}`,
+      proposedContent: content,
+      status: "pending"
+    });
+
+    return res.json({ success: true, file });
+  } catch (error) {
+    console.error("Create File Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to create file." });
+  }
+};
+
+// Update file content (Live code editor save)
+export const updateProjectFileContent = async (req, res) => {
+  try {
+    const { id, fileId } = req.params;
+    const { content = "" } = req.body;
+
+    const file = await ProjectFile.findOne({ _id: fileId, projectId: id });
+    if (!file) {
+      return res.status(404).json({ error: "File not found." });
+    }
+
+    const originalContent = file.content;
+    const hash = crypto.createHash("sha256").update(content).digest("hex");
+
+    file.content = content;
+    file.size = Buffer.byteLength(content);
+    file.hash = hash;
+    await file.save();
+
+    // Queue change proposal for VS Code sync
+    await ProjectChange.create({
+      projectId: id,
+      path: file.path,
+      type: "update",
+      description: `Updated code in: ${file.path}`,
+      originalContent,
+      proposedContent: content,
+      status: "pending"
+    });
+
+    return res.json({ success: true, file });
+  } catch (error) {
+    console.error("Update File Content Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to update code." });
+  }
+};
+
+// Delete a file
+export const deleteProjectFile = async (req, res) => {
+  try {
+    const { id, fileId } = req.params;
+    const file = await ProjectFile.findOneAndDelete({ _id: fileId, projectId: id });
+
+    if (!file) {
+      return res.status(404).json({ error: "File not found." });
+    }
+
+    await Project.findByIdAndUpdate(id, { $inc: { "stats.totalFiles": -1 } });
+
+    // Queue change proposal for VS Code sync
+    await ProjectChange.create({
+      projectId: id,
+      path: file.path,
+      type: "delete",
+      description: `Deleted file: ${file.path}`,
+      status: "pending"
+    });
+
+    return res.json({ success: true, message: "File deleted successfully." });
+  } catch (error) {
+    console.error("Delete File Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to delete file." });
+  }
+};
+
+// Rename a file
+export const renameProjectFile = async (req, res) => {
+  try {
+    const { id, fileId } = req.params;
+    const { newPath } = req.body;
+
+    if (!newPath || !newPath.trim()) {
+      return res.status(400).json({ error: "New path is required." });
+    }
+
+    const cleanPath = newPath.trim().replace(/^\/+/, "");
+    const ext = path.extname(cleanPath);
+    const fileName = path.basename(cleanPath);
+
+    const file = await ProjectFile.findOne({ _id: fileId, projectId: id });
+    if (!file) return res.status(404).json({ error: "File not found." });
+
+    const oldPath = file.path;
+    file.path = cleanPath;
+    file.name = fileName;
+    file.extension = ext;
+    file.language = getLanguageFromExt(ext);
+    await file.save();
+
+    await ProjectChange.create({
+      projectId: id,
+      path: cleanPath,
+      type: "update",
+      description: `Renamed ${oldPath} -> ${cleanPath}`,
+      proposedContent: file.content,
+      status: "pending"
+    });
+
+    return res.json({ success: true, file });
+  } catch (error) {
+    console.error("Rename File Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to rename file." });
   }
 };
 
@@ -423,17 +638,17 @@ export const resolveProjectIssue = async (req, res) => {
 // Propose a remote code change
 export const proposeChange = async (req, res) => {
   try {
-    const { projectId, path, type = "update", description, originalContent = "", proposedContent = "", diff = "" } = req.body;
+    const { projectId, path: changePath, type = "update", description, originalContent = "", proposedContent = "", diff = "" } = req.body;
 
-    if (!projectId || !path || !proposedContent) {
+    if (!projectId || !changePath || !proposedContent) {
       return res.status(400).json({ error: "projectId, path, and proposedContent are required." });
     }
 
     const change = new ProjectChange({
       projectId,
-      path,
+      path: changePath,
       type,
-      description: description || `Aethria suggested edit for ${path}`,
+      description: description || `Aethria suggested edit for ${changePath}`,
       originalContent,
       proposedContent,
       diff,
@@ -494,6 +709,7 @@ export const deleteProject = async (req, res) => {
 
     return res.json({ success: true, message: "Project deleted successfully." });
   } catch (error) {
+    console.error("Delete Project Error:", error);
     return res.status(500).json({ error: error.message || "Failed to delete project." });
   }
 };
