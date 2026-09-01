@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { AuthManager } from './auth';
 import { SyncService } from './syncService';
 
@@ -52,14 +54,25 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     const projectName = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].name : 'No workspace open';
     const projectId = this.syncService.getActiveProjectId();
 
-    const logoUri = this._view.webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png')
-    );
+    // Base64 Data URL for guaranteed immediate logo rendering
+    let logoDataUrl = '';
+    try {
+      const logoDiskPath = path.join(this._extensionUri.fsPath, 'resources', 'logo.png');
+      if (fs.existsSync(logoDiskPath)) {
+        const logoBuffer = fs.readFileSync(logoDiskPath);
+        logoDataUrl = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+      }
+    } catch (e) {
+      // Fallback to asWebviewUri
+      logoDataUrl = this._view.webview.asWebviewUri(
+        vscode.Uri.joinPath(this._extensionUri, 'resources', 'logo.png')
+      ).toString();
+    }
 
-    this._view.webview.html = this.getHtmlContent(isAuthed, projectName, !!projectId, logoUri);
+    this._view.webview.html = this.getHtmlContent(isAuthed, projectName, !projectId, logoDataUrl);
   }
 
-  private getHtmlContent(isAuthed: boolean, projectName: string, isSynced: boolean, logoUri: vscode.Uri): string {
+  private getHtmlContent(isAuthed: boolean, projectName: string, isSynced: boolean, logoSrc: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -81,12 +94,24 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       gap: 10px;
       margin-bottom: 16px;
     }
-    .logo {
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      object-fit: contain;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    .logo-container {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(128, 128, 128, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.35);
     }
     .brand-title {
       font-weight: 700;
@@ -197,7 +222,9 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div class="header">
-    <img src="${logoUri}" alt="Aethria" class="logo" />
+    <div class="logo-container">
+      <img src="${logoSrc}" alt="Aethria" class="logo-img" />
+    </div>
     <div>
       <div class="brand-title">Aethria</div>
       <div class="brand-subtitle">Project Intelligence Bridge</div>
