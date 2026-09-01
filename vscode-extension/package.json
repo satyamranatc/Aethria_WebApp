@@ -1,0 +1,98 @@
+{
+  "name": "aethria",
+  "displayName": "Aethria",
+  "description": "The cutting-edge AI coding and project intelligence assistant developed by Satyam Rana. Connect your local workspace directly to Aethria.",
+  "version": "1.0.0",
+  "publisher": "aethria",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages",
+    "Education",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aethria-view",
+          "title": "Aethria",
+          "icon": "resources/logo.png"
+        }
+      ]
+    },
+    "views": {
+      "aethria-view": [
+        {
+          "type": "webview",
+          "id": "aethria.sidebar",
+          "name": "Aethria"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aethria.sync",
+        "title": "Aethria: Sync Project",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "aethria.connect",
+        "title": "Aethria: Connect Account",
+        "icon": "$(link)"
+      },
+      {
+        "command": "aethria.disconnect",
+        "title": "Aethria: Disconnect Account",
+        "icon": "$(log-out)"
+      },
+      {
+        "command": "aethria.openWeb",
+        "title": "Aethria: Open Web Intelligence Studio",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "aethria.viewDiff",
+        "title": "Aethria: Review Pending Remote Diff"
+      },
+      {
+        "command": "aethria.applyChange",
+        "title": "Aethria: Apply Approved Change"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "aethria.sync",
+          "when": "view == aethria.sidebar",
+          "group": "navigation"
+        },
+        {
+          "command": "aethria.openWeb",
+          "when": "view == aethria.sidebar",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.0",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
