@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Copy, Check, Terminal, Sparkles, ChevronRight, ExternalLink } from 'lucide-react';
+import { highlightCode } from '../../utils/syntaxHighlighter';
 
 function renderInlineFormatting(text) {
   if (!text) return null;
@@ -72,14 +73,27 @@ function renderInlineFormatting(text) {
   return tokens;
 }
 
-function CodeBlock({ language, code }) {
+function CodeBlock({ language, code, onApplyCode }) {
   const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState(false);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleApply = () => {
+    if (onApplyCode) {
+      onApplyCode(code);
+      setApplied(true);
+      setTimeout(() => setApplied(false), 2500);
+    }
+  };
+
+  const highlightedHtml = useMemo(() => {
+    return highlightCode(code, language);
+  }, [code, language]);
 
   return (
     <div className="my-4 rounded-2xl overflow-hidden border border-black/[0.08] bg-[#16161A] text-[#F4F4F5] shadow-xl shadow-black/5 font-mono text-[13px]">
@@ -96,29 +110,55 @@ function CodeBlock({ language, code }) {
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleCopyCode}
-          aria-label="Copy code block"
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-[#34C759]" />
-              <span className="text-[#34C759] text-[11px] font-medium">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              <span className="text-[11px]">Copy Code</span>
-            </>
+        <div className="flex items-center gap-2">
+          {onApplyCode && (
+            <button
+              type="button"
+              onClick={handleApply}
+              aria-label="Apply code into editor"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium transition-all cursor-pointer active:scale-95 shadow-xs"
+            >
+              {applied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-300" />
+                  <span className="text-[11px] font-semibold text-emerald-200">Applied</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
+                  <span className="text-[11px]">Apply to Editor</span>
+                </>
+              )}
+            </button>
           )}
-        </button>
+
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            aria-label="Copy code block"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/40"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-[#34C759]" />
+                <span className="text-[#34C759] text-[11px] font-medium">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span className="text-[11px]">Copy Code</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Code Body */}
-      <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed select-text font-mono">
-        <code>{code}</code>
+      {/* Code Body with Prism Syntax Highlighting */}
+      <pre className={`p-4 overflow-x-auto text-[13px] leading-relaxed select-text font-mono language-${language || 'javascript'}`}>
+        <code
+          className={`language-${language || 'javascript'}`}
+          dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+        />
       </pre>
     </div>
   );
@@ -158,7 +198,7 @@ function MarkdownTable({ rows }) {
   );
 }
 
-export default function FormattedMessage({ content, isAssistant }) {
+export default function FormattedMessage({ content, isAssistant, onApplyCode }) {
   if (!content) return null;
 
   if (!isAssistant) {
@@ -218,6 +258,7 @@ export default function FormattedMessage({ content, isAssistant }) {
             key={`code-${elements.length}`}
             language={codeLanguage}
             code={codeBuffer.join('\n')}
+            onApplyCode={onApplyCode}
           />
         );
         codeBuffer = [];

@@ -93,3 +93,96 @@ body {
 .animate-orbFloat {
   animation: orbFloat 6s ease-in-out infinite;
 }
+
+/* ========================================================================= */
+/* Aethria VS Code Dark+ & One Dark Syntax Highlighting Theme */
+/* ========================================================================= */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #E6EDF3;
+  font-family: var(--font-mono);
+  direction: ltr;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  line-height: 1.65;
+  tab-size: 2;
+  hyphens: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #8B949E;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #CBD5E1;
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #FF7B72;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #7EE787;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #79C0FF;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #D2A8FF;
+  font-weight: 600;
+}
+
+.token.function,
+.token.class-name {
+  color: #58A6FF;
+  font-weight: 500;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #FFA657;
+}
+
+.token.important,
+.token.bold {
+  font-weight: bold;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.entity {
+  cursor: help;
+}
+

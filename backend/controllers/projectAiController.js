@@ -590,7 +590,10 @@ export const aiEditFile = async (req, res) => {
   "code": "complete updated code content without markdown fences",
   "explanation": "Summary of changes made",
   "diffSummary": "+ Added async handler"
-}`;
+}
+CRITICAL RULES:
+- The "code" field MUST be the complete, full working file with all logic implemented directly in code.
+- NEVER use placeholder comments (e.g. "// ... rest of code", "// add logic here"). All code must be fully written out.`;
 
         const completion = await groq.chat.completions.create({
           messages: [
@@ -616,11 +619,7 @@ export const aiEditFile = async (req, res) => {
     }
 
     if (!parsed || !parsed.code) {
-      parsed = {
-        code: `${file.content}\n\n// Refactored with: ${prompt}\n`,
-        explanation: `Applied changes for: ${prompt}`,
-        diffSummary: `+ Refactored for: ${prompt}`
-      };
+      return res.status(500).json({ error: "AI was unable to generate a complete refactored file. Please try again." });
     }
 
     const updatedCode = sanitizeCodeContent(parsed.code || file.content);
@@ -694,15 +693,16 @@ export const chatWithProject = async (req, res) => {
         const files = await ProjectFile.find({ projectId: id }, { path: 1 }).limit(80);
         const fileList = files.map((f) => f.path).join(", ");
 
-        const systemPrompt = `You are Aethria Engineering Intelligence, deeply familiar with "${project.name}" (${project.projectType} / ${project.language}).
-Project Files: ${fileList}
+        const systemPrompt = `You are Aethria Engineering Intelligence, an expert senior staff software engineer embedded into "${project.name}" (${project.projectType} / ${project.language}).
+Repository Files: ${fileList}
 ${activeFileContext}
 
-CRITICAL RULES:
-- Be concise, direct, accurate, and deeply knowledgeable.
-- Output clean code snippets with Markdown fences.
-- If providing replacement code, offer complete drop-in snippets.
-- Avoid emojis.`;
+CRITICAL RULES FOR CODE GENERATION:
+- NEVER put implementation logic inside placeholder comments (e.g. NEVER write "// ... rest of code here ...", "/* existing code */", "// add your imports here", or "// TODO").
+- ALWAYS provide the COMPLETE, FULL WORKING CODE directly into the code block itself, ready to execute without missing sections.
+- When refactoring, rewriting, or generating code, write the real production-ready code with all imports, functions, and logic intact.
+- Format all code in standard Markdown code fences specifying the exact language (e.g. \`\`\`javascript, \`\`\`html, \`\`\`typescript, \`\`\`python, \`\`\`css).
+- Be direct, concise, and focused. Avoid conversational fluff and emojis.`;
 
         const completion = await groq.chat.completions.create({
           messages: [

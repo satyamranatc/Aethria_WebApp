@@ -43,6 +43,8 @@ import {
   triggerCodeQualityReview
 } from '../services/projectService';
 import { sanitizeCodeContent } from '../utils/codeSanitizer';
+import { highlightCode } from '../utils/syntaxHighlighter';
+import FormattedMessage from '../components/chat/FormattedMessage';
 import CodeQualityPanel from '../components/projects/CodeQualityPanel';
 
 export default function ProjectWorkspacePage({
@@ -333,6 +335,112 @@ export default function ProjectWorkspacePage({
       setIsRunningReview(false);
     }
   };
+
+  // Context-aware sensible quick actions based on file extension and language
+  const sensibleQuickChips = useMemo(() => {
+    const ext = activeFile ? activeFile.name.split('.').pop()?.toLowerCase() : '';
+    const fileName = activeFile?.name || 'this file';
+
+    if (ext === 'html' || ext === 'htm') {
+      return [
+        {
+          label: '✦ Modernize UI',
+          prompt: `Enhance ${fileName} with a modern responsive UI layout, clean semantic structure, and accessible markup. Write the complete, full working code directly in the code block itself without any placeholder comments or omitted lines.`
+        },
+        {
+          label: '✦ Add Interactive JS',
+          prompt: `Add modern interactive JavaScript functionality directly inside ${fileName}. Write the complete, full working code in the code block itself without any placeholder comments.`
+        },
+        {
+          label: '✦ Inline CSS Styles',
+          prompt: `Add modern responsive CSS styles with CSS variables and glassmorphism styling to ${fileName}. Write the complete code itself.`
+        },
+        {
+          label: '✦ SEO & Meta Tags',
+          prompt: `Audit and add rich SEO meta tags, OpenGraph preview tags, and viewport optimizations to ${fileName}. Output the complete code.`
+        }
+      ];
+    }
+
+    if (ext === 'css' || ext === 'scss') {
+      return [
+        {
+          label: '✦ CSS Variables',
+          prompt: `Refactor ${fileName} into clean design system tokens with CSS custom properties (colors, typography, spacing). Write the full complete CSS.`
+        },
+        {
+          label: '✦ Dark Theme Mode',
+          prompt: `Implement a high-contrast dark theme mode with smooth transitions into ${fileName}. Output the full complete CSS.`
+        },
+        {
+          label: '✦ Micro-Animations',
+          prompt: `Add modern hover transitions and keyframe animations to ${fileName}. Write the full complete CSS.`
+        },
+        {
+          label: '✦ Responsive Queries',
+          prompt: `Add mobile-first responsive media queries to ${fileName} for tablet and phone viewports. Output complete CSS.`
+        }
+      ];
+    }
+
+    if (ext === 'js' || ext === 'jsx' || ext === 'ts' || ext === 'tsx') {
+      return [
+        {
+          label: '✦ Refactor & Optimize',
+          prompt: `Refactor ${fileName} for clean architecture, modular functions, and robust try/catch error handling. Write the complete, full working code directly in the code block itself without any placeholder comments.`
+        },
+        {
+          label: '✦ Add TypeScript Types',
+          prompt: `Add comprehensive TypeScript types, interfaces, and strict validations to ${fileName}. Write the complete code itself.`
+        },
+        {
+          label: '✦ Automated Unit Tests',
+          prompt: `Generate an automated unit test suite (Jest/Vitest) testing all functions and failure states for ${fileName}. Write the complete code itself.`
+        },
+        {
+          label: '✦ Security & Bug Scan',
+          prompt: `Scan ${fileName} for potential vulnerabilities, memory leaks, and input bugs. Suggest fixes with full working code snippets.`
+        }
+      ];
+    }
+
+    if (ext === 'py') {
+      return [
+        {
+          label: '✦ PEP 8 Refactor',
+          prompt: `Refactor ${fileName} using PEP 8 standards, strict type hinting, and robust error handling. Write the full working code.`
+        },
+        {
+          label: '✦ PyTest Unit Tests',
+          prompt: `Generate a complete pytest test suite with mock fixtures for ${fileName}. Write the full code.`
+        },
+        {
+          label: '✦ Async Optimization',
+          prompt: `Optimize blocking I/O calls in ${fileName} with asyncio and clean concurrency.`
+        }
+      ];
+    }
+
+    // Default / Whole Project
+    return [
+      {
+        label: '✦ Architecture Overview',
+        prompt: `Analyze the architecture, dependencies, and execution flow of this project. Explain how the core modules interact.`
+      },
+      {
+        label: '✦ Code Quality Scan',
+        prompt: `Scan the files in this project and identify areas needing refactoring, dead code, or security improvements.`
+      },
+      {
+        label: '✦ Next Feature Plan',
+        prompt: `Propose the next logical architectural feature to build for this project, outlining required files and implementation steps.`
+      },
+      {
+        label: '✦ Setup Automated Tests',
+        prompt: `Recommend the optimal test setup and scaffolding for this repository.`
+      }
+    ];
+  }, [activeFile]);
 
   return (
     <div className="h-screen w-screen bg-[#FBFBFD] text-[#1D1D1F] flex flex-col overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Inter',sans-serif]">
@@ -670,23 +778,37 @@ export default function ProjectWorkspacePage({
 
                 <div className="flex-1 flex overflow-hidden font-mono text-xs">
                   {/* Original Code */}
-                  <div className="flex-1 flex flex-col border-r border-black/[0.06] overflow-hidden">
-                    <div className="p-2 bg-[#F8FAFC] border-b border-black/[0.04] text-[10px] font-bold text-[#86868B] uppercase">
-                      Current Code in Repo
+                  <div className="flex-1 flex flex-col border-r border-black/[0.06] overflow-hidden bg-[#FAFAFA]">
+                    <div className="p-2 bg-[#F1F5F9] border-b border-black/[0.04] text-[10px] font-bold text-[#64748B] uppercase flex items-center justify-between">
+                      <span>Current Code in Repo</span>
+                      <span className="font-mono text-[9px] text-slate-400">Baseline</span>
                     </div>
-                    <pre className="flex-1 p-4 overflow-auto text-[#64748B] leading-relaxed bg-[#FAFAFA]">
-                      {sanitizeCodeContent(selectedChange.originalContent || '// (Empty or new file)')}
-                    </pre>
+                    <pre
+                      className="flex-1 p-4 overflow-auto text-[#475569] leading-relaxed bg-[#FAFAFA] select-text"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightCode(
+                          sanitizeCodeContent(selectedChange.originalContent || '// (Empty or new file)'),
+                          selectedChange.path?.split('.').pop() || 'javascript'
+                        )
+                      }}
+                    />
                   </div>
 
                   {/* Proposed Code */}
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="p-2 bg-emerald-50 border-b border-emerald-100 text-[10px] font-bold text-emerald-700 uppercase">
-                      AI Proposed Changes
+                  <div className="flex-1 flex flex-col overflow-hidden bg-[#16161A]">
+                    <div className="p-2 bg-[#0F0F12] border-b border-white/[0.08] text-[10px] font-bold text-emerald-400 uppercase flex items-center justify-between">
+                      <span>AI Proposed Changes (Ready to Apply)</span>
+                      <span className="font-mono text-[9px] text-emerald-400/80">VS Code Dark+</span>
                     </div>
-                    <pre className="flex-1 p-4 overflow-auto text-[#0F172A] leading-relaxed bg-white">
-                      {sanitizeCodeContent(selectedChange.proposedContent || '')}
-                    </pre>
+                    <pre
+                      className="flex-1 p-4 overflow-auto text-[#E6EDF3] leading-relaxed bg-[#16161A] select-text"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightCode(
+                          sanitizeCodeContent(selectedChange.proposedContent || ''),
+                          selectedChange.path?.split('.').pop() || 'javascript'
+                        )
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -748,26 +870,21 @@ export default function ProjectWorkspacePage({
               <span className="text-[10px] font-mono text-indigo-400">Groq LLM</span>
             </div>
 
-            {/* Quick Action Chips */}
+            {/* Context-Aware Sensible Quick Action Chips */}
             <div className="p-2 border-b border-black/[0.04] flex flex-wrap gap-1 bg-[#FAFAFA]">
-              {[
-                { label: 'Refactor Code', prompt: `Refactor ${activeFile?.name || 'this file'} for clean architecture and error handling.` },
-                { label: 'Add Types', prompt: `Add TypeScript type definitions and interfaces for ${activeFile?.name || 'this file'}.` },
-                { label: 'Unit Tests', prompt: `Generate automated unit tests for ${activeFile?.name || 'this file'}.` },
-                { label: 'Explain Logic', prompt: `Explain the architecture and execution flow of ${activeFile?.name || 'this file'}.` }
-              ].map((chip, idx) => (
+              {sensibleQuickChips.map((chip, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSendAiMessage(chip.prompt)}
                   disabled={isAiStreaming}
-                  className="px-2 py-0.5 rounded-md bg-white hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#475569] text-[10px] font-medium border border-black/[0.06] transition-all cursor-pointer disabled:opacity-50"
+                  className="px-2 py-0.5 rounded-md bg-white hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#475569] text-[10px] font-medium border border-black/[0.06] transition-all cursor-pointer disabled:opacity-50 shadow-xs"
                 >
                   {chip.label}
                 </button>
               ))}
             </div>
 
-            {/* Chat Stream Messages */}
+            {/* Chat Stream Messages with Rich Syntax Highlighting */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
               {aiChatMessages.map((msg) => (
                 <div
@@ -775,13 +892,25 @@ export default function ProjectWorkspacePage({
                   className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl p-3 leading-relaxed ${
+                    className={`max-w-[95%] rounded-2xl leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-[#1D1D1F] text-white rounded-br-none'
-                        : 'bg-[#F1F5F9] text-[#1D1D1F] rounded-bl-none border border-black/[0.04]'
+                        ? 'p-3 bg-[#1D1D1F] text-white rounded-br-none'
+                        : 'p-3.5 bg-white text-[#1D1D1F] rounded-bl-none border border-black/[0.08] shadow-xs'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap font-sans text-xs">{msg.content}</div>
+                    {msg.role === 'user' ? (
+                      <div className="whitespace-pre-wrap font-sans text-xs">{msg.content}</div>
+                    ) : (
+                      <FormattedMessage
+                        content={msg.content}
+                        isAssistant={true}
+                        onApplyCode={(snippet) => {
+                          setFileContent(sanitizeCodeContent(snippet));
+                          setIsSaving(true);
+                          setTimeout(() => setIsSaving(false), 1200);
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               ))}
