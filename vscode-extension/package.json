@@ -2,8 +2,8 @@
   "name": "aethria",
   "displayName": "Aethria — AI Coding & Project Intelligence",
   "description": "Cutting-edge AI coding and project intelligence platform developed by Satyam Rana. Instant syntax repair, multi-line formatting, architectural documentation, and cloud workspace sync.",
-  "version": "1.0.0",
-  "publisher": "aethria",
+  "version": "4.6.0",
+  "publisher": "SatyamRana",
   "author": {
     "name": "Satyam Rana",
     "url": "https://satyamrana.in"
