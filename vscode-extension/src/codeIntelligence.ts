@@ -173,17 +173,46 @@ export async function explainAndCommentActiveCode(authManager: AuthManager): Pro
       try {
         progress.report({ message: 'Generating clear inline explanations & section dividers...' });
 
-        const prompt = `You are Aethria's Master Code Documenter.
-Task:
-1. Enrich this ${languageId} code by adding clear, high-quality, professional comments explaining:
-   - What key functions and logic blocks do.
-   - Purpose of parameters, state variables, and return values.
-   - Edge case considerations.
-2. Insert clean space separators (e.g. // -------------------------------------------------------------) between major sections for readability.
-3. Keep the exact functional logic intact. Do NOT change working variable names or code behavior.
-4. CRITICAL: Output ONLY the documented ${languageId} code. Do NOT wrap in markdown fences (\`\`\`). Do NOT include chat greetings.
+        const prompt = `You are Aethria's Principal Software Architect & Code Craftsman.
 
-Original ${languageId} Code:
+Your mission is to transform the provided ${languageId} code into an exquisitely documented, masterclass codebase with breathtaking clarity and structure.
+
+DOCUMENTATION GUIDELINES:
+1. TOP-LEVEL ARCHITECTURAL BANNER:
+   - Begin with a clean, beautifully formatted module/file header explaining the purpose, architectural role, and key responsibilities.
+   Example:
+   /**
+    * ============================================================================
+    * MODULE: [Descriptive Module Name]
+    * PURPOSE: [High-level summary of responsibilities & system flow]
+    * ============================================================================
+    */
+
+2. ELEGANT SECTION DIVIDERS:
+   - Separate major logical phases (e.g. Configuration, State & Hooks, Event Handlers, Data Pipeline, Helper Utilities) using clean dividers:
+   // --------------------------------------------------------------------------
+   // SECTION: [Section Name]
+   // --------------------------------------------------------------------------
+
+3. PROFESSIONAL FUNCTION & METHOD DOCSTRINGS:
+   - Use standard ${languageId} docstring conventions (e.g. JSDoc/TSDoc with @param, @returns, or Python Google-style docstrings).
+   - Detail the purpose, parameters, return contracts, and edge cases.
+
+4. INSIGHTFUL INLINE ANNOTATIONS:
+   - Explain the "WHY" behind complex conditionals, regex patterns, mutations, and optimizations.
+   - Avoid stating the obvious; provide real architectural and logical value.
+
+5. CODE INTEGRITY:
+   - KEEP THE EXACT FUNCTIONALITY AND LOGIC 100% INTACT.
+   - Do NOT rename variables or remove existing working code.
+   - Ensure clean vertical spacing and indentation.
+
+CRITICAL FORMATTING INSTRUCTION:
+- Output ONLY the raw ${languageId} code with the newly added documentation.
+- Do NOT wrap in markdown code fences (\`\`\`).
+- Do NOT include conversational greetings or explanations outside the code.
+
+Source ${languageId} Code:
 ${targetText}`;
 
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
