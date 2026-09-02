@@ -56,9 +56,6 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     if (!this._view) return;
 
     const isAuthed = await this.authManager.isAuthenticated();
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    const projectName = workspaceFolders && workspaceFolders.length > 0 ? workspaceFolders[0].name : 'No workspace open';
-    const projectId = this.syncService.getActiveProjectId();
 
     // Base64 Data URL for logo rendering
     let logoDataUrl = '';
@@ -74,10 +71,10 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       ).toString();
     }
 
-    this._view.webview.html = this.getHtmlContent(isAuthed, projectName, !projectId, logoDataUrl);
+    this._view.webview.html = this.getHtmlContent(isAuthed, logoDataUrl);
   }
 
-  private getHtmlContent(isAuthed: boolean, projectName: string, isSynced: boolean, logoSrc: string): string {
+  private getHtmlContent(isAuthed: boolean, logoSrc: string): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -86,7 +83,6 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${this._view?.webview.cspSource} https: data:; style-src 'unsafe-inline' ${this._view?.webview.cspSource}; script-src 'unsafe-inline' ${this._view?.webview.cspSource};">
   <style>
     :root {
-      --apple-blur: 16px;
       --apple-radius-lg: 16px;
       --apple-radius-md: 12px;
       --apple-radius-sm: 8px;
@@ -116,12 +112,12 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Apple-styled Glass Header */
+    /* Apple-styled Header */
     .header {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--apple-card-border);
     }
@@ -174,7 +170,7 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       border-radius: 20px;
       font-weight: 600;
       font-size: 11px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       letter-spacing: -0.01em;
     }
 
@@ -198,55 +194,6 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       box-shadow: 0 0 6px currentColor;
     }
 
-    /* Frosted Glass Workspace Card */
-    .glass-card {
-      background: var(--apple-card-bg);
-      border: 1px solid var(--apple-card-border);
-      border-radius: var(--apple-radius-md);
-      padding: 12px 14px;
-      margin-bottom: 14px;
-      backdrop-filter: blur(var(--apple-blur));
-      -webkit-backdrop-filter: blur(var(--apple-blur));
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
-      transition: border-color 0.2s;
-    }
-
-    .glass-card:hover {
-      border-color: rgba(99, 102, 241, 0.3);
-    }
-
-    .project-name {
-      font-weight: 700;
-      font-size: 13px;
-      margin-bottom: 8px;
-      color: var(--apple-text-primary);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4.5px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 11px;
-    }
-
-    .stat-row:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .stat-label {
-      color: var(--apple-text-secondary);
-    }
-
-    .stat-val {
-      font-weight: 600;
-      color: var(--apple-text-primary);
-    }
-
     /* Section Heading */
     .section-title {
       font-size: 10px;
@@ -254,7 +201,7 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       letter-spacing: 0.08em;
       font-weight: 700;
       color: var(--apple-text-secondary);
-      margin: 12px 0 8px 2px;
+      margin: 10px 0 8px 2px;
     }
 
     /* Action Cards & Buttons */
@@ -294,38 +241,41 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     }
 
     .action-icon-box {
-      width: 28px;
-      height: 28px;
+      width: 30px;
+      height: 30px;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      font-size: 13px;
+    }
+
+    .action-icon-box svg {
+      display: block;
     }
 
     .icon-fix {
-      background: rgba(99, 102, 241, 0.18);
+      background: rgba(99, 102, 241, 0.16);
       color: #818CF8;
-      border: 1px solid rgba(99, 102, 241, 0.3);
+      border: 1px solid rgba(99, 102, 241, 0.28);
     }
 
     .icon-explain {
-      background: rgba(16, 185, 129, 0.18);
+      background: rgba(16, 185, 129, 0.16);
       color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      border: 1px solid rgba(16, 185, 129, 0.28);
     }
 
     .icon-sync {
-      background: rgba(245, 158, 11, 0.18);
+      background: rgba(245, 158, 11, 0.16);
       color: #FBBF24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      border: 1px solid rgba(245, 158, 11, 0.28);
     }
 
     .icon-web {
-      background: rgba(168, 85, 247, 0.18);
+      background: rgba(168, 85, 247, 0.16);
       color: #C084FC;
-      border: 1px solid rgba(168, 85, 247, 0.3);
+      border: 1px solid rgba(168, 85, 247, 0.28);
     }
 
     .action-text {
@@ -348,6 +298,10 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     }
 
     .primary-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       width: 100%;
       padding: 10px;
       background: var(--apple-accent-gradient);
@@ -394,7 +348,7 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       text-align: center;
       font-size: 10px;
       color: var(--apple-text-secondary);
-      margin-top: 16px;
+      margin-top: 18px;
       opacity: 0.7;
     }
 
@@ -422,58 +376,65 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     <span>${isAuthed ? 'Connected to Cloud' : 'Not Connected'}</span>
   </div>
 
-  <!-- Workspace Telemetry Card -->
-  <div class="glass-card">
-    <div class="project-name">
-      <span>${projectName}</span>
-      <span style="font-size: 10px; opacity: 0.7;">${isSynced ? '✓ Synced' : 'Ready'}</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Security</span>
-      <span class="stat-val">.env Protected</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Sync Mode</span>
-      <span class="stat-val">SHA-256 Incremental</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Engine</span>
-      <span class="stat-val">Groq LPU Instant</span>
-    </div>
-  </div>
-
   ${
     isAuthed
       ? `
-    <!-- AI Code Engineering Actions -->
-    <div class="section-title">AI Precision Copilot</div>
+    <!-- AI Actions -->
+    <div class="section-title">AI Actions</div>
     <div class="action-grid">
+      <!-- Fix & Format Code -->
       <button class="action-btn-card" onclick="sendMessage('fixCode')">
-        <div class="action-icon-box icon-fix">⚡</div>
+        <div class="action-icon-box icon-fix">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+          </svg>
+        </div>
         <div class="action-text">
           <div class="action-title">Fix & Format Code</div>
           <div class="action-desc">Repairs syntax, bugs & cleans indentation</div>
         </div>
       </button>
 
+      <!-- Explain & Add Comments -->
       <button class="action-btn-card" onclick="sendMessage('explainCode')">
-        <div class="action-icon-box icon-explain">💡</div>
+        <div class="action-icon-box icon-explain">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <path d="M8 9h8"/>
+            <path d="M8 13h6"/>
+          </svg>
+        </div>
         <div class="action-text">
           <div class="action-title">Explain & Add Comments</div>
           <div class="action-desc">Adds clear notes & structured dividers</div>
         </div>
       </button>
 
+      <!-- Sync Workspace -->
       <button class="action-btn-card" onclick="sendMessage('sync')">
-        <div class="action-icon-box icon-sync">✦</div>
+        <div class="action-icon-box icon-sync">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M8 16H3v5"/>
+          </svg>
+        </div>
         <div class="action-text">
           <div class="action-title">Sync Workspace</div>
           <div class="action-desc">Pushes local diffs to cloud project</div>
         </div>
       </button>
 
+      <!-- Open Web Studio -->
       <button class="action-btn-card" onclick="sendMessage('openWeb')">
-        <div class="action-icon-box icon-web">↗</div>
+        <div class="action-icon-box icon-web">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h6v6"/>
+            <path d="M10 14 21 3"/>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          </svg>
+        </div>
         <div class="action-text">
           <div class="action-title">Open Web Studio</div>
           <div class="action-desc">Architecture canvas & continuous voice</div>
@@ -484,7 +445,13 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     <button class="disconnect-btn" onclick="sendMessage('disconnect')">Disconnect Account</button>
   `
       : `
-    <button class="primary-btn" onclick="sendMessage('connect')">Connect Aethria Account</button>
+    <button class="primary-btn" onclick="sendMessage('connect')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+      Connect Aethria Account
+    </button>
   `
   }
 
