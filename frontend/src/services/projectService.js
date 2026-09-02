@@ -161,7 +161,8 @@ export const rejectProjectChange = async (projectId, changeId) => {
   return await updateProjectChangeStatus(projectId, changeId, 'rejected');
 };
 
-export const triggerCodeQualityReview = runAiCodeReview;
+export const runAiCodeReview = runComprehensiveCodeReview;
+export const triggerCodeQualityReview = runComprehensiveCodeReview;
 
 export const proposeAiCodePlan = async (projectId, { prompt, targetFilePath = '' }) => {
   const response = await apiClient.post(`/api/projects/${projectId}/ai/plan-and-propose`, {
