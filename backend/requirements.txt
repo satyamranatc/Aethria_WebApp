@@ -1,0 +1,4 @@
+# Aethria Neural TTS & Cinematic Voice Engine Dependencies
+edge-tts>=6.1.12
+soundfile>=0.12.1
+numpy>=1.24.0

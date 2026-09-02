@@ -91,9 +91,36 @@ export function useSpeechSynthesis() {
 
       await audio.play();
     } catch (error) {
-      console.error('TTS synthesis error:', error);
-      setIsPlayingAudio(false);
-      setSpeakingMessageId(null);
+      console.warn('Backend Neural TTS error, activating browser voice fallback:', error);
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          const utterance = new SpeechSynthesisUtterance(speechText);
+          const voices = window.speechSynthesis.getVoices();
+          const preferredVoice = voices.find(
+            (v) =>
+              (gender === 'male' ? v.name.toLowerCase().includes('male') : v.name.toLowerCase().includes('female')) ||
+              v.lang.includes('en-IN') ||
+              v.lang.includes('en')
+          );
+          if (preferredVoice) utterance.voice = preferredVoice;
+
+          utterance.onend = () => {
+            setIsPlayingAudio(false);
+            setSpeakingMessageId(null);
+          };
+          utterance.onerror = () => {
+            setIsPlayingAudio(false);
+            setSpeakingMessageId(null);
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          setIsPlayingAudio(false);
+          setSpeakingMessageId(null);
+        }
+      } else {
+        setIsPlayingAudio(false);
+        setSpeakingMessageId(null);
+      }
     }
   }, [isPlayingAudio, speakingMessageId, stopAudio]);
 

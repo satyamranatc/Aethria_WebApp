@@ -182,31 +182,69 @@ export function useContinuousVoice({
       // Speak TTS response
       setVoiceState('speaking');
       const speechText = prepareTextForSpeech(replyContent);
-      const audioBlob = await fetchTTSAudio(speechText, voiceGender);
-      const audioUrl = URL.createObjectURL(audioBlob);
-      currentBlobUrlRef.current = audioUrl;
 
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
+      try {
+        const audioBlob = await fetchTTSAudio(speechText, voiceGender);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        currentBlobUrlRef.current = audioUrl;
 
-      audio.onended = () => {
-        stopAudio();
-        if (stateRef.current !== 'paused') {
-          setVoiceState('listening');
-          restartRecognition();
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onended = () => {
+          stopAudio();
+          if (stateRef.current !== 'paused') {
+            setVoiceState('listening');
+            restartRecognition();
+          }
+        };
+
+        audio.onerror = (err) => {
+          console.warn('Continuous Voice TTS audio error:', err);
+          stopAudio();
+          if (stateRef.current !== 'paused') {
+            setVoiceState('listening');
+            restartRecognition();
+          }
+        };
+
+        await audio.play();
+      } catch (ttsErr) {
+        console.warn('Backend Neural TTS unavailable, using browser speech synthesis:', ttsErr);
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(speechText);
+          const voices = window.speechSynthesis.getVoices();
+          const preferredVoice = voices.find(
+            (v) =>
+              (voiceGender === 'male' ? v.name.toLowerCase().includes('male') : v.name.toLowerCase().includes('female')) ||
+              v.lang.includes('en-IN') ||
+              v.lang.includes('en')
+          );
+          if (preferredVoice) utterance.voice = preferredVoice;
+
+          utterance.onend = () => {
+            stopAudio();
+            if (stateRef.current !== 'paused') {
+              setVoiceState('listening');
+              restartRecognition();
+            }
+          };
+          utterance.onerror = () => {
+            stopAudio();
+            if (stateRef.current !== 'paused') {
+              setVoiceState('listening');
+              restartRecognition();
+            }
+          };
+          window.speechSynthesis.speak(utterance);
+        } else {
+          stopAudio();
+          if (stateRef.current !== 'paused') {
+            setVoiceState('listening');
+            restartRecognition();
+          }
         }
-      };
-
-      audio.onerror = (err) => {
-        console.warn('Continuous Voice TTS error:', err);
-        stopAudio();
-        if (stateRef.current !== 'paused') {
-          setVoiceState('listening');
-          restartRecognition();
-        }
-      };
-
-      await audio.play();
+      }
     } catch (err) {
       if (err.name === 'AbortError') {
         console.log('Voice request aborted by user barge-in.');
