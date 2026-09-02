@@ -74,6 +74,13 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Command: Review Remote AI Changes
+  context.subscriptions.push(
+    vscode.commands.registerCommand('aethria.reviewChanges', async () => {
+      await syncService.reviewPendingChanges();
+    })
+  );
+
   // Command: Open Web Studio
   context.subscriptions.push(
     vscode.commands.registerCommand('aethria.openWeb', async () => {

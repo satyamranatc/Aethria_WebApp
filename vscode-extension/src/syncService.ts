@@ -13,6 +13,7 @@ export class SyncService {
   private pollInterval: NodeJS.Timeout | null = null;
   private activeProjectId: string | null = null;
   private onStateChangeCallback?: () => void;
+  private notifiedChangeIds = new Set<string>();
 
   constructor(authManager: AuthManager, statusBarItem: vscode.StatusBarItem) {
     this.authManager = authManager;
@@ -120,6 +121,42 @@ export class SyncService {
     }, 2000); // 2-second debounce
   }
 
+  // Manually review pending changes via Command or Status Bar Click
+  public async reviewPendingChanges(): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      vscode.window.showWarningMessage('No active workspace folder to apply changes.');
+      return;
+    }
+
+    const token = await this.authManager.getToken();
+    const serverUrl = await this.authManager.getServerUrl();
+    if (!token || !this.activeProjectId) {
+      vscode.window.showInformationMessage('Please connect your Aethria account to review changes.');
+      return;
+    }
+
+    try {
+      const res = await axios.get(`${serverUrl}/api/projects/${this.activeProjectId}/changes?status=pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const pendingChanges: RemoteChangeRequest[] = res.data?.changes || [];
+      if (pendingChanges.length === 0) {
+        vscode.window.showInformationMessage('✓ All Aethria change proposals have been reviewed.');
+        this.statusBarItem.text = '$(check) Aethria Synced';
+        this.statusBarItem.command = 'aethria.openWeb';
+        return;
+      }
+
+      const rootPath = workspaceFolders[0].uri.fsPath;
+      const diffManager = new DiffManager(rootPath, serverUrl, token);
+      await diffManager.reviewAndApplyChange(pendingChanges[0]);
+      this.notifyStateChange();
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to fetch pending changes: ${err.message}`);
+    }
+  }
+
   // Poll for pending remote change requests from Aethria Web
   private startChangePolling(serverUrl: string, token: string, projectId: string) {
     if (this.pollInterval) clearInterval(this.pollInterval);
@@ -132,16 +169,31 @@ export class SyncService {
 
         const pendingChanges: RemoteChangeRequest[] = res.data?.changes || [];
         if (pendingChanges.length > 0) {
-          const workspaceFolders = vscode.workspace.workspaceFolders;
-          if (workspaceFolders && workspaceFolders.length > 0) {
-            const rootPath = workspaceFolders[0].uri.fsPath;
-            const diffManager = new DiffManager(rootPath, serverUrl, token);
+          this.statusBarItem.text = `$(git-pull-request) Aethria: ${pendingChanges.length} Pending Diff${pendingChanges.length > 1 ? 's' : ''}`;
+          this.statusBarItem.tooltip = `${pendingChanges.length} pending change proposal(s). Click to review diff.`;
+          this.statusBarItem.command = 'aethria.reviewChanges';
 
-            // Review the first pending change
-            const firstChange = pendingChanges[0];
-            await diffManager.reviewAndApplyChange(firstChange);
-            this.notifyStateChange();
+          // Notify only for newly surfaced proposals
+          const unnotified = pendingChanges.filter((c) => !this.notifiedChangeIds.has(c._id));
+          if (unnotified.length > 0) {
+            unnotified.forEach((c) => this.notifiedChangeIds.add(c._id));
+            const first = unnotified[0];
+            vscode.window
+              .showInformationMessage(
+                `✦ Aethria proposed a change to "${first.path}": ${first.description || 'Review diff?'}`,
+                'Review Diff',
+                'Later'
+              )
+              .then((action) => {
+                if (action === 'Review Diff') {
+                  this.reviewPendingChanges();
+                }
+              });
           }
+        } else {
+          this.statusBarItem.text = `$(check) Aethria Synced`;
+          this.statusBarItem.tooltip = 'All files synchronized with Aethria Cloud';
+          this.statusBarItem.command = 'aethria.openWeb';
         }
       } catch (e) {
         // Silent poll error

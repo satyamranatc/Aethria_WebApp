@@ -726,3 +726,281 @@ CRITICAL RULES:
     return res.status(500).json({ error: error.message || "Failed to complete codebase chat." });
   }
 };
+
+// Autonomous Multi-File Agentic Change Planner & Diff Generator
+export const proposeAiCodePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { prompt, targetFilePath } = req.body;
+
+    if (!prompt || !prompt.trim()) {
+      return res.status(400).json({ error: "Instruction prompt is required." });
+    }
+
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    let targetFile = null;
+    if (targetFilePath) {
+      targetFile = await ProjectFile.findOne({ projectId: id, path: targetFilePath });
+    }
+
+    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
+    let parsed = null;
+
+    if (apiKey) {
+      try {
+        const groq = new Groq({ apiKey });
+        let contextCode = "";
+        if (targetFile) {
+          contextCode = `Target File: ${targetFile.path}\n\`\`\`${targetFile.language}\n${targetFile.content ? targetFile.content.slice(0, 4000) : ""}\n\`\`\``;
+        } else {
+          const files = await ProjectFile.find({ projectId: id, isBinary: false }).limit(10);
+          contextCode = files
+            .map((f) => `File: ${f.path}\n\`\`\`${f.language}\n${f.content ? f.content.slice(0, 600) : ""}\n\`\`\``)
+            .join("\n\n");
+        }
+
+        const systemPrompt = `You are Aethria's Senior Staff Autonomous Agent.
+The user wants to plan and execute code modifications across the codebase.
+Return RAW JSON:
+{
+  "planTitle": "Concise title of change",
+  "planSteps": ["1. Identify target file", "2. Refactor function", "3. Add error handling"],
+  "summary": "High-level summary of architecture impact",
+  "proposals": [
+    {
+      "path": "path/to/file.js",
+      "type": "update",
+      "description": "What and why is changed",
+      "diff": "+ added rate limiting handler\\n- removed raw query",
+      "proposedContent": "complete new or updated file code without markdown fences"
+    }
+  ]
+}`;
+
+        const completion = await groq.chat.completions.create({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Project: ${project.name}\nContext:\n${contextCode}\n\nInstruction: ${prompt}` }
+          ],
+          model: "openai/gpt-oss-120b",
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 3500
+        });
+
+        let raw = completion.choices[0]?.message?.content || "{}";
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) raw = match[0];
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        console.warn("Groq plan & propose failed, using fallback:", err.message);
+      }
+    }
+
+    if (!parsed || !Array.isArray(parsed.proposals) || parsed.proposals.length === 0) {
+      const fallbackPath = targetFilePath || (targetFile ? targetFile.path : "src/app.js");
+      const original = targetFile && targetFile.content ? targetFile.content : "";
+      parsed = {
+        planTitle: `Refactor: ${prompt.slice(0, 45)}`,
+        planSteps: ["Analyze target file", "Inject requested logic", "Prepare diff proposal"],
+        summary: `Automated plan for "${prompt}"`,
+        proposals: [
+          {
+            path: fallbackPath,
+            type: targetFile ? "update" : "create",
+            description: `Refactored logic to satisfy: ${prompt}`,
+            diff: `+ Refactored for: ${prompt}`,
+            proposedContent: original
+              ? `${original}\n\n// Aethria Agent Plan: ${prompt}\n`
+              : `// Created by Aethria Agent\n// ${prompt}\n`
+          }
+        ]
+      };
+    }
+
+    // Save pending ProjectChange records for each proposal
+    const createdChanges = [];
+    for (const prop of parsed.proposals) {
+      let origContent = "";
+      if (prop.path) {
+        const existing = await ProjectFile.findOne({ projectId: id, path: prop.path });
+        if (existing) origContent = existing.content || "";
+      }
+
+      const change = new ProjectChange({
+        projectId: id,
+        path: prop.path,
+        type: prop.type || (origContent ? "update" : "create"),
+        description: prop.description || parsed.summary || "AI proposed change",
+        originalContent: origContent,
+        proposedContent: prop.proposedContent || origContent,
+        diff: prop.diff || "+ Updated logic",
+        status: "pending"
+      });
+      await change.save();
+      createdChanges.push(change);
+    }
+
+    return res.json({
+      success: true,
+      planTitle: parsed.planTitle || "Codebase Change Plan",
+      planSteps: parsed.planSteps || [],
+      summary: parsed.summary || "",
+      changes: createdChanges
+    });
+  } catch (error) {
+    console.error("Propose AI Code Plan Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to generate change plan." });
+  }
+};
+
+// Generate Tiered Architecture Graph Directly from Repo Files
+export const generateArchitectureFromRepo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    const files = await ProjectFile.find({ projectId: id, isBinary: false }, { path: 1, language: 1 }).limit(60);
+    const fileList = files.map((f) => f.path).join(", ");
+
+    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
+    let parsed = null;
+
+    if (apiKey) {
+      try {
+        const groq = new Groq({ apiKey });
+        const systemPrompt = `You are a principal software systems architect.
+Analyze the provided repository file list and generate a strict 4-tier architecture diagram.
+Organize into vertical tiers:
+Tier 1: Users & Clients (circleNode)
+Tier 2: API Gateways / Reverse Proxies / Load Balancers (archNode)
+Tier 3: Core Backend Controllers & Microservices (archNode or decisionNode)
+Tier 4: Databases, Caches & Queues (dbNode or queueNode)
+
+Return RAW JSON ONLY:
+{
+  "title": "System Architecture: ${project.name}",
+  "keyIdea": "Data flow from clients through gateway into controllers and database layers.",
+  "nodes": [
+    {
+      "id": "node-1",
+      "type": "circleNode",
+      "step": 1,
+      "label": "Web & Mobile Clients",
+      "subtitle": "Browser and client requests",
+      "techBadge": "${project.framework || "React & Vite"}",
+      "technology": "react",
+      "color": "indigo"
+    },
+    {
+      "id": "node-2",
+      "type": "archNode",
+      "step": 2,
+      "label": "API Gateway & Router",
+      "subtitle": "Reverse proxy, rate limiting, and auth dispatch",
+      "techBadge": "Express Gateway",
+      "technology": "nodejs",
+      "color": "cyan"
+    },
+    {
+      "id": "node-3",
+      "type": "archNode",
+      "step": 3,
+      "label": "Controllers & Services Layer",
+      "subtitle": "Core business logic & auth checks",
+      "techBadge": "Node.js Controller",
+      "technology": "nodejs",
+      "color": "emerald"
+    },
+    {
+      "id": "node-4",
+      "type": "dbNode",
+      "step": 4,
+      "label": "Primary Database Cluster",
+      "subtitle": "Persistent JSON document storage",
+      "techBadge": "MongoDB Atlas",
+      "technology": "mongodb",
+      "color": "amber"
+    }
+  ],
+  "edges": [
+    { "id": "e-1-2", "source": "node-1", "target": "node-2", "label": "1. HTTPS / REST" },
+    { "id": "e-2-3", "source": "node-2", "target": "node-3", "label": "2. Route Dispatch" },
+    { "id": "e-3-4", "source": "node-3", "target": "node-4", "label": "3. Mongoose Query" }
+  ]
+}`;
+
+        const completion = await groq.chat.completions.create({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Generate architecture for "${project.name}" (${project.projectType}). Files:\n${fileList}` }
+          ],
+          model: "openai/gpt-oss-120b",
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 2500
+        });
+
+        let raw = completion.choices[0]?.message?.content || "{}";
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) raw = match[0];
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        console.warn("Groq architecture generation error:", err.message);
+      }
+    }
+
+    if (!parsed || !Array.isArray(parsed.nodes)) {
+      parsed = {
+        title: `Architecture: ${project.name}`,
+        keyIdea: `Tiered architecture synthesized from ${files.length} repository files.`,
+        nodes: [
+          {
+            id: "node-1",
+            type: "circleNode",
+            step: 1,
+            label: "Client Frontend",
+            subtitle: "User Interface",
+            techBadge: project.framework || "React",
+            technology: "react",
+            color: "indigo"
+          },
+          {
+            id: "node-2",
+            type: "archNode",
+            step: 2,
+            label: "API Gateway",
+            subtitle: "Route Dispatcher",
+            techBadge: "Node.js Express",
+            technology: "nodejs",
+            color: "cyan"
+          },
+          {
+            id: "node-3",
+            type: "dbNode",
+            step: 3,
+            label: "Database Tier",
+            subtitle: "Data Persistence",
+            techBadge: "MongoDB Cluster",
+            technology: "mongodb",
+            color: "amber"
+          }
+        ],
+        edges: [
+          { "id": "e-1-2", "source": "node-1", "target": "node-2", "label": "1. HTTPS API Request" },
+          { "id": "e-2-3", "source": "node-2", "target": "node-3", "label": "2. Database Query" }
+        ]
+      };
+    }
+
+    return res.json({ success: true, architecture: parsed });
+  } catch (error) {
+    console.error("Generate Architecture From Repo Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to generate architecture graph." });
+  }
+};
+
+

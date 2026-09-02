@@ -232,6 +232,7 @@ export default function App() {
             onBackToWorkspace={() => setCurrentPage('chat')}
             onOpenAuth={handleOpenAuth}
             isAuthenticated={isAuthenticated}
+            onOpenCanvas={handleOpenCanvas}
           />
         ) : currentPage === 'canvas' ? (
           <CanvasPage

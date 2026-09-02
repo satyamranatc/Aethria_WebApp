@@ -142,7 +142,28 @@ export const proposeCodeChange = async (projectId, { path, originalContent, prop
   return response.data?.change || null;
 };
 
-export const fetchProjectChanges = async (projectId) => {
-  const response = await apiClient.get(`/api/projects/${projectId}/changes`);
+export const fetchProjectChanges = async (projectId, status = '') => {
+  const url = status ? `/api/projects/${projectId}/changes?status=${status}` : `/api/projects/${projectId}/changes`;
+  const response = await apiClient.get(url);
   return response.data?.changes || [];
 };
+
+export const updateProjectChangeStatus = async (projectId, changeId, status) => {
+  const response = await apiClient.patch(`/api/projects/${projectId}/changes/${changeId}`, { status });
+  return response.data?.change || null;
+};
+
+export const proposeAiCodePlan = async (projectId, { prompt, targetFilePath = '' }) => {
+  const response = await apiClient.post(`/api/projects/${projectId}/ai/plan-and-propose`, {
+    prompt,
+    targetFilePath
+  });
+  return response.data || null;
+};
+
+export const fetchProjectArchitectureGraph = async (projectId) => {
+  const response = await apiClient.get(`/api/projects/${projectId}/ai/architecture-graph`);
+  return response.data?.architecture || null;
+};
+
+

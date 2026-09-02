@@ -58,26 +58,55 @@ export const getUserProjects = async (req, res) => {
     const projectIds = projects.map((p) => p._id);
 
     // Parallel aggregate count query avoiding N+1 loops
-    const [openIssues, openTasks] = await Promise.all([
+    const [openIssues, totalTasksAgg, doneTasksAgg, totalFilesAgg] = await Promise.all([
       ProjectIssue.aggregate([
         { $match: { projectId: { $in: projectIds }, status: "open" } },
         { $group: { _id: "$projectId", count: { $sum: 1 } } }
       ]),
       ProjectTask.aggregate([
-        { $match: { projectId: { $in: projectIds }, status: { $ne: "done" } } },
+        { $match: { projectId: { $in: projectIds } } },
+        { $group: { _id: "$projectId", count: { $sum: 1 } } }
+      ]),
+      ProjectTask.aggregate([
+        { $match: { projectId: { $in: projectIds }, status: { $in: ["done", "completed"] } } },
+        { $group: { _id: "$projectId", count: { $sum: 1 } } }
+      ]),
+      ProjectFile.aggregate([
+        { $match: { projectId: { $in: projectIds } } },
         { $group: { _id: "$projectId", count: { $sum: 1 } } }
       ])
     ]);
 
     const issueCountMap = new Map(openIssues.map((i) => [i._id.toString(), i.count]));
-    const taskCountMap = new Map(openTasks.map((t) => [t._id.toString(), t.count]));
+    const totalTaskMap = new Map(totalTasksAgg.map((t) => [t._id.toString(), t.count]));
+    const doneTaskMap = new Map(doneTasksAgg.map((t) => [t._id.toString(), t.count]));
+    const fileCountMap = new Map(totalFilesAgg.map((f) => [f._id.toString(), f.count]));
 
     const projectsWithCounts = projects.map((p) => {
       const pid = p._id.toString();
+      const totalTasks = totalTaskMap.get(pid) || 0;
+      const doneTasks = doneTaskMap.get(pid) || 0;
+      const fileCount = fileCountMap.get(pid) || p.stats?.totalFiles || 0;
+      const openIssueCount = issueCountMap.get(pid) || 0;
+
+      // Meaningful computed progress based on real tasks and verified files
+      let calculatedProgress = 0;
+      if (totalTasks > 0) {
+        calculatedProgress = Math.round((doneTasks / totalTasks) * 100);
+      } else if (fileCount > 0) {
+        calculatedProgress = Math.min(80, Math.max(15, fileCount * 8));
+      } else {
+        calculatedProgress = 10;
+      }
+
       return {
         ...p,
-        openIssueCount: issueCountMap.get(pid) || 0,
-        openTaskCount: taskCountMap.get(pid) || 0
+        openIssueCount,
+        openTaskCount: Math.max(0, totalTasks - doneTasks),
+        totalTaskCount: totalTasks,
+        completedTaskCount: doneTasks,
+        totalFiles: fileCount,
+        calculatedProgress
       };
     });
 
@@ -766,7 +795,7 @@ export const getProjectChanges = async (req, res) => {
   }
 };
 
-// Update change status
+// Update change status & apply modifications to ProjectFile
 export const updateChangeStatus = async (req, res) => {
   try {
     const { changeId } = req.params;
@@ -779,10 +808,53 @@ export const updateChangeStatus = async (req, res) => {
     if (!project) return res.status(403).json({ error: "Not authorized to update this change." });
 
     change.status = status;
-    if (status === "applied") change.appliedAt = new Date();
+
+    // When change is approved or applied, automatically update ProjectFile in MongoDB
+    if (status === "approved" || status === "applied") {
+      change.appliedAt = new Date();
+
+      if (change.type === "delete") {
+        await ProjectFile.deleteOne({ projectId: change.projectId, path: change.path });
+      } else {
+        let file = await ProjectFile.findOne({ projectId: change.projectId, path: change.path });
+        const content = change.proposedContent || "";
+        const hash = crypto.createHash("sha256").update(content).digest("hex");
+        const ext = path.extname(change.path).toLowerCase();
+        const language = getLanguageFromExt(ext);
+
+        if (file) {
+          file.content = content;
+          file.hash = hash;
+          file.size = Buffer.byteLength(content);
+          file.updatedAt = new Date();
+          await file.save();
+        } else {
+          file = new ProjectFile({
+            projectId: change.projectId,
+            name: path.basename(change.path),
+            path: change.path,
+            extension: ext,
+            language,
+            size: Buffer.byteLength(content),
+            hash,
+            content,
+            isBinary: false
+          });
+          await file.save();
+        }
+      }
+
+      project.stats = {
+        ...project.stats,
+        totalFiles: await ProjectFile.countDocuments({ projectId: change.projectId }),
+        lastSyncAt: new Date()
+      };
+      await project.save();
+    }
+
     await change.save();
 
-    return res.json({ success: true, change });
+    return res.json({ success: true, change, message: `Change status updated to ${status}.` });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to update change status." });
   }

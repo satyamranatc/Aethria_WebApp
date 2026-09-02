@@ -29,7 +29,9 @@ import {
   generateProjectTasksFromAi,
   aiGenerateFile,
   aiEditFile,
-  chatWithProject
+  chatWithProject,
+  proposeAiCodePlan,
+  generateArchitectureFromRepo
 } from "../controllers/projectAiController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -78,5 +80,7 @@ router.post("/:id/ai/review", runComprehensiveCodeReview);
 router.get("/:id/ai/next-action", getNextBestActionPlan);
 router.post("/:id/ai/generate-tasks", generateProjectTasksFromAi);
 router.post("/:id/ai/chat", chatWithProject);
+router.post("/:id/ai/plan-and-propose", proposeAiCodePlan);
+router.get("/:id/ai/architecture-graph", generateArchitectureFromRepo);
 
 export default router;
