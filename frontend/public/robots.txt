@@ -1,9 +1,10 @@
 # Robots.txt for Aethria Intelligence (https://www.aethria.in)
-# Developed by Satyam Rana (https://satyamrana.in)
+# Creator: Satyam Rana (https://satyamrana.in)
 
 User-agent: *
 Allow: /
 Disallow: /api/
 
-# Sitemap location
+# Host & Sitemap location
+Host: https://www.aethria.in
 Sitemap: https://www.aethria.in/sitemap.xml
