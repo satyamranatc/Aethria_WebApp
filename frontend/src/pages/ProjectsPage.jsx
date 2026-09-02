@@ -80,6 +80,7 @@ import KanbanBoard from '../components/projects/KanbanBoard';
 import CodeQualityPanel from '../components/projects/CodeQualityPanel';
 import NextActionBanner from '../components/projects/NextActionBanner';
 import DiffReviewPanel from '../components/projects/DiffReviewPanel';
+import { sanitizeCodeContent } from '../utils/codeSanitizer';
 
 const TABS = [
   { id: 'overview', label: 'Overview & Milestones' },
@@ -412,7 +413,7 @@ export default function ProjectsPage({ onBackToWorkspace, onOpenAuth, isAuthenti
     setIsLoadingContent(true);
     try {
       const fullFile = await fetchProjectFileContent(projId, file._id);
-      setFileContent(fullFile?.content || '');
+      setFileContent(sanitizeCodeContent(fullFile?.content || ''));
     } catch (e) {
       setFileContent('// Could not load file content');
     } finally {
@@ -517,7 +518,7 @@ export default function ProjectsPage({ onBackToWorkspace, onOpenAuth, isAuthenti
     try {
       const res = await aiEditExistingFile(selectedProject._id, selectedFile._id, aiEditPrompt.trim());
       if (res?.file) {
-        setFileContent(res.file.content);
+        setFileContent(sanitizeCodeContent(res.file.content));
         setAiEditPrompt('');
         setIsAiEditingCode(false);
         setSaveCodeSuccess(true);

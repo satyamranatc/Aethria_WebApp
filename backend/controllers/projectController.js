@@ -6,6 +6,7 @@ import ProjectFile from "../models/ProjectFile.js";
 import ProjectChange from "../models/ProjectChange.js";
 import ProjectTask from "../models/ProjectTask.js";
 import ProjectIssue from "../models/ProjectIssue.js";
+import { sanitizeCodeContent } from "../utils/codeSanitizer.js";
 
 // Helper to verify user ownership of a project
 export const getOwnedProject = async (projectId, userId) => {
@@ -346,6 +347,19 @@ export const getProjectFileContent = async (req, res) => {
       return res.status(404).json({ error: "File not found." });
     }
 
+    // Auto-heal file content if stored with escaped newlines or quotes
+    if (file.content && typeof file.content === "string") {
+      const sanitized = sanitizeCodeContent(file.content);
+      if (sanitized !== file.content) {
+        file.content = sanitized;
+        file.size = Buffer.byteLength(sanitized);
+        await ProjectFile.updateOne(
+          { _id: fileId },
+          { $set: { content: sanitized, size: file.size } }
+        );
+      }
+    }
+
     return res.json({ success: true, file });
   } catch (error) {
     console.error("Get File Content Error:", error);
@@ -366,10 +380,11 @@ export const createProjectFile = async (req, res) => {
       return res.status(400).json({ error: "File path is required." });
     }
 
+    const cleanContent = sanitizeCodeContent(content);
     const cleanPath = filePath.trim().replace(/^\/+/, "");
     const ext = path.extname(cleanPath);
     const fileName = path.basename(cleanPath);
-    const hash = crypto.createHash("sha256").update(content).digest("hex");
+    const hash = crypto.createHash("sha256").update(cleanContent).digest("hex");
 
     // Check if file already exists
     let file = await ProjectFile.findOne({ projectId: id, path: cleanPath });
@@ -383,9 +398,9 @@ export const createProjectFile = async (req, res) => {
       name: fileName,
       extension: ext,
       language: getLanguageFromExt(ext),
-      size: Buffer.byteLength(content),
+      size: Buffer.byteLength(cleanContent),
       hash,
-      content
+      content: cleanContent
     });
 
     await file.save();
@@ -399,7 +414,7 @@ export const createProjectFile = async (req, res) => {
       path: cleanPath,
       type: "create",
       description: `Created new file: ${cleanPath}`,
-      proposedContent: content,
+      proposedContent: cleanContent,
       status: "pending"
     });
 
@@ -424,11 +439,12 @@ export const updateProjectFileContent = async (req, res) => {
       return res.status(404).json({ error: "File not found." });
     }
 
+    const cleanContent = sanitizeCodeContent(content);
     const originalContent = file.content;
-    const hash = crypto.createHash("sha256").update(content).digest("hex");
+    const hash = crypto.createHash("sha256").update(cleanContent).digest("hex");
 
-    file.content = content;
-    file.size = Buffer.byteLength(content);
+    file.content = cleanContent;
+    file.size = Buffer.byteLength(cleanContent);
     file.hash = hash;
     await file.save();
 
@@ -439,7 +455,7 @@ export const updateProjectFileContent = async (req, res) => {
       type: "update",
       description: `Updated code in: ${file.path}`,
       originalContent,
-      proposedContent: content,
+      proposedContent: cleanContent,
       status: "pending"
     });
 

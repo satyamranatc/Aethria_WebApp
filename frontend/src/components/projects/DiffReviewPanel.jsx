@@ -15,6 +15,7 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
+import { sanitizeCodeContent } from '../../utils/codeSanitizer';
 
 export default function DiffReviewPanel({
   changes = [],
@@ -39,8 +40,8 @@ export default function DiffReviewPanel({
   const activeChange = selectedChange || filteredChanges[0] || null;
 
   // Split lines for side-by-side comparison
-  const originalLines = (activeChange?.originalContent || '').split('\n');
-  const proposedLines = (activeChange?.proposedContent || '').split('\n');
+  const originalLines = sanitizeCodeContent(activeChange?.originalContent || '').split('\n');
+  const proposedLines = sanitizeCodeContent(activeChange?.proposedContent || '').split('\n');
 
   return (
     <div className="h-[78vh] flex flex-col rounded-3xl bg-white border border-black/[0.06] shadow-sm overflow-hidden">
