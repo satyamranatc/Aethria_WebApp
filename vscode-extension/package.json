@@ -1,9 +1,40 @@
 {
   "name": "aethria",
-  "displayName": "Aethria",
-  "description": "The cutting-edge AI coding and project intelligence assistant developed by Satyam Rana. Connect your local workspace directly to Aethria.",
+  "displayName": "Aethria — AI Coding & Project Intelligence",
+  "description": "Cutting-edge AI coding and project intelligence platform developed by Satyam Rana. Instant syntax repair, multi-line formatting, architectural documentation, and cloud workspace sync.",
   "version": "1.0.0",
   "publisher": "aethria",
+  "author": {
+    "name": "Satyam Rana",
+    "url": "https://satyamrana.in"
+  },
+  "license": "MIT",
+  "homepage": "https://www.aethria.in",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/satyamranatc/Aethria_WebApp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/satyamranatc/Aethria_WebApp/issues"
+  },
+  "qna": "marketplace",
+  "pricing": "Free",
+  "galleryBanner": {
+    "color": "#0F172A",
+    "theme": "dark"
+  },
+  "keywords": [
+    "ai",
+    "copilot",
+    "coding assistant",
+    "fix code",
+    "code formatter",
+    "code review",
+    "satyam rana",
+    "groq",
+    "neural voice",
+    "aethria"
+  ],
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.80.0"
@@ -11,6 +42,7 @@
   "categories": [
     "AI",
     "Programming Languages",
+    "Formatters",
     "Education",
     "Other"
   ],
