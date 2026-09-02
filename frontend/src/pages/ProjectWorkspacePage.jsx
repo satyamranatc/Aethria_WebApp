@@ -290,10 +290,14 @@ export default function ProjectWorkspacePage({
         activeFileContent: fileContent || ''
       });
 
+      const content = typeof reply === 'string'
+        ? reply
+        : reply?.content || reply?.message?.content || reply?.message || 'Code analysis complete.';
+
       const assistantMsg = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: reply.content || 'Code analysis complete.'
+        content
       };
       setAiChatMessages((prev) => [...prev, assistantMsg]);
 

@@ -121,10 +121,19 @@ export const generateProjectTasksFromAi = async (projectId, prompt = '') => {
   return response.data?.tasks || [];
 };
 
-export const chatWithProjectAi = async (projectId, prompt, selectedFilePath = '') => {
+export const chatWithProjectAi = async (projectId, promptOrPayload, selectedFilePath = '') => {
+  let prompt = '';
+  let filePath = selectedFilePath;
+  if (typeof promptOrPayload === 'string') {
+    prompt = promptOrPayload;
+  } else if (promptOrPayload && typeof promptOrPayload === 'object') {
+    prompt = promptOrPayload.message || promptOrPayload.prompt || promptOrPayload.content || '';
+    filePath = promptOrPayload.activeFilePath || promptOrPayload.selectedFilePath || selectedFilePath;
+  }
+
   const response = await apiClient.post(`/api/projects/${projectId}/ai/chat`, {
     prompt,
-    selectedFilePath
+    selectedFilePath: filePath
   });
   return response.data?.message || null;
 };

@@ -659,11 +659,20 @@ export const aiEditFile = async (req, res) => {
 export const chatWithProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { prompt, selectedFilePath } = req.body;
+    let userPrompt = "";
+    if (typeof req.body.prompt === "string") {
+      userPrompt = req.body.prompt;
+    } else if (req.body.prompt && typeof req.body.prompt === "object") {
+      userPrompt = req.body.prompt.message || req.body.prompt.prompt || req.body.prompt.content || "";
+    } else if (typeof req.body.message === "string") {
+      userPrompt = req.body.message;
+    }
 
-    if (!prompt || !prompt.trim()) {
+    if (!userPrompt || !userPrompt.trim()) {
       return res.status(400).json({ error: "Prompt is required." });
     }
+
+    const filePath = req.body.selectedFilePath || (req.body.prompt && req.body.prompt.activeFilePath) || req.body.activeFilePath || "";
 
     const project = await Project.findOne({ _id: id, userId: req.user._id });
     if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
@@ -675,10 +684,10 @@ export const chatWithProject = async (req, res) => {
       try {
         const groq = new Groq({ apiKey });
         let activeFileContext = "";
-        if (selectedFilePath) {
-          const activeFile = await ProjectFile.findOne({ projectId: id, path: selectedFilePath });
+        if (filePath) {
+          const activeFile = await ProjectFile.findOne({ projectId: id, path: filePath });
           if (activeFile && activeFile.content) {
-            activeFileContext = `\nActive Open File: ${selectedFilePath}\n\`\`\`${activeFile.language || ""}\n${activeFile.content.slice(0, 4000)}\n\`\`\`\n`;
+            activeFileContext = `\nActive Open File: ${filePath}\n\`\`\`${activeFile.language || ""}\n${activeFile.content.slice(0, 4000)}\n\`\`\`\n`;
           }
         }
 
@@ -698,7 +707,7 @@ CRITICAL RULES:
         const completion = await groq.chat.completions.create({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
+            { role: "user", content: userPrompt }
           ],
           model: "openai/gpt-oss-120b",
           temperature: 0.3,
