@@ -29,7 +29,8 @@ import {
   Check,
   Laptop,
   Flame,
-  ArrowUpRight
+  ArrowUpRight,
+  FolderCode
 } from 'lucide-react';
 import AmbientBackground from '../components/common/AmbientBackground';
 import Footer from '../components/layout/Footer';
@@ -42,6 +43,7 @@ export default function LandingPage({
   user,
   isAuthenticated,
   onOpenProfile,
+  onOpenProjects,
   onOpenAuth,
   onLogout
 }) {
@@ -83,6 +85,15 @@ export default function LandingPage({
             <a href="#overview" className="hover:text-[#1D1D1F] transition-colors">Overview</a>
             <a href="#pillars" className="hover:text-[#1D1D1F] transition-colors">The 5 Pillars</a>
             <a href="#workflow" className="hover:text-[#1D1D1F] transition-colors">How It Works</a>
+            <button
+              onClick={() => {
+                if (isAuthenticated) onOpenProjects?.();
+                else onOpenAuth('Sign in to access your Project Command Center');
+              }}
+              className="hover:text-[#1D1D1F] transition-colors cursor-pointer"
+            >
+              Projects
+            </button>
             <a href="#preview" className="hover:text-[#1D1D1F] transition-colors">Studio</a>
           </nav>
 
@@ -102,11 +113,21 @@ export default function LandingPage({
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white border border-black/[0.08] shadow-xl p-2 z-50 animate-fadeIn">
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-black/[0.08] shadow-xl p-2 z-50 animate-fadeIn">
                     <div className="px-3 py-2 border-b border-black/[0.05] mb-1">
                       <p className="text-xs font-semibold text-[#1D1D1F]">{user.name}</p>
                       <p className="text-[11px] text-[#86868B] truncate">{user.email}</p>
                     </div>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenProjects?.();
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[#0F172A] hover:bg-[#EEF2FF] hover:text-[#4F46E5] rounded-xl transition-all cursor-pointer font-medium mb-1"
+                    >
+                      <FolderCode className="w-3.5 h-3.5 text-[#4F46E5]" />
+                      <span>Project Command Center</span>
+                    </button>
                     <button
                       onClick={() => {
                         setIsUserMenuOpen(false);

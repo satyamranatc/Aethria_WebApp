@@ -256,6 +256,7 @@ export default function App() {
             user={user}
             isAuthenticated={isAuthenticated}
             onOpenProfile={() => setCurrentPage('profile')}
+            onOpenProjects={() => setCurrentPage('projects')}
             onOpenAuth={handleOpenAuth}
             onLogout={logout}
           />

@@ -153,6 +153,16 @@ export const updateProjectChangeStatus = async (projectId, changeId, status) => 
   return response.data?.change || null;
 };
 
+export const applyProjectChange = async (projectId, changeId) => {
+  return await updateProjectChangeStatus(projectId, changeId, 'applied');
+};
+
+export const rejectProjectChange = async (projectId, changeId) => {
+  return await updateProjectChangeStatus(projectId, changeId, 'rejected');
+};
+
+export const triggerCodeQualityReview = runAiCodeReview;
+
 export const proposeAiCodePlan = async (projectId, { prompt, targetFilePath = '' }) => {
   const response = await apiClient.post(`/api/projects/${projectId}/ai/plan-and-propose`, {
     prompt,
@@ -165,5 +175,3 @@ export const fetchProjectArchitectureGraph = async (projectId) => {
   const response = await apiClient.get(`/api/projects/${projectId}/ai/architecture-graph`);
   return response.data?.architecture || null;
 };
-
-
