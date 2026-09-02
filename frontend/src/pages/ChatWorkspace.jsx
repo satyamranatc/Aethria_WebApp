@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { getRandomInspiringQuote } from '../constants/quotes';
 import {
   Sparkles,
   Plus,
@@ -170,6 +171,19 @@ export default function ChatWorkspace({
   );
 
   const greetingName = user ? user.name.split(' ')[0] : 'Creator';
+
+  // Dynamic contextual greeting based on exact time of day
+  const timeGreeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour >= 0 && hour < 5) return 'Working Late';
+    if (hour >= 5 && hour < 12) return 'Good Morning';
+    if (hour >= 12 && hour < 17) return 'Good Afternoon';
+    if (hour >= 17 && hour < 22) return 'Good Evening';
+    return 'Good Night';
+  }, []);
+
+  // Inspiring quote from great scientists and philosophers
+  const currentQuote = useMemo(() => getRandomInspiringQuote(), []);
 
   return (
     <div className="flex h-screen w-screen bg-[#F8FAFC] text-[#0F172A] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif]">
@@ -466,51 +480,60 @@ export default function ChatWorkspace({
         {/* Chat Message Scrollable Viewport */}
         <div
           ref={chatScrollRef}
-          className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 max-w-4xl mx-auto w-full overscroll-contain"
+          className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 max-w-4xl mx-auto w-full overscroll-contain ${
+            isInitialState ? 'flex flex-col justify-center no-scrollbar' : 'no-scrollbar sm:custom-scrollbar'
+          }`}
         >
           {/* Welcome State with Glowing Orb & Official Logo */}
           {isInitialState && (
-            <div className="pt-6 sm:pt-10 pb-4 text-center space-y-6 animate-fadeIn">
+            <div className="pt-2 sm:pt-4 pb-2 text-center space-y-5 animate-fadeIn max-w-2xl mx-auto my-auto">
               
               {/* Luminous Glowing Sphere with Logo */}
-              <div className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto animate-orbFloat">
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto animate-orbFloat">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#818CF8] via-[#C084FC] to-[#38BDF8] blur-xl opacity-70 animate-pulse" />
-                <div className="relative w-full h-full rounded-full bg-gradient-to-tr from-[#FFFFFF] via-[#F8FAFC] to-[#EEF2FF] shadow-[0_12px_40px_rgba(99,102,241,0.25),inset_0_2px_8px_rgba(255,255,255,0.9)] border border-white flex items-center justify-center p-3.5">
+                <div className="relative w-full h-full rounded-full bg-gradient-to-tr from-[#FFFFFF] via-[#F8FAFC] to-[#EEF2FF] shadow-[0_12px_40px_rgba(99,102,241,0.25),inset_0_2px_8px_rgba(255,255,255,0.9)] border border-white flex items-center justify-center p-3">
                   <img src="/Logo.png" alt="Aethria" className="w-full h-full object-contain drop-shadow-md" />
                 </div>
               </div>
 
               {/* Headline */}
               <div className="space-y-1.5">
-                <h2 className="text-xl sm:text-2xl font-semibold text-[#1E293B] tracking-tight">
-                  Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {greetingName}
+                <h2 className="text-lg sm:text-xl font-semibold text-[#1E293B] tracking-tight">
+                  {timeGreeting}, {greetingName}
                 </h2>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-[-0.03em] text-[#0F172A]">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-[-0.03em] text-[#0F172A]">
                   How Can I <span className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#3B82F6] bg-clip-text text-transparent">Assist You Today?</span>
                 </h1>
-                <p className="text-xs sm:text-sm text-[#64748B] max-w-md mx-auto pt-1 font-normal">
-                  Aethria is your cutting-edge AI coding and voice intelligence assistant.
-                </p>
+                
+                {/* Inspiring Scientist & Philosopher Quote */}
+                <div className="max-w-lg mx-auto pt-1 px-4 space-y-1">
+                  <p className="text-xs sm:text-[13px] text-[#475569] italic font-normal leading-relaxed">
+                    “{currentQuote.quote}”
+                  </p>
+                  <span className="text-[11px] font-semibold text-[#4F46E5] tracking-wide block">
+                    — {currentQuote.author} <span className="text-[#86868B] font-normal font-sans">({currentQuote.role})</span>
+                  </span>
+                </div>
               </div>
 
               {/* 4 Starter Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-2xl mx-auto text-left pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left pt-1">
                 {starterCards.map((card, idx) => {
                   const Icon = card.icon;
                   return (
                     <button
                       key={idx}
                       onClick={() => onSendMessage(card.prompt)}
-                      className="p-4 rounded-2xl bg-white border border-black/[0.05] shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.08)] hover:border-[#6366F1]/40 transition-all cursor-pointer text-left group"
+                      className="p-3.5 rounded-2xl bg-white border border-black/[0.05] shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.08)] hover:border-[#6366F1]/40 transition-all cursor-pointer text-left group"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="p-2 rounded-xl bg-[#F8FAFC] text-[#1D1D1F] group-hover:text-[#4F46E5] group-hover:bg-[#EEF2FF] transition-all">
-                          <Icon className="w-4 h-4" />
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="p-1.5 rounded-xl bg-[#F8FAFC] text-[#1D1D1F] group-hover:text-[#4F46E5] group-hover:bg-[#EEF2FF] transition-all">
+                          <Icon className="w-3.5 h-3.5" />
                         </span>
-                        <ChevronRight className="w-4 h-4 text-[#94A3B8] group-hover:translate-x-0.5 transition-transform" />
+                        <ChevronRight className="w-3.5 h-3.5 text-[#94A3B8] group-hover:translate-x-0.5 transition-transform" />
                       </div>
-                      <h4 className="text-sm font-semibold text-[#1D1D1F] mb-0.5">{card.title}</h4>
-                      <p className="text-xs text-[#64748B] leading-relaxed">{card.subtitle}</p>
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#1D1D1F] mb-0.5">{card.title}</h4>
+                      <p className="text-[11px] sm:text-xs text-[#64748B] leading-relaxed line-clamp-1">{card.subtitle}</p>
                     </button>
                   );
                 })}
