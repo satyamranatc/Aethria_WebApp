@@ -31,10 +31,10 @@ const getLanguageFromExt = (ext) => {
 export const analyzeProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const project = await Project.findById(id);
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
 
     if (!project) {
-      return res.status(404).json({ error: "Project not found." });
+      return res.status(404).json({ error: "Project not found or not authorized." });
     }
 
     const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
@@ -126,10 +126,10 @@ export const analyzeProject = async (req, res) => {
 export const runComprehensiveCodeReview = async (req, res) => {
   try {
     const { id } = req.params;
-    const project = await Project.findById(id);
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
 
     if (!project) {
-      return res.status(404).json({ error: "Project not found." });
+      return res.status(404).json({ error: "Project not found or not authorized." });
     }
 
     const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
@@ -289,9 +289,9 @@ export const runComprehensiveCodeReview = async (req, res) => {
 export const getNextBestActionPlan = async (req, res) => {
   try {
     const { id } = req.params;
-    const project = await Project.findById(id);
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
 
-    if (!project) return res.status(404).json({ error: "Project not found." });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
     const tasks = await ProjectTask.find({ projectId: id, status: { $ne: "done" } }).limit(10);
     const issues = await ProjectIssue.find({ projectId: id, status: "open" }).limit(10);
@@ -372,9 +372,9 @@ export const generateProjectTasksFromAi = async (req, res) => {
   try {
     const { id } = req.params;
     const { prompt } = req.body;
-    const project = await Project.findById(id);
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
 
-    if (!project) return res.status(404).json({ error: "Project not found." });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
     const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
     let parsed = null;
@@ -467,8 +467,8 @@ export const aiGenerateFile = async (req, res) => {
       return res.status(400).json({ error: "Prompt is required." });
     }
 
-    const project = await Project.findById(id);
-    if (!project) return res.status(404).json({ error: "Project not found." });
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
     const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
     let parsed = null;
@@ -572,8 +572,8 @@ export const aiEditFile = async (req, res) => {
       return res.status(400).json({ error: "fileId and prompt are required." });
     }
 
-    const project = await Project.findById(id);
-    if (!project) return res.status(404).json({ error: "Project not found." });
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
     const file = await ProjectFile.findOne({ _id: fileId, projectId: id });
     if (!file) return res.status(404).json({ error: "File not found." });
@@ -664,8 +664,8 @@ export const chatWithProject = async (req, res) => {
       return res.status(400).json({ error: "Prompt is required." });
     }
 
-    const project = await Project.findById(id);
-    if (!project) return res.status(404).json({ error: "Project not found." });
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
     const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
     let reply = "";

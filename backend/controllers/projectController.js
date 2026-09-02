@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import crypto from "crypto";
 import path from "path";
 import Project from "../models/Project.js";
@@ -5,6 +6,12 @@ import ProjectFile from "../models/ProjectFile.js";
 import ProjectChange from "../models/ProjectChange.js";
 import ProjectTask from "../models/ProjectTask.js";
 import ProjectIssue from "../models/ProjectIssue.js";
+
+// Helper to verify user ownership of a project
+export const getOwnedProject = async (projectId, userId) => {
+  if (!mongoose.Types.ObjectId.isValid(projectId)) return null;
+  return await Project.findOne({ _id: projectId, userId });
+};
 
 // Helper to detect language from extension
 const getLanguageFromExt = (ext) => {
@@ -27,7 +34,7 @@ const getLanguageFromExt = (ext) => {
   return map[ext.toLowerCase()] || "plaintext";
 };
 
-// List all projects with sorting and filtering
+// List all projects with optimized aggregation (O(1) roundtrips)
 export const getUserProjects = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -42,18 +49,37 @@ export const getUserProjects = async (req, res) => {
     else if (sort === "quality") sortOption = { "healthScore.quality": -1 };
     else if (sort === "name") sortOption = { name: 1 };
 
-    const projects = await Project.find(query).sort(sortOption);
+    const projects = await Project.find(query).sort(sortOption).lean();
 
-    const projectsWithCounts = await Promise.all(
-      projects.map(async (p) => {
-        const issueCount = await ProjectIssue.countDocuments({ projectId: p._id, status: "open" });
-        const taskCount = await ProjectTask.countDocuments({ projectId: p._id, status: { $ne: "done" } });
-        const obj = p.toObject();
-        obj.openIssueCount = issueCount;
-        obj.openTaskCount = taskCount;
-        return obj;
-      })
-    );
+    if (projects.length === 0) {
+      return res.json({ success: true, projects: [] });
+    }
+
+    const projectIds = projects.map((p) => p._id);
+
+    // Parallel aggregate count query avoiding N+1 loops
+    const [openIssues, openTasks] = await Promise.all([
+      ProjectIssue.aggregate([
+        { $match: { projectId: { $in: projectIds }, status: "open" } },
+        { $group: { _id: "$projectId", count: { $sum: 1 } } }
+      ]),
+      ProjectTask.aggregate([
+        { $match: { projectId: { $in: projectIds }, status: { $ne: "done" } } },
+        { $group: { _id: "$projectId", count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const issueCountMap = new Map(openIssues.map((i) => [i._id.toString(), i.count]));
+    const taskCountMap = new Map(openTasks.map((t) => [t._id.toString(), t.count]));
+
+    const projectsWithCounts = projects.map((p) => {
+      const pid = p._id.toString();
+      return {
+        ...p,
+        openIssueCount: issueCountMap.get(pid) || 0,
+        openTaskCount: taskCountMap.get(pid) || 0
+      };
+    });
 
     return res.json({ success: true, projects: projectsWithCounts });
   } catch (error) {
@@ -212,14 +238,16 @@ export const createProject = async (req, res) => {
 export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
-    const project = await Project.findById(id);
+    const project = await getOwnedProject(id, req.user._id);
 
     if (!project) {
-      return res.status(404).json({ error: "Project not found." });
+      return res.status(404).json({ error: "Project not found or not authorized." });
     }
 
-    const tasks = await ProjectTask.find({ projectId: id }).sort({ createdAt: -1 });
-    const issues = await ProjectIssue.find({ projectId: id }).sort({ createdAt: -1 });
+    const [tasks, issues] = await Promise.all([
+      ProjectTask.find({ projectId: id }).sort({ createdAt: -1 }).lean(),
+      ProjectIssue.find({ projectId: id }).sort({ createdAt: -1 }).lean()
+    ]);
 
     return res.json({ success: true, project, tasks, issues });
   } catch (error) {
@@ -234,9 +262,14 @@ export const updateProject = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const project = await Project.findByIdAndUpdate(id, { $set: updates }, { new: true });
+    const project = await Project.findOneAndUpdate(
+      { _id: id, userId: req.user._id },
+      { $set: updates },
+      { new: true }
+    );
+
     if (!project) {
-      return res.status(404).json({ error: "Project not found." });
+      return res.status(404).json({ error: "Project not found or not authorized." });
     }
 
     return res.json({ success: true, project });
@@ -254,10 +287,15 @@ export const updateProject = async (req, res) => {
 export const getProjectFileTree = async (req, res) => {
   try {
     const { id } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     const files = await ProjectFile.find(
       { projectId: id },
       { path: 1, name: 1, extension: 1, language: 1, size: 1, hash: 1, updatedAt: 1 }
-    ).sort({ path: 1 });
+    )
+      .sort({ path: 1 })
+      .lean();
 
     return res.json({ success: true, files });
   } catch (error) {
@@ -270,7 +308,10 @@ export const getProjectFileTree = async (req, res) => {
 export const getProjectFileContent = async (req, res) => {
   try {
     const { id, fileId } = req.params;
-    const file = await ProjectFile.findOne({ _id: fileId, projectId: id });
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    const file = await ProjectFile.findOne({ _id: fileId, projectId: id }).lean();
 
     if (!file) {
       return res.status(404).json({ error: "File not found." });
@@ -287,6 +328,9 @@ export const getProjectFileContent = async (req, res) => {
 export const createProjectFile = async (req, res) => {
   try {
     const { id } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     const { filePath, content = "" } = req.body;
 
     if (!filePath || !filePath.trim()) {
@@ -341,6 +385,9 @@ export const createProjectFile = async (req, res) => {
 export const updateProjectFileContent = async (req, res) => {
   try {
     const { id, fileId } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     const { content = "" } = req.body;
 
     const file = await ProjectFile.findOne({ _id: fileId, projectId: id });
@@ -378,6 +425,9 @@ export const updateProjectFileContent = async (req, res) => {
 export const deleteProjectFile = async (req, res) => {
   try {
     const { id, fileId } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     const file = await ProjectFile.findOneAndDelete({ _id: fileId, projectId: id });
 
     if (!file) {
@@ -406,6 +456,9 @@ export const deleteProjectFile = async (req, res) => {
 export const renameProjectFile = async (req, res) => {
   try {
     const { id, fileId } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     const { newPath } = req.body;
 
     if (!newPath || !newPath.trim()) {
@@ -560,7 +613,10 @@ export const syncProject = async (req, res) => {
 export const getProjectTasks = async (req, res) => {
   try {
     const { id } = req.params;
-    const tasks = await ProjectTask.find({ projectId: id }).sort({ createdAt: -1 });
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    const tasks = await ProjectTask.find({ projectId: id }).sort({ createdAt: -1 }).lean();
     return res.json({ success: true, tasks });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to fetch tasks." });
@@ -570,6 +626,9 @@ export const getProjectTasks = async (req, res) => {
 export const createProjectTask = async (req, res) => {
   try {
     const { id } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     const { title, description = "", status = "todo", priority = "medium", tags = [], milestone = "v1.0" } = req.body;
 
     if (!title || !title.trim()) {
@@ -596,8 +655,15 @@ export const createProjectTask = async (req, res) => {
 export const updateProjectTask = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const task = await ProjectTask.findByIdAndUpdate(taskId, { $set: req.body }, { new: true });
+    const task = await ProjectTask.findById(taskId);
     if (!task) return res.status(404).json({ error: "Task not found." });
+
+    const project = await getOwnedProject(task.projectId, req.user._id);
+    if (!project) return res.status(403).json({ error: "Not authorized to update this task." });
+
+    Object.assign(task, req.body);
+    await task.save();
+
     return res.json({ success: true, task });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to update task." });
@@ -607,6 +673,12 @@ export const updateProjectTask = async (req, res) => {
 export const deleteProjectTask = async (req, res) => {
   try {
     const { taskId } = req.params;
+    const task = await ProjectTask.findById(taskId);
+    if (!task) return res.status(404).json({ error: "Task not found." });
+
+    const project = await getOwnedProject(task.projectId, req.user._id);
+    if (!project) return res.status(403).json({ error: "Not authorized to delete this task." });
+
     await ProjectTask.findByIdAndDelete(taskId);
     return res.json({ success: true, message: "Task deleted." });
   } catch (error) {
@@ -618,7 +690,10 @@ export const deleteProjectTask = async (req, res) => {
 export const getProjectIssues = async (req, res) => {
   try {
     const { id } = req.params;
-    const issues = await ProjectIssue.find({ projectId: id }).sort({ createdAt: -1 });
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    const issues = await ProjectIssue.find({ projectId: id }).sort({ createdAt: -1 }).lean();
     return res.json({ success: true, issues });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to fetch issues." });
@@ -628,7 +703,15 @@ export const getProjectIssues = async (req, res) => {
 export const resolveProjectIssue = async (req, res) => {
   try {
     const { issueId } = req.params;
-    const issue = await ProjectIssue.findByIdAndUpdate(issueId, { status: "resolved" }, { new: true });
+    const issue = await ProjectIssue.findById(issueId);
+    if (!issue) return res.status(404).json({ error: "Issue not found." });
+
+    const project = await getOwnedProject(issue.projectId, req.user._id);
+    if (!project) return res.status(403).json({ error: "Not authorized to resolve this issue." });
+
+    issue.status = "resolved";
+    await issue.save();
+
     return res.json({ success: true, issue });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to resolve issue." });
@@ -643,6 +726,9 @@ export const proposeChange = async (req, res) => {
     if (!projectId || !changePath || !proposedContent) {
       return res.status(400).json({ error: "projectId, path, and proposedContent are required." });
     }
+
+    const project = await getOwnedProject(projectId, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
     const change = new ProjectChange({
       projectId,
@@ -666,12 +752,14 @@ export const proposeChange = async (req, res) => {
 export const getProjectChanges = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.query;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
+    const { status } = req.query;
     const query = { projectId: id };
     if (status) query.status = status;
 
-    const changes = await ProjectChange.find(query).sort({ createdAt: -1 });
+    const changes = await ProjectChange.find(query).sort({ createdAt: -1 }).lean();
     return res.json({ success: true, changes });
   } catch (error) {
     return res.status(500).json({ error: error.message || "Failed to fetch changes." });
@@ -687,6 +775,9 @@ export const updateChangeStatus = async (req, res) => {
     const change = await ProjectChange.findById(changeId);
     if (!change) return res.status(404).json({ error: "Change request not found." });
 
+    const project = await getOwnedProject(change.projectId, req.user._id);
+    if (!project) return res.status(403).json({ error: "Not authorized to update this change." });
+
     change.status = status;
     if (status === "applied") change.appliedAt = new Date();
     await change.save();
@@ -701,6 +792,9 @@ export const updateChangeStatus = async (req, res) => {
 export const deleteProject = async (req, res) => {
   try {
     const { id } = req.params;
+    const project = await getOwnedProject(id, req.user._id);
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
     await Project.findByIdAndDelete(id);
     await ProjectFile.deleteMany({ projectId: id });
     await ProjectChange.deleteMany({ projectId: id });

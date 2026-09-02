@@ -62,7 +62,9 @@ export function activate(context: vscode.ExtensionContext) {
   // Command: Open Web Studio
   context.subscriptions.push(
     vscode.commands.registerCommand('aethria.openWeb', async () => {
-      vscode.env.openExternal(vscode.Uri.parse('http://localhost:5173'));
+      const configUrl = vscode.workspace.getConfiguration('aethria').get<string>('webUrl');
+      const webUrl = configUrl && configUrl.trim() ? configUrl.trim() : 'https://www.aethria.in';
+      vscode.env.openExternal(vscode.Uri.parse(webUrl));
     })
   );
 

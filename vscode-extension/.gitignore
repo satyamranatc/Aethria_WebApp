@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Compiled JS Output (if not committed) or temporary files
+*.vsix
+.aethria-temp/
+
+# OS Files
+.DS_Store
+Thumbs.db

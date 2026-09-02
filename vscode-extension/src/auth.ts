@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 const TOKEN_SECRET_KEY = 'aethria_access_token';
 const SERVER_URL_KEY = 'aethria_server_url';
-const DEFAULT_SERVER_URL = 'http://localhost:5000';
+const DEFAULT_SERVER_URL = 'https://aethria-backend.onrender.com';
 
 export class AuthManager {
   private secrets: vscode.SecretStorage;
@@ -24,8 +24,12 @@ export class AuthManager {
   }
 
   async getServerUrl(): Promise<string> {
-    const url = await this.secrets.get(SERVER_URL_KEY);
-    return url || DEFAULT_SERVER_URL;
+    const configUrl = vscode.workspace.getConfiguration('aethria').get<string>('serverUrl');
+    if (configUrl && configUrl.trim()) {
+      return configUrl.trim().replace(/\/+$/, '');
+    }
+    const secretUrl = await this.secrets.get(SERVER_URL_KEY);
+    return (secretUrl || DEFAULT_SERVER_URL).replace(/\/+$/, '');
   }
 
   async setServerUrl(url: string): Promise<void> {

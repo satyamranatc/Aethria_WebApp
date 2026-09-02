@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Python caches (cinematic TTS / story analyzer)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS Files
+.DS_Store

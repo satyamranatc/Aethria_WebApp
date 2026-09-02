@@ -1,11 +1,12 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import LandingPage from './pages/LandingPage';
 import ChatWorkspace from './pages/ChatWorkspace';
-import ProfilePage from './pages/ProfilePage';
-import CanvasPage from './pages/CanvasPage';
-import ProjectsPage from './pages/ProjectsPage';
 import AuthModal from './components/auth/AuthModal';
-import ContinuousVoiceOverlay from './components/voice/ContinuousVoiceOverlay';
+
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const CanvasPage = lazy(() => import('./pages/CanvasPage'));
+const ContinuousVoiceOverlay = lazy(() => import('./components/voice/ContinuousVoiceOverlay'));
 
 import { useAuth } from './hooks/useAuth';
 import { useChat } from './hooks/useChat';
@@ -201,109 +202,122 @@ export default function App() {
     setCurrentPage('canvas');
   }, []);
 
+  const PageLoadingFallback = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#FAFBFD]/80 backdrop-blur-xs">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-[#6366F1]/20 border-t-[#6366F1] animate-spin" />
+        <span className="text-xs font-medium text-[#86868B] tracking-wide">Loading workspace...</span>
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {currentPage === 'profile' && isAuthenticated ? (
-        <ProfilePage
-          user={user}
-          sessions={sessions}
-          selectedVoiceGender={selectedVoiceGender}
-          onSelectVoiceGender={handleSelectVoiceGender}
-          onUpdateUser={updateUser}
-          onBackToWorkspace={() => setCurrentPage('chat')}
-          onLogout={() => {
-            logout();
-            setCurrentPage('landing');
-          }}
-        />
-      ) : currentPage === 'projects' && isAuthenticated ? (
-        <ProjectsPage
-          onBackToWorkspace={() => setCurrentPage('chat')}
-          onOpenAuth={handleOpenAuth}
-          isAuthenticated={isAuthenticated}
-        />
-      ) : currentPage === 'canvas' ? (
-        <CanvasPage
-          initialPrompt={canvasInitialPrompt}
-          onBackToWorkspace={() => {
-            setCanvasInitialPrompt('');
-            setCurrentPage('chat');
-          }}
-        />
-      ) : currentPage === 'landing' || !isAuthenticated ? (
-        <LandingPage
-          onLaunchChat={() => {
-            if (isAuthenticated) {
+      <Suspense fallback={<PageLoadingFallback />}>
+        {currentPage === 'profile' && isAuthenticated ? (
+          <ProfilePage
+            user={user}
+            sessions={sessions}
+            selectedVoiceGender={selectedVoiceGender}
+            onSelectVoiceGender={handleSelectVoiceGender}
+            onUpdateUser={updateUser}
+            onBackToWorkspace={() => setCurrentPage('chat')}
+            onLogout={() => {
+              logout();
+              setCurrentPage('landing');
+            }}
+          />
+        ) : currentPage === 'projects' && isAuthenticated ? (
+          <ProjectsPage
+            onBackToWorkspace={() => setCurrentPage('chat')}
+            onOpenAuth={handleOpenAuth}
+            isAuthenticated={isAuthenticated}
+          />
+        ) : currentPage === 'canvas' ? (
+          <CanvasPage
+            initialPrompt={canvasInitialPrompt}
+            onBackToWorkspace={() => {
+              setCanvasInitialPrompt('');
               setCurrentPage('chat');
-            } else {
-              handleOpenAuth('Please sign in to access your Aethria Workspace.');
-            }
-          }}
-          selectedVoiceGender={selectedVoiceGender}
-          onSelectVoiceGender={handleSelectVoiceGender}
-          user={user}
-          isAuthenticated={isAuthenticated}
-          onOpenProfile={() => setCurrentPage('profile')}
-          onOpenAuth={handleOpenAuth}
-          onLogout={logout}
-        />
-      ) : (
-        <ChatWorkspace
-          onBackToLanding={() => setCurrentPage('landing')}
-          messages={messages}
-          isLoading={isLoading}
-          errorMessage={errorMessage}
-          onDismissError={() => setErrorMessage(null)}
-          promptText={promptText}
-          onChangePrompt={setPromptText}
-          onSendMessage={handleSendMessage}
-          onClearChat={clearChat}
-          selectedVoiceGender={selectedVoiceGender}
-          onSelectVoiceGender={handleSelectVoiceGender}
-          isListening={isListening}
-          onToggleListening={toggleListening}
-          isPlayingAudio={isPlayingAudio}
-          speakingMessageId={speakingMessageId}
-          onSpeak={handleSpeakMessage}
-          onStopAudio={stopAudio}
-          waveformBars={waveformBars}
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={setActiveSessionId}
-          onNewSession={createNewSession}
-          onDeleteSession={deleteSession}
-          user={user}
-          isAuthenticated={isAuthenticated}
-          onOpenProfile={() => setCurrentPage('profile')}
-          onOpenCanvas={handleOpenCanvas}
-          onOpenProjects={() => setCurrentPage('projects')}
-          onOpenContinuousVoice={handleOpenContinuousVoice}
-          onOpenAuth={handleOpenAuth}
-          onLogout={() => {
-            logout();
-            setCurrentPage('landing');
-          }}
-        />
-      )}
+            }}
+          />
+        ) : currentPage === 'landing' || !isAuthenticated ? (
+          <LandingPage
+            onLaunchChat={() => {
+              if (isAuthenticated) {
+                setCurrentPage('chat');
+              } else {
+                handleOpenAuth('Please sign in to access your Aethria Workspace.');
+              }
+            }}
+            selectedVoiceGender={selectedVoiceGender}
+            onSelectVoiceGender={handleSelectVoiceGender}
+            user={user}
+            isAuthenticated={isAuthenticated}
+            onOpenProfile={() => setCurrentPage('profile')}
+            onOpenAuth={handleOpenAuth}
+            onLogout={logout}
+          />
+        ) : (
+          <ChatWorkspace
+            onBackToLanding={() => setCurrentPage('landing')}
+            messages={messages}
+            isLoading={isLoading}
+            errorMessage={errorMessage}
+            onDismissError={() => setErrorMessage(null)}
+            promptText={promptText}
+            onChangePrompt={setPromptText}
+            onSendMessage={handleSendMessage}
+            onClearChat={clearChat}
+            selectedVoiceGender={selectedVoiceGender}
+            onSelectVoiceGender={handleSelectVoiceGender}
+            isListening={isListening}
+            onToggleListening={toggleListening}
+            isPlayingAudio={isPlayingAudio}
+            speakingMessageId={speakingMessageId}
+            onSpeak={handleSpeakMessage}
+            onStopAudio={stopAudio}
+            waveformBars={waveformBars}
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={setActiveSessionId}
+            onNewSession={createNewSession}
+            onDeleteSession={deleteSession}
+            user={user}
+            isAuthenticated={isAuthenticated}
+            onOpenProfile={() => setCurrentPage('profile')}
+            onOpenCanvas={handleOpenCanvas}
+            onOpenProjects={() => setCurrentPage('projects')}
+            onOpenContinuousVoice={handleOpenContinuousVoice}
+            onOpenAuth={handleOpenAuth}
+            onLogout={() => {
+              logout();
+              setCurrentPage('landing');
+            }}
+          />
+        )}
 
-      {/* Global Full-Duplex Continuous Voice Experience Overlay */}
-      <ContinuousVoiceOverlay
-        isOpen={isContinuousVoiceOpen}
-        onClose={handleCloseContinuousVoice}
-        voiceState={voiceState}
-        isMuted={isMuted}
-        micVolume={micVolume}
-        currentLiveTranscript={currentLiveTranscript}
-        lastAssistantReply={lastAssistantReply}
-        voiceGender={continuousVoiceGender}
-        onToggleMute={toggleMute}
-        onTogglePause={togglePause}
-        onToggleVoiceGender={() =>
-          handleSelectVoiceGender(continuousVoiceGender === 'female' ? 'male' : 'female')
-        }
-        onReplayLast={replayLastResponse}
-        errorMessage={continuousVoiceError}
-      />
+        {/* Global Full-Duplex Continuous Voice Experience Overlay */}
+        {isContinuousVoiceOpen && (
+          <ContinuousVoiceOverlay
+            isOpen={isContinuousVoiceOpen}
+            onClose={handleCloseContinuousVoice}
+            voiceState={voiceState}
+            isMuted={isMuted}
+            micVolume={micVolume}
+            currentLiveTranscript={currentLiveTranscript}
+            lastAssistantReply={lastAssistantReply}
+            voiceGender={continuousVoiceGender}
+            onToggleMute={toggleMute}
+            onTogglePause={togglePause}
+            onToggleVoiceGender={() =>
+              handleSelectVoiceGender(continuousVoiceGender === 'female' ? 'male' : 'female')
+            }
+            onReplayLast={replayLastResponse}
+            errorMessage={continuousVoiceError}
+          />
+        )}
+      </Suspense>
 
       {/* Global Apple-styled Auth Modal */}
       <AuthModal

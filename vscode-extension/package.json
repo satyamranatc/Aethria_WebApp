@@ -80,6 +80,21 @@
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "Aethria",
+      "properties": {
+        "aethria.serverUrl": {
+          "type": "string",
+          "default": "https://aethria-backend.onrender.com",
+          "description": "Backend API endpoint for Aethria Intelligence service."
+        },
+        "aethria.webUrl": {
+          "type": "string",
+          "default": "https://www.aethria.in",
+          "description": "Web Studio URL for Aethria Intelligence."
+        }
+      }
     }
   },
   "scripts": {

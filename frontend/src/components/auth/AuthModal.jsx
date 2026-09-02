@@ -151,6 +151,7 @@ export default function AuthModal({
                 <input
                   id="auth-name"
                   type="text"
+                  autoComplete="name"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -170,6 +171,7 @@ export default function AuthModal({
               <input
                 id="auth-email"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -188,6 +190,7 @@ export default function AuthModal({
               <input
                 id="auth-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
                 minLength={6}
                 value={password}
