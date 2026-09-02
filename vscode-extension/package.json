@@ -48,6 +48,7 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
+    "onView:aethria.sidebar",
     "onStartupFinished"
   ],
   "contributes": {
@@ -163,12 +164,13 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/node": "^18.15.0",
     "@types/vscode": "^1.80.0",
+    "esbuild": "^0.28.2",
     "typescript": "^5.0.0"
   },
   "dependencies": {
