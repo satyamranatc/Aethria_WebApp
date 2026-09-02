@@ -1,0 +1,21 @@
+{
+  "name": "Aethria — AI Coding Assistant",
+  "short_name": "Aethria",
+  "description": "Cutting-edge AI coding and project intelligence assistant developed by Satyam Rana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFBFD",
+  "theme_color": "#4F46E5",
+  "icons": [
+    {
+      "src": "/Logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "developer": {
+    "name": "Satyam Rana",
+    "url": "https://satyamrana.in"
+  }
+}

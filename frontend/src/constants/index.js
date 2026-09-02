@@ -4,6 +4,8 @@ export const APP_INFO = {
   name: 'Aethria',
   tagline: 'Aethria is a cutting-edge AI coding assistant developed by Satyam Rana',
   creator: 'Satyam Rana',
+  creatorWebsite: 'https://satyamrana.in',
+  siteUrl: 'https://www.aethria.in',
   version: '2.5.0'
 };
 

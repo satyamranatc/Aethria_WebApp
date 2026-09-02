@@ -1,0 +1,9 @@
+# Robots.txt for Aethria Intelligence (https://www.aethria.in)
+# Developed by Satyam Rana (https://satyamrana.in)
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://www.aethria.in/sitemap.xml
