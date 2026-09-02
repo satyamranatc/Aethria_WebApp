@@ -39,6 +39,16 @@
     },
     "commands": [
       {
+        "command": "aethria.fixCode",
+        "title": "Aethria: Fix & Format Code",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "aethria.explainCode",
+        "title": "Aethria: Explain & Add Comments",
+        "icon": "$(lightbulb)"
+      },
+      {
         "command": "aethria.sync",
         "title": "Aethria: Sync Project",
         "icon": "$(sync)"
@@ -68,16 +78,38 @@
       }
     ],
     "menus": {
+      "editor/context": [
+        {
+          "command": "aethria.fixCode",
+          "group": "1_modification@1",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "aethria.explainCode",
+          "group": "1_modification@2",
+          "when": "editorTextFocus"
+        }
+      ],
       "view/title": [
+        {
+          "command": "aethria.fixCode",
+          "when": "view == aethria.sidebar",
+          "group": "navigation@1"
+        },
+        {
+          "command": "aethria.explainCode",
+          "when": "view == aethria.sidebar",
+          "group": "navigation@2"
+        },
         {
           "command": "aethria.sync",
           "when": "view == aethria.sidebar",
-          "group": "navigation"
+          "group": "navigation@3"
         },
         {
           "command": "aethria.openWeb",
           "when": "view == aethria.sidebar",
-          "group": "navigation"
+          "group": "navigation@4"
         }
       ]
     },

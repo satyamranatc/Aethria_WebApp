@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { AuthManager } from './auth';
 import { SyncService } from './syncService';
 import { AethriaSidebarProvider } from './sidebarProvider';
+import { fixAndFormatActiveCode, explainAndCommentActiveCode } from './codeIntelligence';
 
 export function activate(context: vscode.ExtensionContext) {
   const authManager = new AuthManager(context);
@@ -19,6 +20,20 @@ export function activate(context: vscode.ExtensionContext) {
   const sidebarProvider = new AethriaSidebarProvider(context.extensionUri, authManager, syncService);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('aethria.sidebar', sidebarProvider)
+  );
+
+  // Command: Fix & Format Code
+  context.subscriptions.push(
+    vscode.commands.registerCommand('aethria.fixCode', async () => {
+      await fixAndFormatActiveCode(authManager);
+    })
+  );
+
+  // Command: Explain & Add Comments
+  context.subscriptions.push(
+    vscode.commands.registerCommand('aethria.explainCode', async () => {
+      await explainAndCommentActiveCode(authManager);
+    })
   );
 
   // Command: Connect Account
