@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getRandomInspiringQuote } from '../constants/quotes';
+
 import {
   Sparkles,
   Plus,
@@ -248,81 +250,57 @@ export default function ChatWorkspace({
   const currentQuote = useMemo(() => getRandomInspiringQuote(), []);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#F0F2F5] text-[#0F172A] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif] p-0 sm:p-2.5 md:p-3 selection:bg-[#6366F1]/20">
+    <div className="flex flex-col h-screen w-screen bg-[#F0F2F5] text-[#0F172A] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif] p-0 selection:bg-[#6366F1]/20">
       <SEOHead
-        title="BeeBot AI Workspace — Aethria Intelligence"
+        title="Aethria AI Workspace — Aethria Intelligence"
         description="Instant multimodal code reasoning, full-duplex neural voice synthesis, and multi-file project analysis powered by Groq LPUs."
         canonicalUrl="https://www.aethria.in/chat"
       />
       <AmbientBackground />
 
-      {/* Outer App Frame & Top Desktop/Browser Tabs Header */}
-      <div className="relative z-10 flex flex-col flex-1 h-full w-full bg-white/90 backdrop-blur-3xl rounded-none sm:rounded-[28px] border-0 sm:border border-black/[0.06] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.07),0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
+      {/* Outer App Frame (Full Screen) */}
+      <div className="relative z-10 flex flex-col flex-1 h-full w-full bg-white/90 backdrop-blur-3xl rounded-none border-0 shadow-none overflow-hidden">
         
-        {/* Top Browser Style Tabs Bar */}
+        {/* Top Desktop Tabs Navigation Bar */}
         <div className="h-11 px-3 sm:px-4 bg-[#F8FAFC]/80 border-b border-black/[0.04] flex items-center justify-between select-none">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-            {/* New Tab Button */}
-            <button
-              onClick={handleNewSessionAndNavigate}
-              aria-label="New chat tab"
-              className="w-7 h-7 rounded-xl bg-white border border-black/[0.06] flex items-center justify-center text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] shadow-2xs transition-all cursor-pointer flex-shrink-0"
-              title="New Tab"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Inactive Tab 1 - Projects */}
+            {/* Tab 1 - Projects */}
             <button
               onClick={() => {
                 if (onOpenProjects) onOpenProjects();
                 else navigate('/projects');
               }}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] hover:text-[#0F172A] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
             >
               <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 flex items-center justify-center text-[9px] text-white font-bold">
                 P
               </span>
-              <span className="truncate max-w-[120px]">Projects (VS Code)</span>
+              <span className="truncate max-w-[140px]">Projects (VS Code)</span>
             </button>
 
-            {/* Inactive Tab 2 - Canvas */}
+            {/* Tab 2 - Canvas */}
             <button
               onClick={() => {
                 if (onOpenCanvas) onOpenCanvas();
                 else navigate('/canvas');
               }}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] hover:text-[#0F172A] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
             >
               <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-[9px] text-white font-bold">
                 C
               </span>
-              <span className="truncate max-w-[120px]">Canvas Studio</span>
+              <span className="truncate max-w-[140px]">Canvas Studio</span>
             </button>
 
-            {/* Active Current Tab */}
+            {/* Active Tab - AI Chat (Clean tab without cross icon) */}
             <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-[#1D1D1F] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-black/[0.06] flex-shrink-0">
               <div className="w-4 h-4 rounded-md bg-gradient-to-tr from-[#6366F1] to-[#8B5CF6] flex items-center justify-center text-white">
                 <Sparkles className="w-2.5 h-2.5" />
               </div>
               <span>AI Chat</span>
-              <button
-                onClick={onClearChat}
-                aria-label="Close or clear session"
-                className="ml-1 text-[#94A3B8] hover:text-[#0F172A] p-0.5 rounded-md hover:bg-black/[0.04] transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
             </div>
-
-            {/* Tab Overflow / More */}
-            <button
-              aria-label="More tabs"
-              className="w-7 h-7 rounded-xl flex items-center justify-center text-[#94A3B8] hover:text-[#0F172A] hover:bg-black/[0.03] transition-all cursor-pointer flex-shrink-0"
-            >
-              <MoreHorizontal className="w-3.5 h-3.5" />
-            </button>
           </div>
+
 
           {/* Right Header Navigation Shortcuts */}
           <div className="flex items-center gap-2">
@@ -628,43 +606,51 @@ export default function ChatWorkspace({
                   </button>
 
                   {/* Dropdown Menu */}
-                  {isModelDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-72 bg-white/95 backdrop-blur-2xl rounded-2xl border border-black/[0.08] shadow-[0_12px_36px_rgba(0,0,0,0.1)] p-2 z-50 animate-slideUp">
-                      <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider">
-                        Select Intelligence Engine
-                      </div>
-                      <div className="space-y-1 mt-1">
-                        {AI_MODELS.map((model) => (
-                          <button
-                            key={model.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedModel(model);
-                              setIsModelDropdownOpen(false);
-                            }}
-                            className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start justify-between cursor-pointer ${
-                              selectedModel.id === model.id
-                                ? 'bg-[#EEF2FF] text-[#4F46E5]'
-                                : 'hover:bg-[#F8FAFC] text-[#0F172A]'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold">{model.name}</span>
-                                <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-black/[0.04] text-[#64748B]">
-                                  {model.badge}
-                                </span>
+                  <AnimatePresence>
+                    {isModelDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="absolute top-full left-0 mt-2 w-72 bg-white/95 backdrop-blur-2xl rounded-2xl border border-black/[0.08] shadow-[0_12px_36px_rgba(0,0,0,0.1)] p-2 z-50"
+                      >
+                        <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                          Select Intelligence Engine
+                        </div>
+                        <div className="space-y-1 mt-1">
+                          {AI_MODELS.map((model) => (
+                            <button
+                              key={model.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedModel(model);
+                                setIsModelDropdownOpen(false);
+                              }}
+                              className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start justify-between cursor-pointer ${
+                                selectedModel.id === model.id
+                                  ? 'bg-[#EEF2FF] text-[#4F46E5]'
+                                  : 'hover:bg-[#F8FAFC] text-[#0F172A]'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold">{model.name}</span>
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-black/[0.04] text-[#64748B]">
+                                    {model.badge}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-[#64748B] mt-0.5 leading-snug">{model.desc}</p>
                               </div>
-                              <p className="text-[11px] text-[#64748B] mt-0.5 leading-snug">{model.desc}</p>
-                            </div>
-                            {selectedModel.id === model.id && (
-                              <Check className="w-4 h-4 text-[#4F46E5] flex-shrink-0 mt-0.5" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                              {selectedModel.id === model.id && (
+                                <Check className="w-4 h-4 text-[#4F46E5] flex-shrink-0 mt-0.5" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -735,10 +721,18 @@ export default function ChatWorkspace({
             >
               {/* Initial Welcome Hero State */}
               {isInitialState && (
-                <div className="pt-2 sm:pt-4 pb-2 text-center space-y-6 animate-fadeIn max-w-xl mx-auto my-auto">
-                  
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="pt-2 sm:pt-4 pb-2 text-center space-y-6 max-w-xl mx-auto my-auto"
+                >
                   {/* Aethria Official Brand Logo Emblem */}
-                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto animate-orbFloat">
+                  <motion.div
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+                    className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto"
+                  >
                     {/* Ambient Aura Glow */}
                     <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#A855F7] via-[#6366F1] to-[#38BDF8] blur-2xl opacity-40 animate-pulse" />
                     
@@ -750,8 +744,7 @@ export default function ChatWorkspace({
                         className="w-full h-full object-contain rounded-full drop-shadow-sm"
                       />
                     </div>
-                  </div>
-
+                  </motion.div>
 
                   {/* Hero Greeting & Headline */}
                   <div className="space-y-1.5">
@@ -773,8 +766,10 @@ export default function ChatWorkspace({
                     {starterCards.slice(0, 2).map((card, idx) => {
                       const Icon = card.icon;
                       return (
-                        <button
+                        <motion.button
                           key={idx}
+                          whileHover={{ y: -3, scale: 1.01 }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => onSendMessage(card.prompt)}
                           className="p-3.5 rounded-2xl bg-white border border-black/[0.05] shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.08)] hover:border-[#6366F1]/40 transition-all cursor-pointer text-left group"
                         >
@@ -786,13 +781,14 @@ export default function ChatWorkspace({
                           </div>
                           <h4 className="text-xs font-semibold text-[#0F172A] mb-0.5">{card.title}</h4>
                           <p className="text-[11px] text-[#64748B] line-clamp-1">{card.subtitle}</p>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
 
-                </div>
+                </motion.div>
               )}
+
 
               {/* Active Conversation Messages */}
               {!isInitialState &&

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldCheck,
   Sparkles,
@@ -111,11 +112,14 @@ export default function CleanCodeAuditSection({
   });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto w-full p-4 sm:p-6 select-text animate-fadeIn font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','Inter',sans-serif]">
-      
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="space-y-6 max-w-5xl mx-auto w-full p-4 sm:p-6 select-text font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','Inter',sans-serif]"
+    >
       {/* 1. Header Banner with Direct "Scan Clean Code" Button */}
       <div className="relative overflow-hidden p-6 sm:p-8 rounded-[28px] bg-white border border-black/[0.06] shadow-[0_12px_40px_-10px_rgba(0,0,0,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-6">
-        
         {/* Ambient Gradient Glow */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-indigo-200/40 via-purple-200/30 to-blue-200/30 rounded-full blur-3xl pointer-events-none" />
 
@@ -132,21 +136,30 @@ export default function CleanCodeAuditSection({
                 stroke="currentColor"
                 fill="transparent"
               />
-              <circle
+              <motion.circle
                 cx="50"
                 cy="50"
                 r="40"
-                className="text-[#4F46E5] transition-all duration-1000 ease-out"
+                className="text-[#4F46E5]"
                 strokeWidth="8"
                 strokeDasharray={251.2}
-                strokeDashoffset={251.2 - (251.2 * overall) / 100}
+                initial={{ strokeDashoffset: 251.2 }}
+                animate={{ strokeDashoffset: 251.2 - (251.2 * overall) / 100 }}
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                 strokeLinecap="round"
                 stroke="currentColor"
                 fill="transparent"
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center text-center">
-              <span className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight">{overall}</span>
+              <motion.span
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="text-xl sm:text-2xl font-black text-[#0F172A] tracking-tight"
+              >
+                {overall}
+              </motion.span>
               <span className="text-[9px] uppercase font-bold text-[#64748B]">Score</span>
             </div>
           </div>
@@ -171,11 +184,13 @@ export default function CleanCodeAuditSection({
 
         {/* Scan Clean Code Action Button */}
         <div className="flex items-center gap-3 relative z-10">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             onClick={onRunAudit}
             disabled={isRunningAudit}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#7C3AED] hover:from-[#4338CA] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold shadow-lg shadow-indigo-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#7C3AED] hover:from-[#4338CA] hover:to-[#6D28D9] text-white text-xs sm:text-sm font-bold shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
           >
             {isRunningAudit ? (
               <>
@@ -184,11 +199,11 @@ export default function CleanCodeAuditSection({
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-indigo-200 group-hover:scale-110 transition-transform" />
+                <Sparkles className="w-4 h-4 text-indigo-200 group-hover:rotate-12 transition-transform" />
                 <span>Scan Clean Code</span>
               </>
             )}
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -208,8 +223,12 @@ export default function CleanCodeAuditSection({
           {dimensions.map((dim, idx) => {
             const Icon = dim.icon;
             return (
-              <div
+              <motion.div
                 key={idx}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05, duration: 0.4 }}
+                whileHover={{ y: -2 }}
                 className="p-4 rounded-2xl bg-[#F8FAFC] border border-black/[0.04] hover:bg-white hover:border-[#6366F1]/30 hover:shadow-sm transition-all space-y-2.5 group"
               >
                 <div className="flex items-center justify-between">
@@ -227,15 +246,15 @@ export default function CleanCodeAuditSection({
 
                 {/* Progress Visual Bar */}
                 <div className="w-full bg-black/[0.05] h-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700 ease-out"
-                    style={{
-                      width: `${dim.score}%`,
-                      backgroundColor: dim.color
-                    }}
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ backgroundColor: dim.color }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${dim.score}%` }}
+                    transition={{ duration: 0.8, delay: 0.1 * idx, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -243,7 +262,6 @@ export default function CleanCodeAuditSection({
 
       {/* 3. Actionable AI Suggestions & Refactorings Section */}
       <div className="p-6 rounded-[26px] bg-white border border-black/[0.06] shadow-sm space-y-5">
-        
         {/* Header & Filter Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-black/[0.05]">
           <div>
@@ -262,8 +280,9 @@ export default function CleanCodeAuditSection({
               { id: 'architecture', label: 'Modularity' },
               { id: 'security', label: 'Security' }
             ].map((tab) => (
-              <button
+              <motion.button
                 key={tab.id}
+                whileTap={{ scale: 0.95 }}
                 type="button"
                 onClick={() => setActiveCategory(tab.id)}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
@@ -273,98 +292,108 @@ export default function CleanCodeAuditSection({
                 }`}
               >
                 {tab.label}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
 
         {/* Suggestions List */}
         <div className="space-y-3">
-          {filteredSuggestions.map((item, idx) => {
-            const isResolved = resolvedIssues.has(idx);
+          <AnimatePresence mode="popLayout">
+            {filteredSuggestions.map((item, idx) => {
+              const isResolved = resolvedIssues.has(idx);
 
-            return (
-              <div
-                key={idx}
-                className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-                  isResolved
-                    ? 'bg-[#F8FAFC] border-black/[0.04] opacity-60'
-                    : 'bg-white border-black/[0.06] hover:border-[#6366F1]/40 hover:shadow-md'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide ${
-                          item.severity === 'critical'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : item.severity === 'high'
-                            ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                            : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                        }`}
-                      >
-                        {item.severity || 'Medium'}
-                      </span>
+              return (
+                <motion.div
+                  key={`${item.path}-${idx}`}
+                  layout
+                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                  animate={{ opacity: isResolved ? 0.6 : 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                    isResolved
+                      ? 'bg-[#F8FAFC] border-black/[0.04]'
+                      : 'bg-white border-black/[0.06] hover:border-[#6366F1]/40 hover:shadow-md'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide ${
+                            item.severity === 'critical'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : item.severity === 'high'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          }`}
+                        >
+                          {item.severity || 'Medium'}
+                        </span>
 
-                      <div className="flex items-center gap-1 text-xs font-mono text-[#64748B]">
-                        <FileCode className="w-3.5 h-3.5 text-[#6366F1]" />
-                        <span className="font-semibold text-[#0F172A]">{item.path}</span>
-                        {item.line && <span className="text-[#94A3B8]">:L{item.line}</span>}
+                        <div className="flex items-center gap-1 text-xs font-mono text-[#64748B]">
+                          <FileCode className="w-3.5 h-3.5 text-[#6366F1]" />
+                          <span className="font-semibold text-[#0F172A]">{item.path}</span>
+                          {item.line && <span className="text-[#94A3B8]">:L{item.line}</span>}
+                        </div>
                       </div>
+
+                      <h4 className="text-sm font-bold text-[#0F172A]">{item.title}</h4>
+                      <p className="text-xs text-[#475569] leading-relaxed">{item.description}</p>
+
+                      {/* Code Diff Preview Box */}
+                      {item.suggestedFix && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-[#0F172A] text-[#F8FAFC] font-mono text-[11.5px] overflow-x-auto border border-black/10">
+                          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block mb-1">
+                            ✦ Recommended Clean Implementation:
+                          </span>
+                          <code>{item.suggestedFix}</code>
+                        </div>
+                      )}
                     </div>
 
-                    <h4 className="text-sm font-bold text-[#0F172A]">{item.title}</h4>
-                    <p className="text-xs text-[#475569] leading-relaxed">{item.description}</p>
-
-                    {/* Code Diff Preview Box */}
-                    {item.suggestedFix && (
-                      <div className="mt-2.5 p-3 rounded-xl bg-[#0F172A] text-[#F8FAFC] font-mono text-[11.5px] overflow-x-auto border border-black/10">
-                        <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block mb-1">
-                          ✦ Recommended Clean Implementation:
-                        </span>
-                        <code>{item.suggestedFix}</code>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right Action Tools */}
-                  <div className="flex sm:flex-col items-center gap-2 shrink-0 pt-2 sm:pt-0">
-                    <button
-                      type="button"
-                      onClick={() => handleMarkResolved(idx)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                        isResolved
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-[#F4F5F8] text-[#475569] hover:bg-emerald-50 hover:text-emerald-700'
-                      }`}
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{isResolved ? 'Resolved' : 'Mark Done'}</span>
-                    </button>
-
-                    {onSendToChat && (
-                      <button
+                    {/* Right Action Tools */}
+                    <div className="flex sm:flex-col items-center gap-2 shrink-0 pt-2 sm:pt-0">
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.95 }}
                         type="button"
-                        onClick={() =>
-                          onSendToChat(
-                            `Please refactor ${item.path} to fix: ${item.title}. Ensure clean modular architecture.`
-                          )
-                        }
-                        className="px-3 py-1.5 rounded-xl bg-[#EEF2FF] hover:bg-[#E0E7FF] text-[#4F46E5] text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                        onClick={() => handleMarkResolved(idx)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                          isResolved
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-[#F4F5F8] text-[#475569] hover:bg-emerald-50 hover:text-emerald-700'
+                        }`}
                       >
-                        <Wand2 className="w-3 h-3" />
-                        <span>Fix with AI</span>
-                      </button>
-                    )}
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{isResolved ? 'Resolved' : 'Mark Done'}</span>
+                      </motion.button>
+
+                      {onSendToChat && (
+                        <motion.button
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.95 }}
+                          type="button"
+                          onClick={() =>
+                            onSendToChat(
+                              `Please refactor ${item.path} to fix: ${item.title}. Ensure clean modular architecture.`
+                            )
+                          }
+                          className="px-3 py-1.5 rounded-xl bg-[#EEF2FF] hover:bg-[#E0E7FF] text-[#4F46E5] text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <Wand2 className="w-3 h-3" />
+                          <span>Fix with AI</span>
+                        </motion.button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       </div>
-
-    </div>
+    </motion.div>
   );
 }
