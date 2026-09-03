@@ -267,6 +267,8 @@ export default function ProjectCommandCenterPage({
             {filteredProjects.map((proj) => {
               const progressPct = proj.calculatedProgress || proj.progressBreakdown?.overall || 65;
               const fileCount = proj.totalFiles || proj.stats?.totalFiles || 0;
+              const folderCount = proj.stats?.totalFolders || (fileCount > 4 ? Math.round(fileCount / 4) : 1);
+              const totalLoc = proj.stats?.totalLinesOfCode || (fileCount * 85);
               const openTasks = proj.openTaskCount || 0;
               const openIssues = proj.openIssueCount || 0;
 
@@ -291,7 +293,7 @@ export default function ProjectCommandCenterPage({
                       <div className="flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         <span className="text-[10.5px] font-semibold text-emerald-700">
-                          VS Code Ready
+                          VS Code Synced
                         </span>
                       </div>
                     </div>
@@ -300,13 +302,22 @@ export default function ProjectCommandCenterPage({
                       <h3 className="text-base font-bold text-[#1D1D1F] group-hover:text-[#4F46E5] transition-colors line-clamp-1">
                         {proj.name}
                       </h3>
-                      <p className="text-xs text-[#6E6E73] mt-1 line-clamp-2 leading-relaxed">
-                        {proj.description || 'Synchronized AI engineering workspace.'}
+                      <p className="text-xs text-[#6E6E73] line-clamp-2 mt-1">
+                        {proj.description || 'Cloud codebase synced with local VS Code extension.'}
                       </p>
                     </div>
 
-                    {/* Tech Stack Tags */}
-                    <div className="flex flex-wrap gap-1 pt-1">
+                    {/* Developer Code Metrics */}
+                    <div className="flex items-center gap-3 py-1 text-[11px] text-[#475569] font-medium border-y border-black/[0.04]">
+                      <span>📁 <strong className="text-[#0F172A]">{folderCount}</strong> folders</span>
+                      <span>·</span>
+                      <span>📄 <strong className="text-[#0F172A]">{fileCount}</strong> files</span>
+                      <span>·</span>
+                      <span>📝 <strong className="text-[#0F172A]">{totalLoc.toLocaleString()}</strong> LOC</span>
+                    </div>
+
+                    {/* Technologies & Languages */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {(proj.technologies || ['React', 'Node.js']).slice(0, 3).map((t, idx) => (
                         <span
                           key={idx}
@@ -324,10 +335,10 @@ export default function ProjectCommandCenterPage({
                   </div>
 
                   {/* Real Milestone Progress & Telemetry */}
-                  <div className="pt-4 border-t border-black/[0.05] space-y-3">
-                    <div className="space-y-1.5">
+                  <div className="pt-3 border-t border-black/[0.05] space-y-2.5">
+                    <div className="space-y-1">
                       <div className="flex justify-between text-xs">
-                        <span className="text-[#86868B] font-medium text-[11px]">Milestone Progress</span>
+                        <span className="text-[#86868B] font-medium text-[11px]">Milestone Health</span>
                         <span className="font-bold text-[#4F46E5] text-[11px]">{progressPct}%</span>
                       </div>
                       <div className="w-full bg-[#F1F5F9] h-1.5 rounded-full overflow-hidden">
@@ -339,9 +350,7 @@ export default function ProjectCommandCenterPage({
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] text-[#64748B]">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium">{fileCount} files</span>
-                        <span>·</span>
+                      <div className="flex items-center gap-2">
                         <span className="font-medium">{openTasks} tasks</span>
                         {openIssues > 0 && (
                           <>

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { ProjectScanResult, ProjectFileManifest } from './types';
+import { ProjectScanResult, ProjectFileManifest, ProjectStats } from './types';
 
 const IGNORED_DIRS = new Set([
   'node_modules',
@@ -50,6 +50,13 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
   let readmeExcerpt = '';
   let gitBranch = 'main';
 
+  const foldersSet = new Set<string>();
+  let totalLinesOfCode = 0;
+  let codeLines = 0;
+  let commentLines = 0;
+  let blankLines = 0;
+  const langCountMap = new Map<string, { filesCount: number; linesCount: number }>();
+
   // Try detecting git branch
   try {
     const headPath = path.join(rootPath, '.git', 'HEAD');
@@ -63,6 +70,10 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
   // Recursive directory crawler
   function crawl(currentDir: string, relativeDir: string = '') {
     if (!fs.existsSync(currentDir)) return;
+
+    if (relativeDir) {
+      foldersSet.add(relativeDir);
+    }
 
     const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
@@ -125,6 +136,31 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
             content = fs.readFileSync(fullPath, 'utf8');
           } catch (e) {
             content = '';
+          }
+        }
+
+        // Real Lines of Code & Comment calculation
+        if (!isBinary && content) {
+          const rawLines = content.split('\n');
+          const linesInFile = rawLines.length;
+          totalLinesOfCode += linesInFile;
+
+          for (const line of rawLines) {
+            const trimmed = line.trim();
+            if (!trimmed) {
+              blankLines++;
+            } else if (
+              trimmed.startsWith('//') ||
+              trimmed.startsWith('#') ||
+              trimmed.startsWith('/*') ||
+              trimmed.startsWith('*') ||
+              trimmed.startsWith('--') ||
+              trimmed.startsWith('<!--')
+            ) {
+              commentLines++;
+            } else {
+              codeLines++;
+            }
           }
         }
 
@@ -194,6 +230,13 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
         else if (ext === '.sql') language = 'sql';
         else if (ext === '.sh') language = 'shell';
 
+        if (language !== 'plaintext') {
+          const current = langCountMap.get(language) || { filesCount: 0, linesCount: 0 };
+          current.filesCount++;
+          current.linesCount += content ? content.split('\n').length : 0;
+          langCountMap.set(language, current);
+        }
+
         const hash = crypto.createHash('sha256').update(content || '').digest('hex');
         totalSize += stat.size;
 
@@ -219,6 +262,26 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
     primaryLanguage = 'typescript';
   }
 
+  const languages = Array.from(langCountMap.entries())
+    .map(([name, data]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      filesCount: data.filesCount,
+      linesCount: data.linesCount,
+      percentage: totalLinesOfCode > 0 ? Math.round((data.linesCount / totalLinesOfCode) * 100) : 0
+    }))
+    .sort((a, b) => b.linesCount - a.linesCount);
+
+  const stats: ProjectStats = {
+    totalFiles: files.length,
+    totalFolders: foldersSet.size,
+    totalLinesOfCode,
+    codeLines,
+    commentLines,
+    blankLines,
+    totalSize,
+    languages
+  };
+
   return {
     name: projectName,
     workspacePath: rootPath,
@@ -232,6 +295,7 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
       entryPoints,
       readmeExcerpt
     },
-    totalSize
+    totalSize,
+    stats
   };
 }

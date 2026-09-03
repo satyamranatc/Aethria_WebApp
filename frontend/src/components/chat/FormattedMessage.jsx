@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, Terminal, Sparkles, ChevronRight, ExternalLink } from 'lucide-react';
+import { Copy, Check, Terminal, Sparkles, ChevronRight, ExternalLink, FileCode, CheckCircle2 } from 'lucide-react';
 import { highlightCode } from '../../utils/syntaxHighlighter';
 
 function renderInlineFormatting(text) {
@@ -73,7 +73,7 @@ function renderInlineFormatting(text) {
   return tokens;
 }
 
-function CodeBlock({ language, code, onApplyCode }) {
+function CodeBlock({ language, code, filePath, fileAction, onApplyCode }) {
   const [copied, setCopied] = useState(false);
   const [applied, setApplied] = useState(false);
 
@@ -85,7 +85,7 @@ function CodeBlock({ language, code, onApplyCode }) {
 
   const handleApply = () => {
     if (onApplyCode) {
-      onApplyCode(code);
+      onApplyCode(code, filePath);
       setApplied(true);
       setTimeout(() => setApplied(false), 2500);
     }
@@ -97,17 +97,39 @@ function CodeBlock({ language, code, onApplyCode }) {
 
   return (
     <div className="my-4 rounded-2xl overflow-hidden border border-black/[0.08] bg-[#16161A] text-[#F4F4F5] shadow-xl shadow-black/5 font-mono text-[13px]">
-      {/* Code Header with macOS Traffic Lights */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#0F0F12] border-b border-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5" aria-hidden="true">
+      {/* Code / File Header with macOS Traffic Lights & Modular File Badge */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#0F0F12] border-b border-white/[0.06] flex-wrap gap-2">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="flex items-center gap-1.5 flex-shrink-0" aria-hidden="true">
             <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
             <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
           </div>
-          <span className="text-[11px] font-sans font-semibold text-white/40 uppercase tracking-wider ml-2">
-            {language || 'code'}
-          </span>
+
+          {/* Target File Path Annotation if detected */}
+          {filePath ? (
+            <div className="flex items-center gap-1.5 ml-2 bg-white/[0.08] px-2.5 py-0.5 rounded-lg border border-white/[0.08] text-xs font-mono text-indigo-200 truncate">
+              <FileCode className="w-3.5 h-3.5 text-[#818CF8] flex-shrink-0" />
+              <span className="truncate max-w-[200px] sm:max-w-[320px]">{filePath}</span>
+              {fileAction && (
+                <span
+                  className={`text-[9px] font-sans font-bold px-1.5 py-0.2 rounded uppercase ${
+                    fileAction.toLowerCase().includes('create')
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : fileAction.toLowerCase().includes('update')
+                      ? 'bg-indigo-500/20 text-indigo-300'
+                      : 'bg-amber-500/20 text-amber-300'
+                  }`}
+                >
+                  {fileAction}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-[11px] font-sans font-semibold text-white/40 uppercase tracking-wider ml-2">
+              {language || 'code'}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -126,7 +148,7 @@ function CodeBlock({ language, code, onApplyCode }) {
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-indigo-200" />
-                  <span className="text-[11px]">Apply to Editor</span>
+                  <span className="text-[11px]">Apply to File</span>
                 </>
               )}
             </button>
@@ -168,25 +190,26 @@ function MarkdownTable({ rows }) {
   if (!rows || rows.length === 0) return null;
 
   const headerRow = rows[0];
-  const bodyRows = rows.slice(1).filter(r => !r.every(c => c.match(/^[-:]+$/)));
+  const isSeparator = (r) => r.every(cell => /^[-:]+$/.test(cell.trim()));
+  const dataRows = rows.slice(1).filter(r => !isSeparator(r));
 
   return (
-    <div className="my-4 overflow-x-auto rounded-2xl border border-black/[0.08] bg-white shadow-xs">
-      <table className="w-full text-left text-[13.5px] border-collapse">
-        <thead>
-          <tr className="bg-[#F8FAFC] border-b border-black/[0.06] text-[#0F172A] font-bold">
-            {headerRow.map((col, idx) => (
-              <th key={idx} className="px-4 py-3 font-bold tracking-tight text-xs uppercase text-[#475569]">
-                {renderInlineFormatting(col)}
+    <div className="my-4 overflow-x-auto rounded-2xl border border-black/[0.06] bg-white shadow-xs">
+      <table className="min-w-full divide-y divide-black/[0.06] text-left text-xs">
+        <thead className="bg-[#F8FAFC]">
+          <tr>
+            {headerRow.map((cell, idx) => (
+              <th key={`th-${idx}`} className="px-4 py-3 font-bold text-[#0F172A]">
+                {renderInlineFormatting(cell)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-black/[0.04]">
-          {bodyRows.map((row, rIdx) => (
-            <tr key={rIdx} className="hover:bg-[#F8FAFC] transition-colors">
+          {dataRows.map((row, rIdx) => (
+            <tr key={`tr-${rIdx}`} className="hover:bg-[#F8FAFC]/60 transition-colors">
               {row.map((cell, cIdx) => (
-                <td key={cIdx} className="px-4 py-3 text-[#334155] leading-relaxed align-top">
+                <td key={`td-${rIdx}-${cIdx}`} className="px-4 py-3 text-[#334155]">
                   {renderInlineFormatting(cell)}
                 </td>
               ))}
@@ -212,6 +235,8 @@ export default function FormattedMessage({ content, isAssistant, onApplyCode }) 
   let codeBuffer = [];
   let currentParagraph = [];
   let tableBuffer = [];
+  let lastDetectedFilePath = null;
+  let lastDetectedFileAction = null;
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
@@ -250,6 +275,14 @@ export default function FormattedMessage({ content, isAssistant, onApplyCode }) 
       flushTable();
     }
 
+    // Detect File Header preceding a code block
+    // E.g. ### 📄 `src/components/MyComponent.jsx` [Action: CREATE | UPDATE]
+    const fileHeaderMatch = line.match(/###\s+(?:📄\s*)?(?:File:\s*)?`?([^`\n\r\[\]]+)`?\s*(?:\[Action:\s*([^\]]+)\])?/i);
+    if (fileHeaderMatch && (line.includes('📄') || line.toLowerCase().includes('file:') || line.toLowerCase().includes('[action:'))) {
+      lastDetectedFilePath = fileHeaderMatch[1].trim();
+      lastDetectedFileAction = fileHeaderMatch[2] ? fileHeaderMatch[2].trim() : 'UPDATE';
+    }
+
     // Code block start / end
     if (line.trim().startsWith('```')) {
       if (inCodeBlock) {
@@ -258,16 +291,28 @@ export default function FormattedMessage({ content, isAssistant, onApplyCode }) 
             key={`code-${elements.length}`}
             language={codeLanguage}
             code={codeBuffer.join('\n')}
+            filePath={lastDetectedFilePath}
+            fileAction={lastDetectedFileAction}
             onApplyCode={onApplyCode}
           />
         );
         codeBuffer = [];
         inCodeBlock = false;
         codeLanguage = '';
+        lastDetectedFilePath = null;
+        lastDetectedFileAction = null;
       } else {
         flushParagraph();
         inCodeBlock = true;
-        codeLanguage = line.trim().replace('```', '').trim();
+        const rawFence = line.trim().replace('```', '').trim();
+        // Check if fence has inline file title e.g. ```javascript:src/utils.js
+        if (rawFence.includes(':')) {
+          const parts = rawFence.split(':');
+          codeLanguage = parts[0];
+          lastDetectedFilePath = parts[1];
+        } else {
+          codeLanguage = rawFence;
+        }
       }
       continue;
     }
@@ -320,53 +365,47 @@ export default function FormattedMessage({ content, isAssistant, onApplyCode }) 
       continue;
     }
 
-    // Numbered Lists
-    const numMatch = line.match(/^(\d+)\.\s+(.*)/);
-    if (numMatch) {
+    // Bullet points
+    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
       flushParagraph();
+      const bulletText = line.trim().substring(2);
       elements.push(
-        <div key={`num-${elements.length}`} className="flex items-start gap-3 my-2 text-[#334155]">
-          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#EEF2FF] border border-[#6366F1]/20 text-[11px] font-bold text-[#4F46E5] flex items-center justify-center mt-0.5 shadow-2xs">
-            {numMatch[1]}
+        <div key={`li-${elements.length}`} className="flex items-start gap-2.5 my-1.5 pl-1.5 text-[14px] text-[#334155] leading-relaxed">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#6366F1] mt-2 flex-shrink-0" />
+          <span className="flex-1">{renderInlineFormatting(bulletText)}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Numbered lists (1. 2. 3.)
+    const numberedMatch = line.trim().match(/^(\d+)\.\s+(.*)/);
+    if (numberedMatch) {
+      flushParagraph();
+      const num = numberedMatch[1];
+      const text = numberedMatch[2];
+      elements.push(
+        <div key={`num-${elements.length}`} className="flex items-start gap-2.5 my-1.5 pl-1.5 text-[14px] text-[#334155] leading-relaxed">
+          <span className="w-5 h-5 rounded-md bg-[#EEF2FF] text-[#4F46E5] font-bold text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">
+            {num}
           </span>
-          <span className="leading-relaxed flex-1 text-[14.5px]">{renderInlineFormatting(numMatch[2])}</span>
+          <span className="flex-1">{renderInlineFormatting(text)}</span>
         </div>
       );
       continue;
     }
 
-    // Bullet Lists
-    const bulletMatch = line.match(/^[-*•]\s+(.*)/);
-    if (bulletMatch) {
+    // Empty lines
+    if (!line.trim()) {
       flushParagraph();
-      elements.push(
-        <div key={`bullet-${elements.length}`} className="flex items-start gap-2.5 my-1.5 text-[#334155]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#6366F1] mt-2.5 flex-shrink-0" />
-          <span className="leading-relaxed flex-1 text-[14.5px]">{renderInlineFormatting(bulletMatch[1])}</span>
-        </div>
-      );
       continue;
     }
 
-    // Horizontal Rule
-    if (line.trim() === '---' || line.trim() === '***') {
-      flushParagraph();
-      elements.push(
-        <hr key={`hr-${elements.length}`} className="my-5 border-t border-black/[0.06]" />
-      );
-      continue;
-    }
-
-    // Normal paragraph line
-    if (line.trim() === '') {
-      flushParagraph();
-    } else {
-      currentParagraph.push(line);
-    }
+    currentParagraph.push(line);
   }
 
-  flushTable();
   flushParagraph();
+  flushTable();
 
   return <div className="space-y-1">{elements}</div>;
 }

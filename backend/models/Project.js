@@ -103,9 +103,23 @@ const projectSchema = new mongoose.Schema(
     },
     stats: {
       totalFiles: { type: Number, default: 0 },
+      totalFolders: { type: Number, default: 0 },
+      totalLinesOfCode: { type: Number, default: 0 },
+      codeLines: { type: Number, default: 0 },
+      commentLines: { type: Number, default: 0 },
+      blankLines: { type: Number, default: 0 },
       totalSize: { type: Number, default: 0 },
-      syncedFiles: { type: Number, default: 0 }
+      syncedFiles: { type: Number, default: 0 },
+      languages: [
+        {
+          name: { type: String },
+          filesCount: { type: Number, default: 0 },
+          linesCount: { type: Number, default: 0 },
+          percentage: { type: Number, default: 0 }
+        }
+      ]
     },
+
     metadata: {
       dependencies: { type: Map, of: String, default: {} },
       envKeys: [{ type: String }],

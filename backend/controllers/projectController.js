@@ -630,13 +630,83 @@ export const syncProject = async (req, res) => {
       });
     }
 
+    // Compute real-world developer statistics (no fluff or random graphs)
+    const foldersSet = new Set();
+    let totalLinesOfCode = 0;
+    let codeLines = 0;
+    let commentLines = 0;
+    let blankLines = 0;
+    const langMap = new Map();
+
+    for (const file of files) {
+      // 1. Folders tracking
+      const dir = path.dirname(file.path);
+      if (dir && dir !== '.' && dir !== '/') {
+        foldersSet.add(dir);
+        // Add parent paths as well for accurate folder count
+        const parts = dir.split(/[/\\]/);
+        for (let idx = 1; idx <= parts.length; idx++) {
+          foldersSet.add(parts.slice(0, idx).join('/'));
+        }
+      }
+
+      // 2. Lines of Code & Language Breakdown
+      if (!file.isBinary && file.content) {
+        const rawLines = file.content.split('\n');
+        const lineCount = rawLines.length;
+        totalLinesOfCode += lineCount;
+
+        for (const line of rawLines) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            blankLines++;
+          } else if (
+            trimmed.startsWith('//') ||
+            trimmed.startsWith('#') ||
+            trimmed.startsWith('/*') ||
+            trimmed.startsWith('*') ||
+            trimmed.startsWith('--') ||
+            trimmed.startsWith('<!--')
+          ) {
+            commentLines++;
+          } else {
+            codeLines++;
+          }
+        }
+
+        const langName = file.language || getLanguageFromExt(file.extension || '');
+        if (langName && langName !== 'plaintext') {
+          const existing = langMap.get(langName) || { filesCount: 0, linesCount: 0 };
+          existing.filesCount += 1;
+          existing.linesCount += lineCount;
+          langMap.set(langName, existing);
+        }
+      }
+    }
+
+    const languages = Array.from(langMap.entries())
+      .map(([name, data]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        filesCount: data.filesCount,
+        linesCount: data.linesCount,
+        percentage: totalLinesOfCode > 0 ? Math.round((data.linesCount / totalLinesOfCode) * 100) : 0
+      }))
+      .sort((a, b) => b.linesCount - a.linesCount);
+
     const totalCount = await ProjectFile.countDocuments({ projectId: project._id });
     project.stats = {
       totalFiles: totalCount,
+      totalFolders: foldersSet.size,
+      totalLinesOfCode,
+      codeLines,
+      commentLines,
+      blankLines,
       syncedFiles: totalCount,
-      totalSize: files.reduce((acc, f) => acc + (f.size || 0), 0)
+      totalSize: files.reduce((acc, f) => acc + (f.size || 0), 0),
+      languages
     };
     await project.save();
+
 
     return res.json({
       success: true,

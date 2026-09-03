@@ -17,6 +17,22 @@ export interface ProjectMetadata {
   readmeExcerpt: string;
 }
 
+export interface ProjectStats {
+  totalFiles: number;
+  totalFolders: number;
+  totalLinesOfCode: number;
+  codeLines: number;
+  commentLines: number;
+  blankLines: number;
+  totalSize: number;
+  languages: {
+    name: string;
+    filesCount: number;
+    linesCount: number;
+    percentage: number;
+  }[];
+}
+
 export interface ProjectScanResult {
   name: string;
   workspacePath: string;
@@ -26,7 +42,9 @@ export interface ProjectScanResult {
   files: ProjectFileManifest[];
   metadata: ProjectMetadata;
   totalSize: number;
+  stats?: ProjectStats;
 }
+
 
 export interface RemoteChangeRequest {
   _id: string;

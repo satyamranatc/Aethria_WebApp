@@ -737,20 +737,21 @@ export default function ChatWorkspace({
               {isInitialState && (
                 <div className="pt-2 sm:pt-4 pb-2 text-center space-y-6 animate-fadeIn max-w-xl mx-auto my-auto">
                   
-                  {/* Iridescent 3D Glass Pearl Sphere Orb */}
+                  {/* Aethria Official Brand Logo Emblem */}
                   <div className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto animate-orbFloat">
                     {/* Ambient Aura Glow */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#A855F7] via-[#6366F1] to-[#38BDF8] blur-2xl opacity-45 animate-pulse" />
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#A855F7] via-[#6366F1] to-[#38BDF8] blur-2xl opacity-40 animate-pulse" />
                     
-                    {/* 3D Sphere Asset */}
-                    <div className="relative w-full h-full rounded-full overflow-hidden shadow-[0_16px_40px_rgba(99,102,241,0.2)]">
+                    {/* Logo Glass Emblem Container */}
+                    <div className="relative w-full h-full rounded-full bg-white/95 backdrop-blur-xl border border-black/[0.08] shadow-[0_16px_40px_rgba(99,102,241,0.15),0_1px_3px_rgba(0,0,0,0.05)] p-4 flex items-center justify-center">
                       <img
-                        src="/iridescent-orb.jpg"
-                        alt="AI Orb"
-                        className="w-full h-full object-cover rounded-full"
+                        src="/Logo.png"
+                        alt="Aethria AI Logo"
+                        className="w-full h-full object-contain rounded-full drop-shadow-sm"
                       />
                     </div>
                   </div>
+
 
                   {/* Hero Greeting & Headline */}
                   <div className="space-y-1.5">
