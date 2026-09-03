@@ -133,51 +133,78 @@ export const runComprehensiveCodeReview = async (req, res) => {
       return res.status(404).json({ error: "Project not found or not authorized." });
     }
 
+    const files = await ProjectFile.find(
+      { projectId: id, isBinary: false },
+      { path: 1, name: 1, language: 1, size: 1, content: 1, extension: 1 }
+    ).limit(40);
+
+    const fileListNames = files.map((f) => f.path);
+    const totalFileCount = files.length;
+    const isSmallProject = totalFileCount <= 3;
+
+    // Detect actual project stack
+    const hasHtml = files.some((f) => f.extension === '.html' || f.name.endsWith('.html'));
+    const hasCss = files.some((f) => f.extension === '.css' || f.name.endsWith('.css'));
+    const hasJs = files.some((f) => f.extension === '.js' || f.extension === '.jsx' || f.extension === '.ts' || f.extension === '.tsx');
+    const hasPython = files.some((f) => f.extension === '.py');
+
+    let detectedStackType = "General Codebase";
+    if (hasHtml && hasCss && !hasJs && !hasPython) detectedStackType = "Static Web (HTML/CSS)";
+    else if (hasHtml && hasJs) detectedStackType = "Frontend Web";
+    else if (hasPython) detectedStackType = "Python Script/App";
+
     const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
     let parsed = null;
 
-    if (apiKey) {
+    if (apiKey && files.length > 0) {
       try {
         const groq = new Groq({ apiKey });
-        const files = await ProjectFile.find(
-          { projectId: id, isBinary: false },
-          { path: 1, name: 1, language: 1, size: 1, content: 1 }
-        ).limit(30);
 
         const filePayload = files
-          .map((f) => `File: ${f.path}\n\`\`\`${f.language}\n${f.content ? f.content.slice(0, 800) : ""}\n\`\`\``)
+          .map((f) => `File: ${f.path}\n\`\`\`${f.language || f.extension}\n${f.content ? f.content.slice(0, 1500) : ""}\n\`\`\``)
           .join("\n\n");
 
-        const systemPrompt = `You are an elite code reviewer. Return structured JSON:
+        const systemPrompt = `You are a pragmatic, senior code reviewer.
+Analyze the provided code files for project "${project.name}" (Type: ${detectedStackType}).
+
+CRITICAL INSTRUCTIONS:
+1. You MUST ONLY reference files that exist in this exact list: [${fileListNames.join(", ")}].
+2. NEVER hallucinate, invent, or reference non-existent files (such as src/services/apiService.js, src/utils/auth.js, etc.).
+3. Tailor feedback proportionally:
+   - For HTML/CSS projects: Focus strictly on semantic HTML5 tags, meta viewport for responsive design, CSS organization, and accessibility. Do NOT talk about React hooks, backend DB, or microservices!
+   - For simple scripts: Focus on readability and clean structure.
+   - If the code is already clean or simple with no critical flaws, return "issues": [] (an EMPTY array). Do NOT invent fake problems to fill space.
+
+Return strict JSON format:
 {
   "scores": {
-    "overall": 87,
-    "quality": 88,
-    "architecture": 91,
-    "security": 85,
-    "testing": 74,
-    "performance": 82,
-    "documentation": 79,
-    "dependencies": 93
+    "overall": 92,
+    "quality": 94,
+    "architecture": 90,
+    "security": 95,
+    "testing": 85,
+    "performance": 92,
+    "documentation": 88,
+    "dependencies": 95
   },
   "issues": [
     {
-      "path": "src/api/auth.ts",
-      "line": 42,
-      "title": "Unhandled promise rejection risk",
-      "description": "Ensure asynchronous handler handles errors with try/catch.",
-      "severity": "medium",
-      "type": "security",
-      "suggestedFix": "Wrap in try-catch block."
+      "path": "exact_file_from_list",
+      "line": 1,
+      "title": "Specific issue description",
+      "description": "Why this matters in the context of this specific file",
+      "severity": "low | medium | high | critical",
+      "type": "cleanliness | architecture | security | documentation",
+      "suggestedFix": "Concrete code snippet fix"
     }
   ],
   "recommendations": [
     {
       "id": "rec-1",
-      "title": "Consolidate validation logic",
-      "priority": "high",
-      "category": "Architecture",
-      "description": "Unify request validation helpers into a single utility module."
+      "title": "Actionable improvement tailored to this specific stack",
+      "priority": "low | medium | high",
+      "category": "HTML / CSS / Architecture",
+      "description": "Clear explanation"
     }
   ]
 }`;
@@ -185,57 +212,123 @@ export const runComprehensiveCodeReview = async (req, res) => {
         const completion = await groq.chat.completions.create({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Run AI Code Review for "${project.name}":\n\n${filePayload || "Standard codebase"}` }
+            { role: "user", content: `Review these real files for "${project.name}":\n\n${filePayload}` }
           ],
           model: "openai/gpt-oss-120b",
           response_format: { type: "json_object" },
-          temperature: 0.2,
-          max_tokens: 2500
+          temperature: 0.1,
+          max_tokens: 2000
         });
 
         let raw = completion.choices[0]?.message?.content || "{}";
         const match = raw.match(/\{[\s\S]*\}/);
         if (match) raw = match[0];
-        parsed = JSON.parse(raw);
+        const candidate = JSON.parse(raw);
+
+        // Sanitize: Verify every issue path actually exists in this repository!
+        if (candidate && Array.isArray(candidate.issues)) {
+          candidate.issues = candidate.issues.filter((issue) =>
+            fileListNames.includes(issue.path)
+          );
+        }
+        parsed = candidate;
       } catch (e) {
-        console.warn("Groq review failed, using fallback:", e.message);
+        console.warn("Groq review failed, running deterministic static audit:", e.message);
       }
     }
 
+    // Deterministic static analysis fallback (Strictly checks real files, no hallucinations)
     if (!parsed) {
+      const detectedIssues = [];
+      const recommendations = [];
+
+      for (const file of files) {
+        const content = file.content || "";
+        const ext = (file.extension || "").toLowerCase();
+
+        // 1. HTML Specific Static Checks
+        if (ext === ".html" || file.name.endsWith(".html")) {
+          if (!content.includes("<!DOCTYPE") && !content.includes("<!doctype")) {
+            detectedIssues.push({
+              path: file.path,
+              line: 1,
+              title: "Missing HTML5 Doctype Declaration",
+              description: "Declare <!DOCTYPE html> at the top of the file to ensure standard rendering mode across modern browsers.",
+              severity: "low",
+              type: "cleanliness",
+              suggestedFix: "<!DOCTYPE html>"
+            });
+          }
+          if (!content.includes('viewport')) {
+            detectedIssues.push({
+              path: file.path,
+              line: 3,
+              title: "Missing Mobile Viewport Meta Tag",
+              description: "Add <meta name='viewport' content='width=device-width, initial-scale=1.0'> inside <head> for responsive mobile layout.",
+              severity: "low",
+              type: "architecture",
+              suggestedFix: "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+            });
+          }
+        }
+
+        // 2. CSS Specific Static Checks
+        if (ext === ".css" || file.name.endsWith(".css")) {
+          if (content.includes("!important")) {
+            detectedIssues.push({
+              path: file.path,
+              line: 1,
+              title: "Avoid Overusing !important in CSS",
+              description: "High-specificity !important declarations can make stylesheet cascade difficult to maintain and override.",
+              severity: "low",
+              type: "cleanliness",
+              suggestedFix: "Use structured CSS class naming or CSS specificity instead of !important."
+            });
+          }
+        }
+
+        // 3. JavaScript / TypeScript Static Checks
+        if (ext === ".js" || ext === ".jsx" || ext === ".ts" || ext === ".tsx") {
+          if (content.includes("console.log(") && !file.path.includes("test")) {
+            detectedIssues.push({
+              path: file.path,
+              line: 1,
+              title: "Remove Debugging console.log Statements",
+              description: "Production code should use structured logging or clean output rather than lingering debug console logs.",
+              severity: "low",
+              type: "cleanliness",
+              suggestedFix: "// Clean up lingering debug statements"
+            });
+          }
+        }
+      }
+
+      if (isSmallProject && detectedIssues.length === 0) {
+        recommendations.push({
+          id: "rec-1",
+          title: "Clean Baseline Architecture",
+          priority: "low",
+          category: detectedStackType,
+          description: `Codebase contains ${totalFileCount} file(s) with clean standard syntax and zero detectable code smells.`
+        });
+      }
+
       parsed = {
         scores: {
-          overall: 86,
-          quality: 88,
-          architecture: 90,
-          security: 84,
-          testing: 72,
-          performance: 82,
-          documentation: 78,
-          dependencies: 92
+          overall: detectedIssues.length === 0 ? 96 : Math.max(75, 95 - detectedIssues.length * 5),
+          quality: detectedIssues.length === 0 ? 98 : 88,
+          architecture: 95,
+          security: 98,
+          testing: 90,
+          performance: 96,
+          documentation: 90,
+          dependencies: 98
         },
-        issues: [
-          {
-            path: "src/index.ts",
-            line: 1,
-            title: "Add comprehensive request logging",
-            description: "Production telemetry benefits from structured request tracking.",
-            severity: "low",
-            type: "performance",
-            suggestedFix: "Integrate morgan or structured JSON logger."
-          }
-        ],
-        recommendations: [
-          {
-            id: "rec-1",
-            title: "Increase test coverage for core business routes",
-            priority: "high",
-            category: "Testing",
-            description: "Add integration tests verifying primary controller actions."
-          }
-        ]
+        issues: detectedIssues,
+        recommendations
       };
     }
+
 
     if (parsed.scores) {
       project.healthScore = {

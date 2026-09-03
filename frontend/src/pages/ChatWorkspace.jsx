@@ -302,17 +302,12 @@ export default function ChatWorkspace({
           </div>
 
 
-          {/* Right Header Navigation Shortcuts */}
+          {/* Right Header Navigation */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenContinuousVoice}
-              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#4F46E5] hover:to-[#7C3AED] text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
-            >
-              <Mic className="w-3 h-3" />
-              <span className="hidden sm:inline">Voice Mode</span>
-            </button>
+            {/* Header spacer */}
           </div>
         </div>
+
 
         {/* Main Workspace Body: Sidebar + Chat Canvas */}
         <div className="flex flex-1 h-[calc(100%-44px)] overflow-hidden relative">
@@ -932,7 +927,19 @@ export default function ChatWorkspace({
                       <Layers className="w-3.5 h-3.5 text-[#3B82F6]" />
                       <span>Deep Research</span>
                     </button>
+
+                    {/* Continuous Voice Mode Direct Trigger */}
+                    <button
+                      type="button"
+                      onClick={onOpenContinuousVoice}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#4F46E5] hover:to-[#7C3AED] text-white text-xs font-semibold shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                      title="Start real-time continuous voice conversation"
+                    >
+                      <Mic className="w-3.5 h-3.5" />
+                      <span>Voice Mode</span>
+                    </button>
                   </div>
+
 
                   {/* Send & Mic Actions */}
                   <div className="flex items-center gap-1.5">

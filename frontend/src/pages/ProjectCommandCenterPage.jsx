@@ -317,13 +317,23 @@ export default function ProjectCommandCenterPage({
                       </div>
 
                       {/* Developer Code Metrics */}
-                      <div className="flex items-center gap-3 py-1 text-[11px] text-[#475569] font-medium border-y border-black/[0.04]">
-                        <span>📁 <strong className="text-[#0F172A]">{folderCount}</strong> folders</span>
-                        <span>·</span>
-                        <span>📄 <strong className="text-[#0F172A]">{fileCount}</strong> files</span>
-                        <span>·</span>
-                        <span>📝 <strong className="text-[#0F172A]">{totalLoc.toLocaleString()}</strong> LOC</span>
+                      <div className="flex items-center gap-3.5 py-1.5 text-[11px] text-[#64748B] font-medium border-y border-black/[0.04]">
+                        <span className="flex items-center gap-1">
+                          <FolderCode className="w-3.5 h-3.5 text-[#6366F1]" />
+                          <strong className="text-[#0F172A]">{folderCount}</strong> folders
+                        </span>
+                        <span className="text-black/[0.15]">·</span>
+                        <span className="flex items-center gap-1">
+                          <FileCode className="w-3.5 h-3.5 text-[#3B82F6]" />
+                          <strong className="text-[#0F172A]">{fileCount}</strong> files
+                        </span>
+                        <span className="text-black/[0.15]">·</span>
+                        <span className="flex items-center gap-1">
+                          <Code className="w-3.5 h-3.5 text-[#10B981]" />
+                          <strong className="text-[#0F172A]">{totalLoc.toLocaleString()}</strong> LOC
+                        </span>
                       </div>
+
 
                       {/* Technologies & Languages */}
                       <div className="flex flex-wrap gap-1.5 pt-1">

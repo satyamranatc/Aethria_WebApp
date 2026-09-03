@@ -33,15 +33,32 @@ export default function CodeQualityPanel({
   const getSeverityBadge = (severity) => {
     switch (severity) {
       case 'critical':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF2F2] text-[#D70015] border border-red-200">🔴 Critical</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF2F2] text-[#D70015] border border-red-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#D70015]" /> Critical
+          </span>
+        );
       case 'high':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF8EB] text-[#B45309] border border-amber-200">🟠 High</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF8EB] text-[#B45309] border border-amber-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]" /> High
+          </span>
+        );
       case 'medium':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#EEF2FF] text-[#4F46E5] border border-indigo-100">🟡 Medium</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#EEF2FF] text-[#4F46E5] border border-indigo-100">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5]" /> Medium
+          </span>
+        );
       default:
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F1F5F9] text-[#64748B]">🔵 Low</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#F1F5F9] text-[#64748B]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#64748B]" /> Low
+          </span>
+        );
     }
   };
+
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto w-full">

@@ -60,56 +60,17 @@ export default function CleanCodeAuditSection({
     { name: 'Error Resilience', score: testing, icon: ShieldCheck, color: '#EC4899' }
   ];
 
-  // Curated clean code suggestions
+  // Only show real issues detected on actual files in the repository
   const cleanCodeSuggestions = useMemo(() => {
-    if (issues && issues.length > 0) {
-      return issues;
-    }
-    return [
-      {
-        path: 'src/services/apiService.js',
-        line: 34,
-        title: 'Extract Async Error Interceptor (DRY Principle)',
-        category: 'cleanliness',
-        severity: 'high',
-        description: 'Multiple fetch calls repeat boilerplate try-catch blocks. Extract into a unified error handling wrapper.',
-        suggestedFix: 'const withErrorHandling = (fn) => async (...args) => { try { return await fn(...args); } catch (e) { handleError(e); } };'
-      },
-      {
-        path: 'src/components/Dashboard.jsx',
-        line: 120,
-        title: 'Split Monolithic Component (Single Responsibility)',
-        category: 'architecture',
-        severity: 'medium',
-        description: 'Dashboard handles data fetching, chart rendering, and filter controls in a single 450-line file.',
-        suggestedFix: 'Decompose into <MetricsHeader />, <ChartViewport />, and useDashboardData() custom hook.'
-      },
-      {
-        path: 'src/utils/auth.js',
-        line: 12,
-        title: 'Enforce Environment Secret Redaction',
-        category: 'security',
-        severity: 'critical',
-        description: 'Fallback API key string literal present in development build. Enforce strict process.env check.',
-        suggestedFix: 'const apiKey = process.env.API_KEY; if (!apiKey) throw new Error("API_KEY missing");'
-      },
-      {
-        path: 'src/controllers/userController.js',
-        line: 68,
-        title: 'Add Proportional Function Docstrings',
-        category: 'documentation',
-        severity: 'low',
-        description: 'Public controller handler missing parameter description and return type contracts.',
-        suggestedFix: '/** @param {Request} req @param {Response} res */'
-      }
-    ];
+    return Array.isArray(issues) ? issues : [];
   }, [issues]);
 
   const filteredSuggestions = cleanCodeSuggestions.filter((item) => {
     if (activeCategory === 'all') return true;
     if (activeCategory === 'critical') return item.severity === 'critical' || item.severity === 'high';
-    return item.category === activeCategory;
+    return item.category === activeCategory || item.type === activeCategory;
   });
+
 
   return (
     <motion.div
@@ -299,101 +260,114 @@ export default function CleanCodeAuditSection({
 
         {/* Suggestions List */}
         <div className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {filteredSuggestions.map((item, idx) => {
-              const isResolved = resolvedIssues.has(idx);
+          {filteredSuggestions.length === 0 ? (
+            <div className="p-8 text-center rounded-2xl bg-[#F8FAFC] border border-black/[0.04] space-y-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <h4 className="text-sm font-bold text-[#0F172A]">Clean Baseline Codebase</h4>
+              <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+                Zero architectural code smells or anti-patterns detected across your {project?.name || 'repository'} files. All code conforms to clean syntax and web standards.
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {filteredSuggestions.map((item, idx) => {
+                const isResolved = resolvedIssues.has(idx);
 
-              return (
-                <motion.div
-                  key={`${item.path}-${idx}`}
-                  layout
-                  initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                  animate={{ opacity: isResolved ? 0.6 : 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${
-                    isResolved
-                      ? 'bg-[#F8FAFC] border-black/[0.04]'
-                      : 'bg-white border-black/[0.06] hover:border-[#6366F1]/40 hover:shadow-md'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide ${
-                            item.severity === 'critical'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : item.severity === 'high'
-                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
-                              : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                          }`}
-                        >
-                          {item.severity || 'Medium'}
-                        </span>
+                return (
+                  <motion.div
+                    key={`${item.path}-${idx}`}
+                    layout
+                    initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                    animate={{ opacity: isResolved ? 0.6 : 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3 }}
+                    className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                      isResolved
+                        ? 'bg-[#F8FAFC] border-black/[0.04]'
+                        : 'bg-white border-black/[0.06] hover:border-[#6366F1]/40 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide ${
+                              item.severity === 'critical'
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : item.severity === 'high'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                            }`}
+                          >
+                            {item.severity || 'Medium'}
+                          </span>
 
-                        <div className="flex items-center gap-1 text-xs font-mono text-[#64748B]">
-                          <FileCode className="w-3.5 h-3.5 text-[#6366F1]" />
-                          <span className="font-semibold text-[#0F172A]">{item.path}</span>
-                          {item.line && <span className="text-[#94A3B8]">:L{item.line}</span>}
+                          <div className="flex items-center gap-1 text-xs font-mono text-[#64748B]">
+                            <FileCode className="w-3.5 h-3.5 text-[#6366F1]" />
+                            <span className="font-semibold text-[#0F172A]">{item.path}</span>
+                            {item.line && <span className="text-[#94A3B8]">:L{item.line}</span>}
+                          </div>
                         </div>
+
+                        <h4 className="text-sm font-bold text-[#0F172A]">{item.title}</h4>
+                        <p className="text-xs text-[#475569] leading-relaxed">{item.description}</p>
+
+                        {/* Code Diff Preview Box */}
+                        {item.suggestedFix && (
+                          <div className="mt-2.5 p-3 rounded-xl bg-[#0F172A] text-[#F8FAFC] font-mono text-[11.5px] overflow-x-auto border border-black/10">
+                            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block mb-1">
+                              ✦ Recommended Clean Implementation:
+                            </span>
+                            <code>{item.suggestedFix}</code>
+                          </div>
+                        )}
                       </div>
 
-                      <h4 className="text-sm font-bold text-[#0F172A]">{item.title}</h4>
-                      <p className="text-xs text-[#475569] leading-relaxed">{item.description}</p>
-
-                      {/* Code Diff Preview Box */}
-                      {item.suggestedFix && (
-                        <div className="mt-2.5 p-3 rounded-xl bg-[#0F172A] text-[#F8FAFC] font-mono text-[11.5px] overflow-x-auto border border-black/10">
-                          <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block mb-1">
-                            ✦ Recommended Clean Implementation:
-                          </span>
-                          <code>{item.suggestedFix}</code>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Right Action Tools */}
-                    <div className="flex sm:flex-col items-center gap-2 shrink-0 pt-2 sm:pt-0">
-                      <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.95 }}
-                        type="button"
-                        onClick={() => handleMarkResolved(idx)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          isResolved
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-[#F4F5F8] text-[#475569] hover:bg-emerald-50 hover:text-emerald-700'
-                        }`}
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>{isResolved ? 'Resolved' : 'Mark Done'}</span>
-                      </motion.button>
-
-                      {onSendToChat && (
+                      {/* Right Action Tools */}
+                      <div className="flex sm:flex-col items-center gap-2 shrink-0 pt-2 sm:pt-0">
                         <motion.button
                           whileHover={{ scale: 1.03 }}
                           whileTap={{ scale: 0.95 }}
                           type="button"
-                          onClick={() =>
-                            onSendToChat(
-                              `Please refactor ${item.path} to fix: ${item.title}. Ensure clean modular architecture.`
-                            )
-                          }
-                          className="px-3 py-1.5 rounded-xl bg-[#EEF2FF] hover:bg-[#E0E7FF] text-[#4F46E5] text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                          onClick={() => handleMarkResolved(idx)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            isResolved
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-[#F4F5F8] text-[#475569] hover:bg-emerald-50 hover:text-emerald-700'
+                          }`}
                         >
-                          <Wand2 className="w-3 h-3" />
-                          <span>Fix with AI</span>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{isResolved ? 'Resolved' : 'Mark Done'}</span>
                         </motion.button>
-                      )}
+
+                        {onSendToChat && (
+                          <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.95 }}
+                            type="button"
+                            onClick={() =>
+                              onSendToChat(
+                                `Please refactor ${item.path} to fix: ${item.title}. Ensure clean modular architecture.`
+                              )
+                            }
+                            className="px-3 py-1.5 rounded-xl bg-[#EEF2FF] hover:bg-[#E0E7FF] text-[#4F46E5] text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                          >
+                            <Wand2 className="w-3 h-3" />
+                            <span>Fix with AI</span>
+                          </motion.button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          )}
         </div>
       </div>
     </motion.div>
   );
 }
+
