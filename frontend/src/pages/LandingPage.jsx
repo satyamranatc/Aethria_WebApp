@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import SEOHead from '../components/common/SEOHead';
 import {
   Brain,
   Wand2,
@@ -47,6 +49,7 @@ export default function LandingPage({
   onOpenAuth,
   onLogout
 }) {
+  const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [activePillarTab, setActivePillarTab] = useState('understand');
   const [activeWorkflowStep, setActiveWorkflowStep] = useState(0);
@@ -54,9 +57,10 @@ export default function LandingPage({
   // Protected launch handler
   const handleProtectedLaunch = () => {
     if (!isAuthenticated) {
-      onOpenAuth('Sign in with your account to access the Aethria Workspace and link VS Code.');
+      if (onOpenAuth) onOpenAuth('Sign in with your account to access the Aethria Workspace and link VS Code.');
     } else {
-      onLaunchChat();
+      if (onLaunchChat) onLaunchChat();
+      else navigate('/chat');
     }
   };
 
@@ -64,7 +68,13 @@ export default function LandingPage({
 
   return (
     <div className="min-h-screen bg-[#FBFBFD] text-[#1D1D1F] antialiased selection:bg-[#4F46E5]/15 selection:text-[#4F46E5] font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','SF_Pro_Text','Inter',sans-serif] flex flex-col">
+      <SEOHead
+        title="Aethria — The Intelligence Layer Around Your Codebase"
+        description="Connect your VS Code projects to a persistent cloud intelligence layer. Understand architecture, execute multi-file changes, review diffs, and talk to your software in real time."
+        canonicalUrl="https://www.aethria.in"
+      />
       <AmbientBackground />
+
 
       {/* Frosted Minimalist Navigation Bar */}
       <header className="sticky top-0 z-50 backdrop-blur-2xl bg-white/80 border-b border-black/[0.05] transition-all">

@@ -2,7 +2,7 @@ import Groq from "groq-sdk";
 
 export const handleChat = async (req, res) => {
   try {
-    const { messages, temperature = 0.7, model = "openai/gpt-oss-120b" } = req.body;
+    const { messages, temperature = 0.7, model = "openai/gpt-oss-120b", max_tokens = 2048 } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: "A valid messages array is required." });
@@ -20,7 +20,7 @@ export const handleChat = async (req, res) => {
     // Aethria AI System Prompt
     const systemPrompt = {
       role: "system",
-      content: `You are Aethria, a cutting-edge AI coding and voice intelligence assistant developed by Satyam Rana. Powered by Groq LPUs for instant inference.
+      content: `You are Aethria, a cutting-edge AI coding and project intelligence assistant developed by Satyam Rana. Powered by Groq LPUs for instant inference.
 
 CRITICAL INSTRUCTIONS:
 - Dive STRAIGHT into the answer, explanation, or code immediately.
@@ -43,7 +43,7 @@ Language & Formatting:
         messages: [systemPrompt, ...messages],
         model: selectedModel,
         temperature: temperature,
-        max_tokens: 1024,
+        max_tokens: Math.min(max_tokens, 4096),
       });
     } catch (primaryErr) {
       console.warn(`Primary model ${selectedModel} failed, trying fallback openai/gpt-oss-20b:`, primaryErr.message);
@@ -52,7 +52,7 @@ Language & Formatting:
         messages: [systemPrompt, ...messages],
         model: selectedModel,
         temperature: temperature,
-        max_tokens: 1024,
+        max_tokens: Math.min(max_tokens, 4096),
       });
     }
 

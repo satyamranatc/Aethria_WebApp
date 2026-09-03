@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import SEOHead from '../components/common/SEOHead';
 import {
   ArrowLeft,
   User,
@@ -21,6 +23,7 @@ import {
 } from 'lucide-react';
 import AmbientBackground from '../components/common/AmbientBackground';
 import Footer from '../components/layout/Footer';
+
 
 export default function ProfilePage({
   user,
@@ -100,19 +103,26 @@ export default function ProfilePage({
     }
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-[#4F46E5]/15 selection:text-[#4F46E5] font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif] flex flex-col">
+      <SEOHead
+        title="Profile & Cloud Token Settings — Aethria Intelligence"
+        description="Manage your Aethria user account, copy your token for the VS Code extension, and configure neural voice preferences."
+        canonicalUrl="https://www.aethria.in/profile"
+      />
       <AmbientBackground />
 
       {/* Apple Frosted Minimalist Top Bar */}
       <header className="sticky top-0 z-40 backdrop-blur-2xl bg-white/80 border-b border-black/[0.05] transition-all">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <button
-            onClick={onBackToWorkspace}
-            className="flex items-center gap-2 text-xs font-semibold text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer group"
+            onClick={onBackToWorkspace || (() => navigate('/chat'))}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#0F172A] hover:bg-black/[0.04] transition-all cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-[#6366F1]" />
-            <span>Back to Workspace</span>
+            <ArrowLeft className="w-4 h-4 text-[#6366F1]" />
+            <span>Workspace</span>
           </button>
 
           <div className="flex items-center gap-2">

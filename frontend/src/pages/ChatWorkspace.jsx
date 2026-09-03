@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getRandomInspiringQuote } from '../constants/quotes';
 import {
   Sparkles,
@@ -35,18 +36,21 @@ import {
 import AmbientBackground from '../components/common/AmbientBackground';
 import MessageBubble from '../components/chat/MessageBubble';
 import WaveformVisualizer from '../components/chat/WaveformVisualizer';
+import SEOHead from '../components/common/SEOHead';
 import { SAMPLE_PROMPTS } from '../constants';
 
 const AI_MODELS = [
-  { id: 'ibeebot-4o', name: 'iBeeBot 4o', badge: 'Flagship', desc: 'Multimodal intelligence & lightning fast reasoning' },
+  { id: 'aethria-4o', name: 'Aethria 4o', badge: 'Flagship', desc: 'Multimodal intelligence & lightning fast reasoning' },
   { id: 'deepseek-r1', name: 'DeepSeek R1', badge: 'Deep Reasoning', desc: 'Complex algorithmic logic & code synthesis' },
   { id: 'groq-lpu', name: 'Groq LPU Engine', badge: '500 T/s', desc: 'Ultra-low latency instant streaming' },
   { id: 'claude-37', name: 'Claude 3.7 Sonnet', badge: 'Creative Hybrid', desc: 'Exceptional writing, design & visual architecture' },
 ];
 
+
 export default function ChatWorkspace({
-  onBackToLanding,
+  _onBackToLanding,
   messages,
+
   isLoading,
   errorMessage,
   onDismissError,
@@ -77,6 +81,9 @@ export default function ChatWorkspace({
   onOpenAuth,
   onLogout
 }) {
+  const navigate = useNavigate();
+  const { sessionId: routeSessionId } = useParams();
+
   // Mobile responsive sidebar state (collapsed by default on mobile < 768px)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     return typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
@@ -90,6 +97,13 @@ export default function ChatWorkspace({
   const chatScrollRef = useRef(null);
   const textareaRef = useRef(null);
   const modelDropdownRef = useRef(null);
+
+  // Sync route session param with active chat session
+  useEffect(() => {
+    if (routeSessionId && routeSessionId !== activeSessionId && onSelectSession) {
+      onSelectSession(routeSessionId);
+    }
+  }, [routeSessionId, activeSessionId, onSelectSession]);
 
   // Close model dropdown on outside click
   useEffect(() => {
@@ -168,16 +182,23 @@ export default function ChatWorkspace({
   };
 
   const handleSelectSessionMobile = (sessId) => {
-    onSelectSession(sessId);
+    if (onSelectSession) onSelectSession(sessId);
+    navigate(`/chat/${sessId}`);
     if (window.innerWidth < 768) {
       setIsSidebarOpen(false);
     }
+  };
+
+  const handleNewSessionAndNavigate = () => {
+    if (onNewSession) onNewSession();
+    navigate('/chat');
   };
 
   const handleConfirmDelete = () => {
     if (sessionToDelete) {
       onDeleteSession(sessionToDelete);
       setSessionToDelete(null);
+      navigate('/chat');
     }
   };
 
@@ -211,7 +232,7 @@ export default function ChatWorkspace({
     return { today, yesterday, older };
   }, [filteredSessions]);
 
-  const greetingName = user ? user.name.split(' ')[0] : 'Judha';
+  const greetingName = user ? user.name.split(' ')[0] : 'Developer';
 
   // Dynamic contextual greeting based on exact time of day
   const timeGreeting = useMemo(() => {
@@ -228,6 +249,11 @@ export default function ChatWorkspace({
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#F0F2F5] text-[#0F172A] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif] p-0 sm:p-2.5 md:p-3 selection:bg-[#6366F1]/20">
+      <SEOHead
+        title="BeeBot AI Workspace — Aethria Intelligence"
+        description="Instant multimodal code reasoning, full-duplex neural voice synthesis, and multi-file project analysis powered by Groq LPUs."
+        canonicalUrl="https://www.aethria.in/chat"
+      />
       <AmbientBackground />
 
       {/* Outer App Frame & Top Desktop/Browser Tabs Header */}
@@ -238,7 +264,7 @@ export default function ChatWorkspace({
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
             {/* New Tab Button */}
             <button
-              onClick={onNewSession}
+              onClick={handleNewSessionAndNavigate}
               aria-label="New chat tab"
               className="w-7 h-7 rounded-xl bg-white border border-black/[0.06] flex items-center justify-center text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] shadow-2xs transition-all cursor-pointer flex-shrink-0"
               title="New Tab"
@@ -246,26 +272,32 @@ export default function ChatWorkspace({
               <Plus className="w-3.5 h-3.5" />
             </button>
 
-            {/* Inactive Tab 1 */}
+            {/* Inactive Tab 1 - Projects */}
             <button
-              onClick={onOpenProjects}
+              onClick={() => {
+                if (onOpenProjects) onOpenProjects();
+                else navigate('/projects');
+              }}
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
             >
               <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 flex items-center justify-center text-[9px] text-white font-bold">
-                J
+                P
               </span>
-              <span className="truncate max-w-[100px]">Judha | Dribbble</span>
+              <span className="truncate max-w-[120px]">Projects (VS Code)</span>
             </button>
 
-            {/* Inactive Tab 2 */}
+            {/* Inactive Tab 2 - Canvas */}
             <button
-              onClick={onOpenCanvas}
+              onClick={() => {
+                if (onOpenCanvas) onOpenCanvas();
+                else navigate('/canvas');
+              }}
               className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
             >
               <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-[9px] text-white font-bold">
-                E
+                C
               </span>
-              <span className="truncate max-w-[100px]">Emura Studio</span>
+              <span className="truncate max-w-[120px]">Canvas Studio</span>
             </button>
 
             {/* Active Current Tab */}
@@ -273,7 +305,7 @@ export default function ChatWorkspace({
               <div className="w-4 h-4 rounded-md bg-gradient-to-tr from-[#6366F1] to-[#8B5CF6] flex items-center justify-center text-white">
                 <Sparkles className="w-2.5 h-2.5" />
               </div>
-              <span>BeeBot</span>
+              <span>AI Chat</span>
               <button
                 onClick={onClearChat}
                 aria-label="Close or clear session"
@@ -324,13 +356,14 @@ export default function ChatWorkspace({
           >
             {/* Brand Header */}
             <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6366F1] via-[#8B5CF6] to-[#A855F7] flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                  <Sparkles className="w-4 h-4" />
-                </div>
+              <div
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2.5 cursor-pointer"
+              >
+                <img src="/Logo.png" alt="Aethria" className="w-7 h-7 object-contain rounded-lg shadow-sm" />
                 <div>
                   <span className="font-extrabold text-base tracking-tight text-[#0F172A]">
-                    BeeBot
+                    Aethria
                   </span>
                 </div>
               </div>
@@ -352,7 +385,7 @@ export default function ChatWorkspace({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search"
+                  placeholder="Search conversations..."
                   className="w-full pl-8 pr-8 py-2 bg-[#F4F5F8] border border-black/[0.03] rounded-xl text-xs text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:bg-white focus:border-[#6366F1]/40 focus:ring-2 focus:ring-[#6366F1]/10 transition-all font-normal"
                 />
                 <span className="absolute right-2.5 text-[10px] text-[#94A3B8] font-mono px-1 py-0.5 rounded bg-white border border-black/[0.05] shadow-2xs">
@@ -366,7 +399,7 @@ export default function ChatWorkspace({
               <button
                 onClick={() => {
                   setActiveNavTab('home');
-                  onBackToLanding();
+                  navigate('/');
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
                   activeNavTab === 'home'
@@ -380,47 +413,49 @@ export default function ChatWorkspace({
 
               <button
                 onClick={() => {
-                  setActiveNavTab('explore');
-                  onNewSession();
+                  setActiveNavTab('chat');
+                  handleNewSessionAndNavigate();
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
-                  activeNavTab === 'explore'
+                  activeNavTab === 'chat'
                     ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
                     : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                 }`}
               >
-                <Compass className="w-4 h-4 text-[#6366F1]" />
-                <span>Explore</span>
+                <Sparkles className="w-4 h-4 text-[#6366F1]" />
+                <span>AI Chat</span>
               </button>
 
               <button
                 onClick={() => {
-                  setActiveNavTab('library');
-                  onOpenCanvas();
+                  setActiveNavTab('canvas');
+                  if (onOpenCanvas) onOpenCanvas();
+                  else navigate('/canvas');
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
-                  activeNavTab === 'library'
+                  activeNavTab === 'canvas'
                     ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
                     : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                 }`}
               >
                 <BookOpen className="w-4 h-4 text-[#6366F1]" />
-                <span>Library</span>
+                <span>Architecture Canvas</span>
               </button>
 
               <button
                 onClick={() => {
-                  setActiveNavTab('history');
-                  onOpenProjects();
+                  setActiveNavTab('projects');
+                  if (onOpenProjects) onOpenProjects();
+                  else navigate('/projects');
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
-                  activeNavTab === 'history'
+                  activeNavTab === 'projects'
                     ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
                     : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
                 }`}
               >
                 <Clock className="w-4 h-4 text-[#6366F1]" />
-                <span>History</span>
+                <span>VS Code Projects</span>
               </button>
             </div>
 
@@ -444,7 +479,7 @@ export default function ChatWorkspace({
                             : 'text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A]'
                         }`}
                       >
-                        <span className="truncate flex-1 mr-1.5">{sess.title || "What's something you've learned..."}</span>
+                        <span className="truncate flex-1 mr-1.5">{sess.title || "New Conversation"}</span>
                         {sessions.length > 1 && (
                           <button
                             type="button"
@@ -466,10 +501,10 @@ export default function ChatWorkspace({
                 </div>
               </div>
 
-              {/* 7 Days Ago Section */}
+              {/* Previous 7 Days Section */}
               <div>
                 <div className="px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[#94A3B8]">
-                  7 Days Ago
+                  Previous 7 Days
                 </div>
                 <div className="space-y-0.5 mt-1">
                   {groupedSessions.older.length > 0 ? (
@@ -483,7 +518,7 @@ export default function ChatWorkspace({
                             : 'text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A]'
                         }`}
                       >
-                        <span className="truncate flex-1 mr-1.5">{sess.title || 'Ask me anything weird or rand...'}</span>
+                        <span className="truncate flex-1 mr-1.5">{sess.title || 'Previous Session'}</span>
                         {sessions.length > 1 && (
                           <button
                             type="button"
@@ -500,28 +535,22 @@ export default function ChatWorkspace({
                       </div>
                     ))
                   ) : (
-                    <>
-                      <div className="px-2.5 py-1.5 text-xs text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A] rounded-xl cursor-pointer truncate">
-                        Ask me anything weird or rand...
-                      </div>
-                      <div className="px-2.5 py-1.5 text-xs text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A] rounded-xl cursor-pointer truncate">
-                        How are you feeling today, really...
-                      </div>
-                      <div className="px-2.5 py-1.5 text-xs text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A] rounded-xl cursor-pointer truncate">
-                        What's one habit you wish you...
-                      </div>
-                    </>
+                    <div className="px-2.5 py-1 text-[11px] text-[#94A3B8] italic">No previous chats</div>
                   )}
                 </div>
               </div>
 
             </div>
 
+
             {/* User Account / Profile Status */}
             <div className="p-3 border-t border-black/[0.04] bg-[#F8FAFC]/50">
               {isAuthenticated && user ? (
                 <div
-                  onClick={onOpenProfile}
+                  onClick={() => {
+                    if (onOpenProfile) onOpenProfile();
+                    else navigate('/profile');
+                  }}
                   className="flex items-center justify-between p-2 rounded-xl bg-white hover:bg-[#EEF2FF]/60 border border-black/[0.04] hover:border-[#6366F1]/30 transition-all cursor-pointer group shadow-2xs"
                   title="View Profile"
                 >
@@ -546,7 +575,8 @@ export default function ChatWorkspace({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onLogout();
+                      if (onLogout) onLogout();
+                      navigate('/');
                     }}
                     aria-label="Sign out"
                     className="p-1.5 text-[#94A3B8] hover:text-[#FF3B30] hover:bg-black/[0.04] rounded-lg transition-all cursor-pointer"

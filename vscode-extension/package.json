@@ -2,7 +2,7 @@
   "name": "aethria",
   "displayName": "Aethria — AI Coding & Project Intelligence",
   "description": "Cutting-edge AI coding and project intelligence platform developed by Satyam Rana. Instant syntax repair, multi-line formatting, architectural documentation, and cloud workspace sync.",
-  "version": "4.6.0",
+  "version": "4.7.0",
   "publisher": "SatyamRana",
   "author": {
     "name": "Satyam Rana",
@@ -87,6 +87,11 @@
         "icon": "$(sync)"
       },
       {
+        "command": "aethria.reviewChanges",
+        "title": "Aethria: Review & Apply Remote AI Changes",
+        "icon": "$(git-pull-request)"
+      },
+      {
         "command": "aethria.connect",
         "title": "Aethria: Connect Account",
         "icon": "$(link)"
@@ -100,19 +105,6 @@
         "command": "aethria.openWeb",
         "title": "Aethria: Open Web Intelligence Studio",
         "icon": "$(globe)"
-      },
-      {
-        "command": "aethria.viewDiff",
-        "title": "Aethria: Review Pending Remote Diff"
-      },
-      {
-        "command": "aethria.reviewChanges",
-        "title": "Aethria: Review & Apply Remote AI Changes",
-        "icon": "$(git-pull-request)"
-      },
-      {
-        "command": "aethria.applyChange",
-        "title": "Aethria: Apply Approved Change"
       }
     ],
     "menus": {

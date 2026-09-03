@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import ChatWorkspace from './pages/ChatWorkspace';
 import AuthModal from './components/auth/AuthModal';
@@ -6,6 +7,7 @@ import AuthModal from './components/auth/AuthModal';
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const ContinuousVoiceOverlay = lazy(() => import('./components/voice/ContinuousVoiceOverlay'));
 
 import { useAuth } from './hooks/useAuth';
@@ -16,16 +18,15 @@ import { useAudioWaveform } from './hooks/useAudioWaveform';
 import { useContinuousVoice } from './hooks/useContinuousVoice';
 
 export default function App() {
-  // If user is already logged in, open the chat workspace directly!
-  const [currentPage, setCurrentPage] = useState(() => {
-    return localStorage.getItem('voicebox_token') ? 'chat' : 'landing';
-  });
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [promptText, setPromptText] = useState('');
   const [selectedVoiceGender, setSelectedVoiceGender] = useState('female');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMessageHint, setAuthMessageHint] = useState('');
   const [isContinuousVoiceOpen, setIsContinuousVoiceOpen] = useState(false);
+  const [canvasInitialPrompt, setCanvasInitialPrompt] = useState('');
 
   // Authentication hook
   const {
@@ -40,13 +41,6 @@ export default function App() {
     logout,
     updateUser
   } = useAuth();
-
-  // If user logs in, immediately open chat directly
-  useEffect(() => {
-    if (isAuthenticated && currentPage === 'landing') {
-      setCurrentPage('chat');
-    }
-  }, [isAuthenticated, currentPage]);
 
   // Speech synthesis hook (for individual message playbacks)
   const { isPlayingAudio, speakingMessageId, speakText, stopAudio } = useSpeechSynthesis();
@@ -135,7 +129,7 @@ export default function App() {
     sendMessage(textToSend);
   }, [promptText, isListening, stopListening, sendMessage]);
 
-  // Handle message audio playback with selected Male / Female voice
+  // Handle message audio playback
   const handleSpeakMessage = useCallback((content, id) => {
     speakText(content, id, selectedVoiceGender);
   }, [speakText, selectedVoiceGender]);
@@ -158,49 +152,40 @@ export default function App() {
     const ok = await login(creds);
     if (ok) {
       setIsAuthModalOpen(false);
-      setCurrentPage('chat');
+      navigate('/chat');
     }
-  }, [login]);
+  }, [login, navigate]);
 
   const handleRegister = useCallback(async (creds) => {
     const ok = await register(creds);
     if (ok) {
       setIsAuthModalOpen(false);
-      setCurrentPage('chat');
+      navigate('/chat');
     }
-  }, [register]);
+  }, [register, navigate]);
 
-  // Global Keyboard Shortcuts
+  const handleOpenCanvas = useCallback((promptOrEvent = '') => {
+    const prompt = typeof promptOrEvent === 'string' ? promptOrEvent : '';
+    setCanvasInitialPrompt(prompt);
+    navigate('/canvas');
+  }, [navigate]);
+
+  // Global Keyboard Shortcuts (Cmd+K)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        if (currentPage === 'landing' && !isAuthenticated) {
+        if (!isAuthenticated) {
           handleOpenAuth('Sign in to create conversations');
         } else {
           createNewSession();
+          navigate('/chat');
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, isAuthenticated, createNewSession, handleOpenAuth]);
-
-  // Route Protection
-  useEffect(() => {
-    if ((currentPage === 'chat' || currentPage === 'profile' || currentPage === 'projects') && !isAuthenticated && !token) {
-      setCurrentPage('landing');
-      handleOpenAuth('Please sign in to access your Aethria Workspace.');
-    }
-  }, [currentPage, isAuthenticated, token, handleOpenAuth]);
-
-  const [canvasInitialPrompt, setCanvasInitialPrompt] = useState('');
-
-  const handleOpenCanvas = useCallback((promptOrEvent = '') => {
-    const prompt = typeof promptOrEvent === 'string' ? promptOrEvent : '';
-    setCanvasInitialPrompt(prompt);
-    setCurrentPage('canvas');
-  }, []);
+  }, [isAuthenticated, createNewSession, handleOpenAuth, navigate]);
 
   const PageLoadingFallback = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#FAFBFD]/80 backdrop-blur-xs">
@@ -214,90 +199,182 @@ export default function App() {
   return (
     <>
       <Suspense fallback={<PageLoadingFallback />}>
-        {currentPage === 'profile' && isAuthenticated ? (
-          <ProfilePage
-            user={user}
-            sessions={sessions}
-            selectedVoiceGender={selectedVoiceGender}
-            onSelectVoiceGender={handleSelectVoiceGender}
-            onUpdateUser={updateUser}
-            onBackToWorkspace={() => setCurrentPage('chat')}
-            onLogout={() => {
-              logout();
-              setCurrentPage('landing');
-            }}
+        <Routes>
+          {/* Public Landing Page */}
+          <Route
+            path="/"
+            element={
+              <LandingPage
+                onLaunchChat={() => {
+                  if (isAuthenticated) {
+                    navigate('/chat');
+                  } else {
+                    handleOpenAuth('Please sign in to access your Aethria Workspace.');
+                  }
+                }}
+                selectedVoiceGender={selectedVoiceGender}
+                onSelectVoiceGender={handleSelectVoiceGender}
+                user={user}
+                isAuthenticated={isAuthenticated}
+                onOpenProfile={() => navigate('/profile')}
+                onOpenProjects={() => navigate('/projects')}
+                onOpenAuth={handleOpenAuth}
+                onLogout={logout}
+              />
+            }
           />
-        ) : currentPage === 'projects' && isAuthenticated ? (
-          <ProjectsPage
-            onBackToWorkspace={() => setCurrentPage('chat')}
-            onOpenAuth={handleOpenAuth}
-            isAuthenticated={isAuthenticated}
-            onOpenCanvas={handleOpenCanvas}
+
+          {/* AI Chat Workspace */}
+          <Route
+            path="/chat"
+            element={
+              <ChatWorkspace
+                onBackToLanding={() => navigate('/')}
+                messages={messages}
+                isLoading={isLoading}
+                errorMessage={errorMessage}
+                onDismissError={() => setErrorMessage(null)}
+                promptText={promptText}
+                onChangePrompt={setPromptText}
+                onSendMessage={handleSendMessage}
+                onClearChat={clearChat}
+                selectedVoiceGender={selectedVoiceGender}
+                onSelectVoiceGender={handleSelectVoiceGender}
+                isListening={isListening}
+                onToggleListening={toggleListening}
+                isPlayingAudio={isPlayingAudio}
+                speakingMessageId={speakingMessageId}
+                onSpeak={handleSpeakMessage}
+                onStopAudio={stopAudio}
+                waveformBars={waveformBars}
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onSelectSession={setActiveSessionId}
+                onNewSession={createNewSession}
+                onDeleteSession={deleteSession}
+                user={user}
+                isAuthenticated={isAuthenticated}
+                onOpenProfile={() => navigate('/profile')}
+                onOpenCanvas={handleOpenCanvas}
+                onOpenProjects={() => navigate('/projects')}
+                onOpenContinuousVoice={handleOpenContinuousVoice}
+                onOpenAuth={handleOpenAuth}
+                onLogout={() => {
+                  logout();
+                  navigate('/');
+                }}
+              />
+            }
           />
-        ) : currentPage === 'canvas' ? (
-          <CanvasPage
-            initialPrompt={canvasInitialPrompt}
-            onBackToWorkspace={() => {
-              setCanvasInitialPrompt('');
-              setCurrentPage('chat');
-            }}
+
+          {/* Deep-Linked Chat Session */}
+          <Route
+            path="/chat/:sessionId"
+            element={
+              <ChatWorkspace
+                onBackToLanding={() => navigate('/')}
+                messages={messages}
+                isLoading={isLoading}
+                errorMessage={errorMessage}
+                onDismissError={() => setErrorMessage(null)}
+                promptText={promptText}
+                onChangePrompt={setPromptText}
+                onSendMessage={handleSendMessage}
+                onClearChat={clearChat}
+                selectedVoiceGender={selectedVoiceGender}
+                onSelectVoiceGender={handleSelectVoiceGender}
+                isListening={isListening}
+                onToggleListening={toggleListening}
+                isPlayingAudio={isPlayingAudio}
+                speakingMessageId={speakingMessageId}
+                onSpeak={handleSpeakMessage}
+                onStopAudio={stopAudio}
+                waveformBars={waveformBars}
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onSelectSession={setActiveSessionId}
+                onNewSession={createNewSession}
+                onDeleteSession={deleteSession}
+                user={user}
+                isAuthenticated={isAuthenticated}
+                onOpenProfile={() => navigate('/profile')}
+                onOpenCanvas={handleOpenCanvas}
+                onOpenProjects={() => navigate('/projects')}
+                onOpenContinuousVoice={handleOpenContinuousVoice}
+                onOpenAuth={handleOpenAuth}
+                onLogout={() => {
+                  logout();
+                  navigate('/');
+                }}
+              />
+            }
           />
-        ) : currentPage === 'landing' || !isAuthenticated ? (
-          <LandingPage
-            onLaunchChat={() => {
-              if (isAuthenticated) {
-                setCurrentPage('chat');
-              } else {
-                handleOpenAuth('Please sign in to access your Aethria Workspace.');
-              }
-            }}
-            selectedVoiceGender={selectedVoiceGender}
-            onSelectVoiceGender={handleSelectVoiceGender}
-            user={user}
-            isAuthenticated={isAuthenticated}
-            onOpenProfile={() => setCurrentPage('profile')}
-            onOpenProjects={() => setCurrentPage('projects')}
-            onOpenAuth={handleOpenAuth}
-            onLogout={logout}
+
+          {/* Architecture Canvas Studio */}
+          <Route
+            path="/canvas"
+            element={
+              <CanvasPage
+                initialPrompt={canvasInitialPrompt}
+                onBackToWorkspace={() => {
+                  setCanvasInitialPrompt('');
+                  navigate('/chat');
+                }}
+              />
+            }
           />
-        ) : (
-          <ChatWorkspace
-            onBackToLanding={() => setCurrentPage('landing')}
-            messages={messages}
-            isLoading={isLoading}
-            errorMessage={errorMessage}
-            onDismissError={() => setErrorMessage(null)}
-            promptText={promptText}
-            onChangePrompt={setPromptText}
-            onSendMessage={handleSendMessage}
-            onClearChat={clearChat}
-            selectedVoiceGender={selectedVoiceGender}
-            onSelectVoiceGender={handleSelectVoiceGender}
-            isListening={isListening}
-            onToggleListening={toggleListening}
-            isPlayingAudio={isPlayingAudio}
-            speakingMessageId={speakingMessageId}
-            onSpeak={handleSpeakMessage}
-            onStopAudio={stopAudio}
-            waveformBars={waveformBars}
-            sessions={sessions}
-            activeSessionId={activeSessionId}
-            onSelectSession={setActiveSessionId}
-            onNewSession={createNewSession}
-            onDeleteSession={deleteSession}
-            user={user}
-            isAuthenticated={isAuthenticated}
-            onOpenProfile={() => setCurrentPage('profile')}
-            onOpenCanvas={handleOpenCanvas}
-            onOpenProjects={() => setCurrentPage('projects')}
-            onOpenContinuousVoice={handleOpenContinuousVoice}
-            onOpenAuth={handleOpenAuth}
-            onLogout={() => {
-              logout();
-              setCurrentPage('landing');
-            }}
+
+          {/* Projects Command Center & Deep-Linked Project Workspace */}
+          <Route
+            path="/projects"
+            element={
+              <ProjectsPage
+                onBackToWorkspace={() => navigate('/chat')}
+                onOpenAuth={handleOpenAuth}
+                isAuthenticated={isAuthenticated}
+                onOpenCanvas={handleOpenCanvas}
+              />
+            }
           />
-        )}
+
+          <Route
+            path="/projects/:projectId"
+            element={
+              <ProjectsPage
+                onBackToWorkspace={() => navigate('/projects')}
+                onOpenAuth={handleOpenAuth}
+                isAuthenticated={isAuthenticated}
+                onOpenCanvas={handleOpenCanvas}
+              />
+            }
+          />
+
+          {/* User Profile Page */}
+          <Route
+            path="/profile"
+            element={
+              isAuthenticated ? (
+                <ProfilePage
+                  user={user}
+                  sessions={sessions}
+                  selectedVoiceGender={selectedVoiceGender}
+                  onSelectVoiceGender={handleSelectVoiceGender}
+                  onUpdateUser={updateUser}
+                  onBackToWorkspace={() => navigate('/chat')}
+                  onLogout={() => {
+                    logout();
+                    navigate('/');
+                  }}
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+
+          {/* 404 Catch-All Page */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
 
         {/* Global Full-Duplex Continuous Voice Experience Overlay */}
         {isContinuousVoiceOpen && (
@@ -321,7 +398,7 @@ export default function App() {
         )}
       </Suspense>
 
-      {/* Global Apple-styled Auth Modal */}
+      {/* Global Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

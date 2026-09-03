@@ -22,13 +22,18 @@ const IGNORED_DIRS = new Set([
   'bin',
   'obj',
   '.turbo',
-  '.cache'
+  '.cache',
+  '.aethria-temp'
 ]);
 
 const BINARY_EXTENSIONS = new Set([
   '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.webp', '.mp3', '.mp4', '.wav',
   '.pdf', '.zip', '.tar', '.gz', '.7z', '.exe', '.dll', '.so', '.dylib', '.wasm',
   '.ttf', '.woff', '.woff2', '.eot', '.pyc', '.class'
+]);
+
+const SENSITIVE_EXTENSIONS = new Set([
+  '.pem', '.key', '.pfx', '.p12', '.keystore', '.jks', '.der', '.crt', '.cer'
 ]);
 
 const MAX_FILE_SIZE_BYTES = 1.5 * 1024 * 1024; // 1.5 MB limit per individual file
@@ -64,6 +69,7 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
     for (const entry of entries) {
       const fullPath = path.join(currentDir, entry.name);
       const relPath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+      const lowerName = entry.name.toLowerCase();
 
       if (entry.isDirectory()) {
         if (IGNORED_DIRS.has(entry.name) || entry.name.startsWith('.')) {
@@ -82,24 +88,37 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
         let content = '';
         let isSensitive = false;
 
-        // Security check for .env files: NEVER read values, only extract keys!
-        if (entry.name.startsWith('.env')) {
+        // Enterprise Security Check: Redact credentials, private keys, and environment variables
+        const isSecretFile =
+          lowerName.startsWith('.env') ||
+          SENSITIVE_EXTENSIONS.has(ext) ||
+          lowerName.startsWith('id_rsa') ||
+          lowerName.includes('credential') ||
+          lowerName.includes('secret') ||
+          lowerName === 'gcp-key.json' ||
+          lowerName === 'auth.json';
+
+        if (isSecretFile) {
           isSensitive = true;
-          try {
-            const rawEnv = fs.readFileSync(fullPath, 'utf8');
-            const lines = rawEnv.split('\n');
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed && !trimmed.startsWith('#')) {
-                const key = trimmed.split('=')[0]?.trim();
-                if (key) {
-                  envKeys.push(key);
+          if (lowerName.startsWith('.env')) {
+            try {
+              const rawEnv = fs.readFileSync(fullPath, 'utf8');
+              const lines = rawEnv.split('\n');
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith('#')) {
+                  const key = trimmed.split('=')[0]?.trim();
+                  if (key) {
+                    envKeys.push(key);
+                  }
                 }
               }
+              content = `# .env keys detected (${lines.length} entries). Values secured locally by Aethria.`;
+            } catch (e) {
+              content = '# Protected .env';
             }
-            content = `# .env keys detected (${lines.length} entries). Secret values protected by Aethria.`;
-          } catch (e) {
-            content = '# Protected .env';
+          } else {
+            content = `# [PROTECTED CREDENTIAL/KEY]: ${entry.name}. Values redacted for security.`;
           }
         } else if (!isBinary) {
           try {
@@ -139,7 +158,20 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
         }
 
         // Detect entry points
-        if (['src/index.ts', 'src/main.tsx', 'src/App.tsx', 'index.js', 'main.py', 'app.py', 'server.js'].includes(relPath)) {
+        if (
+          [
+            'src/index.ts',
+            'src/main.tsx',
+            'src/App.tsx',
+            'src/App.jsx',
+            'index.js',
+            'main.py',
+            'app.py',
+            'server.js',
+            'main.go',
+            'src/main.rs'
+          ].includes(relPath)
+        ) {
           entryPoints.push(relPath);
         }
 
@@ -151,6 +183,10 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
         else if (ext === '.go') language = 'go';
         else if (ext === '.rs') language = 'rust';
         else if (ext === '.java') language = 'java';
+        else if (ext === '.c' || ext === '.h') language = 'c';
+        else if (ext === '.cpp' || ext === '.hpp' || ext === '.cc') language = 'cpp';
+        else if (ext === '.cs') language = 'csharp';
+        else if (ext === '.php') language = 'php';
         else if (ext === '.json') language = 'json';
         else if (ext === '.html') language = 'html';
         else if (ext === '.css' || ext === '.scss') language = 'css';
@@ -179,7 +215,7 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
   crawl(rootPath);
 
   // Set primary language
-  if (files.some(f => f.extension === '.ts' || f.extension === '.tsx')) {
+  if (files.some((f) => f.extension === '.ts' || f.extension === '.tsx')) {
     primaryLanguage = 'typescript';
   }
 

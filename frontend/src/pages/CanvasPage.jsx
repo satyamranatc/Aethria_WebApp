@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import SEOHead from '../components/common/SEOHead';
 import {
   ReactFlow,
   MiniMap,
@@ -9,6 +11,7 @@ import {
   addEdge,
   MarkerType
 } from '@xyflow/react';
+
 import '@xyflow/react/dist/style.css';
 import { toPng } from 'html-to-image';
 import {
@@ -317,19 +320,27 @@ export default function CanvasPage({
     }
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="h-screen w-screen flex flex-col bg-[#F8FAFC] text-[#0F172A] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif]">
+      <SEOHead
+        title="Architecture Canvas Studio — Aethria Intelligence"
+        description="Visual architecture diagramming, automated layout generation, and interactive flow visualization."
+        canonicalUrl="https://www.aethria.in/canvas"
+      />
       
       {/* Top Navigation Bar */}
       <header className="h-14 px-4 sm:px-6 bg-white/90 backdrop-blur-xl border-b border-black/[0.06] flex items-center justify-between z-30 flex-shrink-0 shadow-2xs">
         <div className="flex items-center gap-3">
           <button
-            onClick={onBackToWorkspace}
+            onClick={onBackToWorkspace || (() => navigate('/chat'))}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-all cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-[#6366F1]" />
             <span>Chat Workspace</span>
           </button>
+
 
           <div className="h-4 w-px bg-black/[0.08]" />
 

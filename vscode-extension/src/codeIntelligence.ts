@@ -1,18 +1,244 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import axios from 'axios';
 import { AuthManager } from './auth';
 
 /**
- * Sanitizes and formats code returned by AI.
- * Handles cases where code might arrive with markdown fences,
- * unescaped string literals, or collapsed into a single line.
+ * Maps language ID to comment styling conventions and documentation rules.
+ */
+interface LanguageCommentProfile {
+  name: string;
+  singleLine: string;
+  docstringStyle: string;
+  bannerTemplate: (moduleName: string, desc: string) => string;
+  sectionDivider: (sectionName: string) => string;
+}
+
+const LANGUAGE_COMMENT_PROFILES: Record<string, LanguageCommentProfile> = {
+  python: {
+    name: 'Python',
+    singleLine: '#',
+    docstringStyle: 'Google/NumPy Python docstrings with triple quotes """',
+    bannerTemplate: (name, desc) =>
+      `"""\nMODULE: ${name}\nPURPOSE: ${desc}\n"""`,
+    sectionDivider: (section) =>
+      `# -----------------------------------------------------------------------------\n# SECTION: ${section}\n# -----------------------------------------------------------------------------`
+  },
+  javascript: {
+    name: 'JavaScript',
+    singleLine: '//',
+    docstringStyle: 'JSDoc /** ... */ with @param and @returns',
+    bannerTemplate: (name, desc) =>
+      `/**\n * MODULE: ${name}\n * PURPOSE: ${desc}\n */`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  typescript: {
+    name: 'TypeScript',
+    singleLine: '//',
+    docstringStyle: 'TSDoc /** ... */ with type contracts, @param, and @returns',
+    bannerTemplate: (name, desc) =>
+      `/**\n * MODULE: ${name}\n * PURPOSE: ${desc}\n */`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  go: {
+    name: 'Go',
+    singleLine: '//',
+    docstringStyle: 'Standard Go comments with leading symbol names',
+    bannerTemplate: (name, desc) =>
+      `// Package / Module: ${name}\n// Purpose: ${desc}`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  rust: {
+    name: 'Rust',
+    singleLine: '//',
+    docstringStyle: 'Rust doc comments /// with # Arguments and # Returns',
+    bannerTemplate: (name, desc) =>
+      `//!\n//! Module: ${name}\n//! Purpose: ${desc}\n//!`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  java: {
+    name: 'Java',
+    singleLine: '//',
+    docstringStyle: 'JavaDoc /** ... */ with @param and @return tags',
+    bannerTemplate: (name, desc) =>
+      `/**\n * CLASS: ${name}\n * PURPOSE: ${desc}\n */`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  cpp: {
+    name: 'C++',
+    singleLine: '//',
+    docstringStyle: 'Doxygen /** ... */ with @brief, @param, and @return',
+    bannerTemplate: (name, desc) =>
+      `/**\n * FILE: ${name}\n * PURPOSE: ${desc}\n */`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  c: {
+    name: 'C',
+    singleLine: '//',
+    docstringStyle: 'Doxygen /* ... */ with @param and @return',
+    bannerTemplate: (name, desc) =>
+      `/*\n * FILE: ${name}\n * PURPOSE: ${desc}\n */`,
+    sectionDivider: (section) =>
+      `/* -----------------------------------------------------------------------------\n * SECTION: ${section}\n * -------------------------------------------------------------------------- */`
+  },
+  csharp: {
+    name: 'C#',
+    singleLine: '//',
+    docstringStyle: 'XML documentation comments /// <summary>',
+    bannerTemplate: (name, desc) =>
+      `/// <summary>\n/// Class: ${name}\n/// Purpose: ${desc}\n/// </summary>`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  php: {
+    name: 'PHP',
+    singleLine: '//',
+    docstringStyle: 'PHPDoc /** ... */ with @param and @return',
+    bannerTemplate: (name, desc) =>
+      `/**\n * SCRIPT: ${name}\n * PURPOSE: ${desc}\n */`,
+    sectionDivider: (section) =>
+      `// -----------------------------------------------------------------------------\n// SECTION: ${section}\n// -----------------------------------------------------------------------------`
+  },
+  sql: {
+    name: 'SQL',
+    singleLine: '--',
+    docstringStyle: '-- comments and /* ... */ block comments',
+    bannerTemplate: (name, desc) =>
+      `-- SCRIPT: ${name}\n-- PURPOSE: ${desc}`,
+    sectionDivider: (section) =>
+      `-- -----------------------------------------------------------------------------\n-- SECTION: ${section}\n-- -----------------------------------------------------------------------------`
+  },
+  html: {
+    name: 'HTML',
+    singleLine: '<!-- -->',
+    docstringStyle: '<!-- HTML comments -->',
+    bannerTemplate: (name, desc) =>
+      `<!-- COMPONENT: ${name} | PURPOSE: ${desc} -->`,
+    sectionDivider: (section) =>
+      `<!-- =================== SECTION: ${section} =================== -->`
+  },
+  css: {
+    name: 'CSS',
+    singleLine: '/* */',
+    docstringStyle: '/* CSS comments */',
+    bannerTemplate: (name, desc) =>
+      `/* STYLESHEET: ${name} | PURPOSE: ${desc} */`,
+    sectionDivider: (section) =>
+      `/* ------------------ SECTION: ${section} ------------------ */`
+  },
+  shell: {
+    name: 'Shell Script',
+    singleLine: '#',
+    docstringStyle: '# comments',
+    bannerTemplate: (name, desc) =>
+      `# SCRIPT: ${name}\n# PURPOSE: ${desc}`,
+    sectionDivider: (section) =>
+      `# -----------------------------------------------------------------------------\n# SECTION: ${section}\n# -----------------------------------------------------------------------------`
+  },
+  json: {
+    name: 'JSON',
+    singleLine: '//',
+    docstringStyle: 'Standard JSON',
+    bannerTemplate: () => '',
+    sectionDivider: () => ''
+  }
+};
+
+/**
+ * Intelligent Language Detector:
+ * Identifies the exact programming language using VS Code languageId,
+ * file extension, shebang headers, and syntactic signatures.
+ */
+export function detectAccurateLanguage(document: vscode.TextDocument, codeSample: string): string {
+  // 1. Check native VS Code languageId if not generic plaintext
+  const rawLang = (document.languageId || '').toLowerCase().trim();
+  if (rawLang && rawLang !== 'plaintext' && rawLang !== '') {
+    if (rawLang === 'typescriptreact' || rawLang === 'tsx') return 'typescript';
+    if (rawLang === 'javascriptreact' || rawLang === 'jsx') return 'javascript';
+    if (rawLang === 'shellscript' || rawLang === 'bash' || rawLang === 'zsh') return 'shell';
+    if (LANGUAGE_COMMENT_PROFILES[rawLang]) return rawLang;
+  }
+
+  // 2. Check File Extension
+  const ext = path.extname(document.fileName || '').toLowerCase();
+  const extMap: Record<string, string> = {
+    '.py': 'python',
+    '.pyw': 'python',
+    '.ts': 'typescript',
+    '.tsx': 'typescript',
+    '.js': 'javascript',
+    '.jsx': 'javascript',
+    '.mjs': 'javascript',
+    '.cjs': 'javascript',
+    '.go': 'go',
+    '.rs': 'rust',
+    '.java': 'java',
+    '.c': 'c',
+    '.h': 'c',
+    '.cpp': 'cpp',
+    '.hpp': 'cpp',
+    '.cc': 'cpp',
+    '.cxx': 'cpp',
+    '.cs': 'csharp',
+    '.php': 'php',
+    '.rb': 'ruby',
+    '.swift': 'swift',
+    '.kt': 'kotlin',
+    '.kts': 'kotlin',
+    '.sql': 'sql',
+    '.html': 'html',
+    '.htm': 'html',
+    '.css': 'css',
+    '.scss': 'css',
+    '.less': 'css',
+    '.sh': 'shell',
+    '.bash': 'shell',
+    '.zsh': 'shell',
+    '.json': 'json',
+    '.yaml': 'yaml',
+    '.yml': 'yaml'
+  };
+
+  if (ext && extMap[ext]) {
+    return extMap[ext];
+  }
+
+  // 3. Syntax & Shebang signature analysis
+  const firstLines = (codeSample || '').slice(0, 500);
+  if (firstLines.startsWith('#!/usr/bin/env python') || firstLines.startsWith('#!/usr/bin/python')) return 'python';
+  if (firstLines.startsWith('#!/usr/bin/env node')) return 'javascript';
+  if (firstLines.startsWith('#!/bin/bash') || firstLines.startsWith('#!/bin/sh')) return 'shell';
+
+  if (firstLines.includes('import React') || firstLines.includes('export default') || firstLines.includes('const ') || firstLines.includes('function ')) {
+    return firstLines.includes(': ') || firstLines.includes('<T>') || firstLines.includes('interface ') ? 'typescript' : 'javascript';
+  }
+  if (firstLines.includes('def ') || firstLines.includes('import ') && firstLines.includes(':')) return 'python';
+  if (firstLines.includes('package ') && firstLines.includes('func ')) return 'go';
+  if (firstLines.includes('fn main()') || firstLines.includes('pub fn ')) return 'rust';
+  if (firstLines.includes('public class ') || firstLines.includes('public static void main')) return 'java';
+  if (firstLines.includes('#include <') || firstLines.includes('int main(')) return 'cpp';
+  if (firstLines.includes('<!DOCTYPE html>') || firstLines.includes('<html')) return 'html';
+  if (firstLines.includes('SELECT ') || firstLines.includes('CREATE TABLE')) return 'sql';
+
+  return 'javascript'; // Sensible default
+}
+
+/**
+ * Sanitizes and cleans code returned by AI.
+ * Strips markdown code fences, unescapes strings, and preserves indentation.
  */
 export function cleanAndFormatAiCode(rawContent: string, languageId: string): string {
   if (!rawContent) return '';
 
   let code = rawContent.trim();
 
-  // 1. Remove markdown code fences if present (e.g. ```typescript ... ```)
+  // 1. Remove markdown fences (```lang ... ``` or ``` ... ```)
   if (code.startsWith('```')) {
     const firstNewline = code.indexOf('\n');
     if (firstNewline !== -1) {
@@ -23,14 +249,18 @@ export function cleanAndFormatAiCode(rawContent: string, languageId: string): st
     code = code.substring(0, code.length - 3).trimEnd();
   }
 
-  // 2. Normalize unescaped newline literals (\\n -> \n) if AI sent a stringified literal
+  // 2. Normalize unescaped newline literals (\\n -> \n) if returned as stringified literal
   if (code.includes('\\n') && !code.includes('\n')) {
     code = code.replace(/\\n/g, '\n').replace(/\\t/g, '  ').replace(/\\"/g, '"');
   }
 
-  // 3. Fallback multi-line expansion if C/JS/Python-like code collapsed into 1 single line
+  // 3. Fallback expansion if C/JS/Python-like code collapsed into 1 single line
   const lines = code.split('\n');
-  if (lines.length <= 1 && code.length > 80 && ['javascript', 'typescript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'php'].includes(languageId)) {
+  if (
+    lines.length <= 1 &&
+    code.length > 80 &&
+    ['javascript', 'typescript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'php'].includes(languageId)
+  ) {
     code = code
       .replace(/;\s*/g, ';\n')
       .replace(/\{\s*/g, '{\n')
@@ -43,6 +273,7 @@ export function cleanAndFormatAiCode(rawContent: string, languageId: string): st
 
 /**
  * Fixes bugs, syntax errors, edge-cases, and formats code for the active selection or full file.
+ * Automatically understands the exact language and context.
  */
 export async function fixAndFormatActiveCode(authManager: AuthManager): Promise<void> {
   const editor = vscode.window.activeTextEditor;
@@ -55,12 +286,15 @@ export async function fixAndFormatActiveCode(authManager: AuthManager): Promise<
   const selection = editor.selection;
   const isSelection = !selection.isEmpty;
   const targetText = isSelection ? document.getText(selection) : document.getText();
-  const languageId = document.languageId || 'plaintext';
 
   if (!targetText.trim()) {
     vscode.window.showWarningMessage('No code found in the current selection or file.');
     return;
   }
+
+  // Accurately detect programming language
+  const languageId = detectAccurateLanguage(document, targetText);
+  const profile = LANGUAGE_COMMENT_PROFILES[languageId] || LANGUAGE_COMMENT_PROFILES['javascript'];
 
   const token = await authManager.getToken();
   const serverUrl = await authManager.getServerUrl();
@@ -68,21 +302,23 @@ export async function fixAndFormatActiveCode(authManager: AuthManager): Promise<
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Aethria: Fixing & Formatting ${languageId.toUpperCase()} code...`,
+      title: `Aethria: Fixing & Formatting ${profile.name} code...`,
       cancellable: false
     },
     async (progress) => {
       try {
-        progress.report({ message: 'Analyzing syntax, logic & formatting...' });
+        progress.report({ message: `Analyzing ${profile.name} syntax, logic & edge-cases...` });
 
         const prompt = `You are Aethria's Master Code Optimizer.
-Task:
-1. Fix all bugs, syntax errors, type errors, memory leaks, and logical flaws.
-2. Format the code cleanly with proper multi-line indentation according to standard ${languageId} conventions.
-3. Preserve all existing business logic while elevating code quality, security, and performance.
-4. CRITICAL: Output ONLY the raw corrected ${languageId} code. Do NOT wrap in markdown fences (\`\`\`). Do NOT include conversational explanations or introductory words.
+Target Language: ${profile.name} (${languageId})
 
-Original ${languageId} Code:
+Task:
+1. Fix all ${profile.name} syntax errors, type errors, memory leaks, undefined variables, and logical flaws.
+2. Format the code cleanly with proper indentation following standard ${profile.name} idiomatic style conventions.
+3. Preserve all existing business logic while elevating code safety, security, and runtime performance.
+4. CRITICAL: Output ONLY the raw corrected ${profile.name} code. Do NOT wrap in markdown code fences (\`\`\`). Do NOT include conversational explanations or introductory words.
+
+Original ${profile.name} Code:
 ${targetText}`;
 
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -127,7 +363,7 @@ ${targetText}`;
         } catch (e) {}
 
         vscode.window.showInformationMessage(
-          `✓ Aethria: ${isSelection ? 'Selection' : 'File'} fixed and formatted successfully!`
+          `✓ Aethria: ${isSelection ? 'Selection' : 'File'} fixed & formatted (${profile.name})!`
         );
       } catch (err: any) {
         console.error('Fix code error:', err);
@@ -140,7 +376,8 @@ ${targetText}`;
 }
 
 /**
- * Adds high-quality comments, architectural explanations, and clean space separators to code.
+ * Adds high-quality, language-specific comments, docstrings, and clean section dividers.
+ * Proportionally adjusts comments: minimal for small snippets, modular for full files.
  */
 export async function explainAndCommentActiveCode(authManager: AuthManager): Promise<void> {
   const editor = vscode.window.activeTextEditor;
@@ -153,12 +390,18 @@ export async function explainAndCommentActiveCode(authManager: AuthManager): Pro
   const selection = editor.selection;
   const isSelection = !selection.isEmpty;
   const targetText = isSelection ? document.getText(selection) : document.getText();
-  const languageId = document.languageId || 'plaintext';
+  const lineCount = targetText.trim().split('\n').length;
+  const isSmallSnippet = isSelection || lineCount <= 20;
 
   if (!targetText.trim()) {
     vscode.window.showWarningMessage('No code found in the current selection or file.');
     return;
   }
+
+  // Accurately detect programming language
+  const languageId = detectAccurateLanguage(document, targetText);
+  const profile = LANGUAGE_COMMENT_PROFILES[languageId] || LANGUAGE_COMMENT_PROFILES['javascript'];
+  const fileName = document.fileName ? path.basename(document.fileName) : 'Module';
 
   const token = await authManager.getToken();
   const serverUrl = await authManager.getServerUrl();
@@ -166,53 +409,46 @@ export async function explainAndCommentActiveCode(authManager: AuthManager): Pro
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Aethria: Adding structured comments & documentation (${languageId.toUpperCase()})...`,
+      title: `Aethria: Documenting ${profile.name} code (${isSmallSnippet ? 'Compact' : 'Full'})...`,
       cancellable: false
     },
     async (progress) => {
       try {
-        progress.report({ message: 'Generating clear inline explanations & section dividers...' });
+        progress.report({ message: `Generating language-native comments (${profile.name})...` });
+
+        let documentationInstruction = '';
+        if (isSmallSnippet) {
+          // Compact mode for small code selections (< 20 lines)
+          documentationInstruction = `CODE SCOPE: SHORT SNIPPET (${lineCount} lines).
+CRITICAL RULES FOR SHORT CODE:
+1. DO NOT WRITE HUGE BANNERS, MASSIVE HEADERS, OR ESSAYS.
+2. Add ONLY concise, proportional 1-line inline comments or a brief 1-2 line function docstring where helpful.
+3. Keep comments brief, clean, and directly relevant to the specific logic.
+4. Single-line comment prefix: "${profile.singleLine}". Do NOT use comment characters from other languages.`;
+        } else {
+          // Full file / module documentation
+          documentationInstruction = `CODE SCOPE: FULL MODULE (${lineCount} lines).
+DOCUMENTATION RULES:
+1. Brief top-level module header summarizing purpose and key components.
+2. Clean section dividers separating logical phases (e.g. Config, State, Handlers, Helpers).
+3. Standard ${profile.name} docstrings (${profile.docstringStyle}) for functions and classes.
+4. Single-line comment prefix: "${profile.singleLine}".
+5. Meaningful inline annotations on complex algorithms or conditionals.`;
+        }
 
         const prompt = `You are Aethria's Principal Software Architect & Code Craftsman.
+Target Language: ${profile.name} (${languageId})
 
-Your mission is to transform the provided ${languageId} code into an exquisitely documented, masterclass codebase with breathtaking clarity and structure.
+${documentationInstruction}
 
-DOCUMENTATION GUIDELINES:
-1. TOP-LEVEL ARCHITECTURAL BANNER:
-   - Begin with a clean, beautifully formatted module/file header explaining the purpose, architectural role, and key responsibilities.
-   Example:
-   /**
-    * ============================================================================
-    * MODULE: [Descriptive Module Name]
-    * PURPOSE: [High-level summary of responsibilities & system flow]
-    * ============================================================================
-    */
-
-2. ELEGANT SECTION DIVIDERS:
-   - Separate major logical phases (e.g. Configuration, State & Hooks, Event Handlers, Data Pipeline, Helper Utilities) using clean dividers:
-   // --------------------------------------------------------------------------
-   // SECTION: [Section Name]
-   // --------------------------------------------------------------------------
-
-3. PROFESSIONAL FUNCTION & METHOD DOCSTRINGS:
-   - Use standard ${languageId} docstring conventions (e.g. JSDoc/TSDoc with @param, @returns, or Python Google-style docstrings).
-   - Detail the purpose, parameters, return contracts, and edge cases.
-
-4. INSIGHTFUL INLINE ANNOTATIONS:
-   - Explain the "WHY" behind complex conditionals, regex patterns, mutations, and optimizations.
-   - Avoid stating the obvious; provide real architectural and logical value.
-
-5. CODE INTEGRITY:
-   - KEEP THE EXACT FUNCTIONALITY AND LOGIC 100% INTACT.
-   - Do NOT rename variables or remove existing working code.
-   - Ensure clean vertical spacing and indentation.
-
-CRITICAL FORMATTING INSTRUCTION:
-- Output ONLY the raw ${languageId} code with the newly added documentation.
+CRITICAL INTEGRITY & OUTPUT REQUIREMENTS:
+- KEEP THE EXACT FUNCTIONALITY AND LOGIC 100% INTACT.
+- Do NOT rename variables or remove working code.
+- Output ONLY the raw ${profile.name} code with the newly added comments.
 - Do NOT wrap in markdown code fences (\`\`\`).
-- Do NOT include conversational greetings or explanations outside the code.
+- Do NOT include conversational greetings, explanations, or notes outside the code.
 
-Source ${languageId} Code:
+Source ${profile.name} Code (${fileName}):
 ${targetText}`;
 
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -222,7 +458,7 @@ ${targetText}`;
           `${serverUrl}/api/chat`,
           {
             messages: [{ role: 'user', content: prompt }],
-            temperature: 0.2
+            temperature: 0.15
           },
           { headers, timeout: 45000 }
         );
@@ -257,7 +493,7 @@ ${targetText}`;
         } catch (e) {}
 
         vscode.window.showInformationMessage(
-          `✓ Aethria: Added structured comments & architectural dividers!`
+          `✓ Aethria: Documented ${profile.name} code cleanly (${isSmallSnippet ? 'proportional snippet' : 'modular file'})!`
         );
       } catch (err: any) {
         console.error('Explain code error:', err);
