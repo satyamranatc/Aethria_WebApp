@@ -10,6 +10,7 @@ import {
   Sparkles,
   ArrowRight,
   ChevronRight,
+  ChevronRight,
   Zap,
   Mic,
   Radio,
@@ -201,8 +202,7 @@ export default function LandingPage({
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/95 border border-black/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.04)] backdrop-blur-md mb-6 transition-transform hover:scale-[1.02] cursor-default">
               <Sparkles className="w-3.5 h-3.5 text-[#6366F1]" />
               <span className="text-[12.5px] font-semibold text-[#1D1D1F] tracking-tight">
-                The Intelligence Layer Around Your Codebase
-              </span>
+The more you learn, the more you realize how much you don't know.              </span>
             </div>
 
             {/* Large Bold Headline */}
