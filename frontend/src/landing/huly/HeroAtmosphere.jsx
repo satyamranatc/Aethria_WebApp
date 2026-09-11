@@ -16,6 +16,8 @@ uniform float uDrop;
 uniform vec2 uMouse;
 uniform vec3 uColor;
 uniform float uWide;
+uniform vec4 uBox;       // (left, top, right, bottom) in 0..1 coordinates
+uniform float uTargetX;  // exact horizontal contact coordinate on the box
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -37,9 +39,10 @@ float noise(vec2 p) {
 float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
+  mat2 rot = mat2(1.6, 1.2, -1.2, 1.6);
   for (int i = 0; i < 5; i++) {
     v += a * noise(p);
-    p = mat2(1.6, 1.2, -1.2, 1.6) * p + 17.0;
+    p = rot * p + vec2(17.0, 17.0);
     a *= 0.5;
   }
   return v;
@@ -48,64 +51,131 @@ float fbm(vec2 p) {
 void main() {
   vec2 uv = gl_FragCoord.xy / uRes;
   float aspect = uRes.x / max(uRes.y, 1.0);
-  float y = 1.0 - uv.y;
-  float beamX = mix(0.68, 0.62, uWide) + (uMouse.x - 0.5) * 0.025;
+  float y = 1.0 - uv.y; // 0 at top of hero, 1 at bottom
+
+  // Top rim of the product box
+  float boxTop = clamp(uBox.y, 0.35, 0.85);
+
+  // Dynamic beam contact X position (centered at the contact target)
+  float beamX = (uTargetX > 0.0 ? uTargetX : mix(0.580, 0.572, uWide)) + (uMouse.x - 0.5) * 0.010;
   float x = (uv.x - beamX) * aspect;
-  x += (0.52 - uv.y) * 0.008;
 
+  // Subtle organic curvature along the beam descent
+  x += sin(y * 3.14159) * 0.006;
+
+  // Drop entrance animation
   float reach = clamp(uDrop, 0.0, 1.2);
-  float along = 1.0 - smoothstep(reach - 0.05, reach + 0.18, y);
+  float along = 1.0 - smoothstep(reach - 0.04, reach + 0.16, y);
 
-  float basinY = mix(0.56, 0.60, uWide);
-  float t = clamp(y / max(basinY, 0.001), 0.0, 1.4);
-  float flare = pow(smoothstep(0.36, 1.02, t), 2.55);
+  // Distance relative to the contact rim:
+  // dy > 0: above the box (incoming beam)
+  // dy = 0: at the contact rim
+  // dy < 0: below the contact rim (underglow / backlight behind the box)
+  float dy = boxTop - y;
 
-  float shaftW = mix(0.002, 0.012, smoothstep(0.0, 0.92, t));
-  float volumeW = mix(0.014, 0.62, flare);
-  float cloudW = mix(0.09, 1.05, pow(flare, 0.72));
+  // ------------------------------------------------------------------------
+  // 1. MAJESTIC VOLUMETRIC BEAM COLUMN (Descending from cosmos to workspace)
+  // ------------------------------------------------------------------------
+  float flareHeight = 0.34;
+  float flareProg = clamp(1.0 - max(0.0, dy) / flareHeight, 0.0, 1.0);
+  float flareCurve = pow(flareProg, 2.2);
 
-  float needle = exp(-pow(x / 0.0021, 2.0));
-  float halo = exp(-pow(x / 0.012, 2.0));
-  float shaft = exp(-pow(x / shaftW, 2.0));
-  float volume = exp(-pow(abs(x) / max(volumeW, 0.001), 1.28));
-  float side = exp(-pow(abs(x) / max(cloudW, 0.001), 1.08));
+  // Symmetrical beam width profiles: column above, flaring out towards contact
+  float coreWidth  = mix(0.012, 0.044, flareCurve);
+  float spineWidth = mix(0.035, 0.115, flareCurve);
+  float haloWidth  = mix(0.075, 0.220, flareCurve);
+  float auraWidth  = mix(0.160, 0.400, flareCurve);
 
-  float flow = fbm(vec2(x * 14.0, y * 5.4 - uTime * 0.48));
-  float smoke = fbm(vec2(uv.x * 1.9 - uTime * 0.03, uv.y * 1.35 + uTime * 0.018));
-  float wisps = fbm(vec2(x * 5.5 + 4.0, y * 2.6 - uTime * 0.18));
+  // Continuous radial intensity profiles (symmetrical, seamless, beautifully balanced)
+  float core       = exp(-pow(x / coreWidth, 2.0));
+  float cyanSpine  = exp(-pow(x / spineWidth, 2.0));
+  float halo       = exp(-pow(abs(x) / haloWidth, 1.8));
+  float aura       = exp(-pow(abs(x) / auraWidth, 1.8));
 
-  float rightBias = smoothstep(-0.12, 0.28, x);
-  float clouds = pow(smoke, 1.35) * side * (0.4 + 0.9 * rightBias);
-  clouds *= smoothstep(0.04, 0.38, y) * (1.0 - smoothstep(0.78, 1.08, y));
-  clouds *= 0.5 + 0.5 * wisps;
+  // ------------------------------------------------------------------------
+  // 2. ORGANIC DOWNWARD PLASMA STREAM & LIVING SILK FILAMENTS
+  // ------------------------------------------------------------------------
+  float flowSpeed = uTime * 1.3;
+  float stream = fbm(vec2(x * 16.0, y * 4.2 - flowSpeed));
+  float plasma = mix(0.82, 1.28, stream);
 
-  float godray = volume * (0.4 + 0.6 * flow);
-  godray *= 0.22 + 0.95 * flare;
+  // Symmetric, flowing silk light ribbons hugging both flanks of the beam
+  float wave1 = sin(abs(x) * 32.0 - y * 12.0 + uTime * 2.2);
+  float wave2 = cos(abs(x) * 48.0 - y * 18.0 + uTime * 3.0);
+  float silk = exp(-pow(abs(x) / (haloWidth * 1.15), 2.0)) * (0.65 + 0.25 * wave1 + 0.10 * wave2) * flareCurve;
 
-  vec2 bloomP = vec2(x / mix(0.28, 0.52, uWide), (y - basinY) / 0.16);
+  // ------------------------------------------------------------------------
+  // 3. PHOTONIC CONTACT CREST & ILLUMINATED RIM (At boxTop)
+  // ------------------------------------------------------------------------
+  float distToRim = abs(dy);
+  float rimSpan = exp(-pow(x / 0.20, 2.0));
+
+  // Incandescent contact focal point
+  float contactHot = exp(-pow(distToRim / 0.008, 2.0)) * rimSpan;
+
+  // Warm amber / copper contact seam
+  float amberSeam = exp(-pow(distToRim / 0.003, 2.0)) * rimSpan * 0.90;
+
+  // Soft atmospheric contact bloom
+  vec2 bloomP = vec2(x / 0.32, dy / 0.13);
   float bloom = exp(-dot(bloomP, bloomP));
-  bloom *= smoothstep(0.3, 0.82, reach);
-  float spill = exp(-pow(abs(x) / 0.34, 1.45)) * exp(-pow((y - basinY) * 4.4, 2.0));
-  spill *= smoothstep(0.35, 0.88, reach);
 
-  float wrap = exp(-pow((x - mix(0.16, 0.22, uWide)) / 0.05, 2.0));
-  wrap *= smoothstep(basinY - 0.04, basinY + 0.02, y) * (1.0 - smoothstep(basinY + 0.38, basinY + 0.55, y));
-  wrap *= smoothstep(0.4, 0.9, reach);
+  // ------------------------------------------------------------------------
+  // 4. SEAMLESS VERTICAL CONTINUITY (NO RAZOR-SHARP CUTOFF!)
+  // ------------------------------------------------------------------------
+  // Below the rim, the light softly wraps behind the card with a smooth
+  // exponential decay — completely eliminating any hard horizontal knife edge!
+  float depthBelow = max(0.0, -dy);
+  float underglow = exp(-pow(depthBelow / 0.15, 2.0));
+  float verticalEnvelope = (y <= boxTop) ? 1.0 : underglow;
 
-  float core = (needle * 1.85 + halo * 0.55 + shaft * 0.9) * (1.0 + flare * 1.15);
+  // ------------------------------------------------------------------------
+  // 5. SHIMMERING COSMIC PARTICLES (Matrix field within the light stream)
+  // ------------------------------------------------------------------------
+  vec2 gridCoord = gl_FragCoord.xy / 8.5;
+  vec2 gridF = fract(gridCoord) - 0.5;
+  float dotDist = length(gridF);
+  float starMask = 1.0 - smoothstep(0.08, 0.26, dotDist);
+  float starField = exp(-pow(x / 0.28, 2.0)) * smoothstep(0.04, 0.35, y);
+  float twinkle = 0.5 + 0.5 * sin(dot(floor(gridCoord), vec2(12.9898, 78.233)) + uTime * 3.2);
+  float particles = starMask * starField * twinkle * 0.38;
 
-  vec3 indigo = uColor;
-  vec3 sky = vec3(0.38, 0.52, 1.0);
-  vec3 white = vec3(1.0);
+  // ------------------------------------------------------------------------
+  // 6. HIGH-CONTRAST PHOTONIC PALETTE (Award-winning aura on white)
+  // ------------------------------------------------------------------------
+  vec3 colIndigo = vec3(0.20, 0.24, 0.88);  // Deep celestial indigo
+  vec3 colCyan   = vec3(0.10, 0.74, 1.00);  // Electric neon cyan
+  vec3 colViolet = vec3(0.58, 0.32, 0.96);  // Radiant silk violet
+  vec3 colWhite  = vec3(1.00, 1.00, 1.00);  // Pure incandescent white
+  vec3 colAmber  = vec3(1.00, 0.64, 0.22);  // Warm copper/amber contact seam
 
-  float body = (godray * 1.35 + clouds * 1.15) * along;
-  float hot = (core * 1.35 + bloom * 1.7 + spill * 1.05 + wrap * 0.85) * along;
+  vec3 colorOut = vec3(0.0);
+  // Atmospheric aura & silk
+  colorOut += colIndigo * (aura * 0.40 * plasma);
+  colorOut += colViolet * (halo * 0.60 * plasma + silk * 0.75);
+  // Electric core spine & sparkles
+  colorOut += colCyan   * (cyanSpine * 0.90 * plasma + particles * 0.70);
+  // Incandescent core & contact crest
+  colorOut += colWhite  * (core * 1.60 * plasma + contactHot * 1.50 + bloom * 0.60);
+  // Warm contact highlight seam
+  colorOut += colAmber  * (amberSeam * 0.85);
 
-  vec3 col = indigo * (body * 0.85) + sky * (body * 0.7 + spill * 0.45 * along) + white * hot;
-  float alpha = body * 0.88 + hot * 0.98 + clouds * 0.55 * along;
-  alpha = clamp(alpha, 0.0, 1.0);
-  col = clamp(col, 0.0, 1.0);
-  gl_FragColor = vec4(col * alpha, alpha);
+  // Alpha composition
+  float alpha = core * 1.00
+              + cyanSpine * 0.85
+              + halo * 0.55
+              + aura * 0.35
+              + silk * 0.60
+              + contactHot * 0.95
+              + amberSeam * 0.70
+              + bloom * 0.50
+              + particles * 0.35;
+
+  alpha = clamp(alpha * along * verticalEnvelope, 0.0, 1.0);
+  colorOut = clamp(colorOut, 0.0, 1.0);
+
+  // Premultiplied alpha output for WebGL
+  gl_FragColor = vec4(colorOut * alpha, alpha);
 }
 `;
 
@@ -130,7 +200,7 @@ export default function HeroAtmosphere() {
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return undefined;
 
-    const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: true });
+    const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: true });
     if (!gl) return undefined;
 
     const program = gl.createProgram();
@@ -155,10 +225,49 @@ export default function HeroAtmosphere() {
     const uMouse = gl.getUniformLocation(program, 'uMouse');
     const uColor = gl.getUniformLocation(program, 'uColor');
     const uWide = gl.getUniformLocation(program, 'uWide');
+    const uBox = gl.getUniformLocation(program, 'uBox');
+    const uTargetX = gl.getUniformLocation(program, 'uTargetX');
+
     gl.uniform3f(uColor, 79 / 255, 90 / 255, 245 / 255);
 
     const state = { drop: 0, mx: 0.64, my: 0.2 };
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const updateBoxAndTarget = () => {
+      const host = wrap.parentElement || wrap;
+      const frame = host.querySelector('.product-window') || host.querySelector('.product-frame');
+      const inbox = host.querySelector('.product-inbox');
+      const wrapRect = wrap.getBoundingClientRect();
+
+      if (frame && wrapRect.width > 0 && wrapRect.height > 0) {
+        const boxRect = frame.getBoundingClientRect();
+        const bLeft = (boxRect.left - wrapRect.left) / wrapRect.width;
+        const bTop = (boxRect.top - wrapRect.top) / wrapRect.height;
+        const bRight = (boxRect.right - wrapRect.left) / wrapRect.width;
+        const bBottom = (boxRect.bottom - wrapRect.top) / wrapRect.height;
+
+        let targetX = bLeft + (bRight - bLeft) * 0.62;
+        if (inbox && inbox.offsetParent !== null) {
+          const inboxRect = inbox.getBoundingClientRect();
+          if (inboxRect.width > 0) {
+            targetX = (inboxRect.left - wrapRect.left) / wrapRect.width;
+          }
+        } else if (bRight > bLeft) {
+          targetX = (bLeft + bRight) * 0.5;
+        }
+
+        // Keep target comfortably centered within frame boundaries
+        if (bRight > bLeft) {
+          targetX = Math.max(bLeft + (bRight - bLeft) * 0.30, Math.min(bRight - (bRight - bLeft) * 0.20, targetX));
+        }
+
+        gl.uniform4f(uBox, bLeft, bTop, bRight, bBottom);
+        gl.uniform1f(uTargetX, targetX);
+      } else {
+        gl.uniform4f(uBox, 0.12, 0.58, 0.88, 0.95);
+        gl.uniform1f(uTargetX, 0.64);
+      }
+    };
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -170,6 +279,7 @@ export default function HeroAtmosphere() {
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(uRes, canvas.width, canvas.height);
       gl.uniform1f(uWide, width >= 900 ? 1.0 : 0.0);
+      updateBoxAndTarget();
     };
 
     resize();
@@ -196,6 +306,7 @@ export default function HeroAtmosphere() {
     const draw = () => {
       const t = dropMs === 0 ? 1 : Math.min(1, (performance.now() - startedAt) / dropMs);
       state.drop = easeDrop(t);
+      updateBoxAndTarget();
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform1f(uTime, performance.now() * 0.001);
       gl.uniform1f(uDrop, state.drop);
@@ -218,3 +329,4 @@ export default function HeroAtmosphere() {
     </div>
   );
 }
+

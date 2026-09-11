@@ -4,7 +4,6 @@ import SEOHead from '../components/common/SEOHead';
 import Footer from '../components/layout/Footer';
 import LandingNav from '../landing/ui/LandingNav';
 import HeroStage from '../landing/huly/HeroStage';
-import CapabilityRail from '../landing/huly/CapabilityRail';
 import ProductivityBento from '../landing/huly/ProductivityBento';
 import SyncGrid from '../landing/huly/SyncGrid';
 import KnowledgeSection from '../landing/huly/KnowledgeSection';
@@ -51,7 +50,6 @@ export default function LandingPage({
       />
       <main>
         <HeroStage onConnect={handleConnect} />
-        <CapabilityRail />
         <ProductivityBento />
         <SyncGrid />
         <KnowledgeSection />

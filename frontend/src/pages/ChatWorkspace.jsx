@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ChevronDown,
   Code,
+  FolderCode,
   BookOpen,
   Compass,
   Cpu,
@@ -250,31 +251,46 @@ export default function ChatWorkspace({
   const currentQuote = useMemo(() => getRandomInspiringQuote(), []);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#F0F2F5] text-[#0F172A] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'Plus_Jakarta_Sans','SF_Pro_Display','Inter',sans-serif] p-0 selection:bg-[#6366F1]/20">
+    <div className="flex flex-col h-screen w-screen bg-[#F4F5F7] text-[#1D1D1F] overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Inter',sans-serif] p-0 selection:bg-[#4F46E5]/15 selection:text-[#4F46E5]">
       <SEOHead
-        title="Aethria AI Workspace — Aethria Intelligence"
+        title="Aethria AI Workspace — The Intelligence Layer Around Your Codebase"
         description="Instant multimodal code reasoning, full-duplex neural voice synthesis, and multi-file project analysis powered by Groq LPUs."
         canonicalUrl="https://www.aethria.in/chat"
       />
       <AmbientBackground />
 
       {/* Outer App Frame (Full Screen) */}
-      <div className="relative z-10 flex flex-col flex-1 h-full w-full bg-white/90 backdrop-blur-3xl rounded-none border-0 shadow-none overflow-hidden">
+      <div className="relative z-10 flex flex-col flex-1 h-full w-full bg-white/70 backdrop-blur-3xl rounded-none border-0 shadow-none overflow-hidden">
         
-        {/* Top Desktop Tabs Navigation Bar */}
-        <div className="h-11 px-3 sm:px-4 bg-[#F8FAFC]/80 border-b border-black/[0.04] flex items-center justify-between select-none">
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+        {/* Top Desktop Tabs Navigation Bar — Landing Style */}
+        <div className="h-13 px-4 sm:px-6 bg-[#F4F5F7]/80 backdrop-blur-xl border-b border-black/[0.06] flex items-center justify-between select-none">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {/* Brand Logo & Back to Landing */}
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-2.5 py-1 rounded-full hover:bg-black/[0.04] transition-all cursor-pointer mr-2 group"
+              title="Return to Landing Page"
+            >
+              <img src="/Logo.png" alt="Aethria" className="w-5 h-5 object-contain rounded-md" />
+              <span className="font-bold text-xs tracking-tight text-[#1D1D1F] group-hover:text-[#4F46E5] transition-colors">
+                Aethria
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[#86868B] bg-white border border-black/[0.06] px-1.5 py-0.5 rounded-full">
+                3.0
+              </span>
+            </button>
+
+            <div className="h-4 w-px bg-black/[0.08] mr-1 hidden sm:block" />
+
             {/* Tab 1 - Projects */}
             <button
               onClick={() => {
                 if (onOpenProjects) onOpenProjects();
                 else navigate('/projects');
               }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] hover:text-[#0F172A] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-transparent hover:bg-white/80 text-[#6E6E73] hover:text-[#1D1D1F] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
             >
-              <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 flex items-center justify-center text-[9px] text-white font-bold">
-                P
-              </span>
+              <FolderCode className="w-3.5 h-3.5 text-[#6E6E73]" />
               <span className="truncate max-w-[140px]">Projects (VS Code)</span>
             </button>
 
@@ -284,91 +300,109 @@ export default function ChatWorkspace({
                 if (onOpenCanvas) onOpenCanvas();
                 else navigate('/canvas');
               }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent hover:bg-black/[0.03] text-[#64748B] hover:text-[#0F172A] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-transparent hover:bg-white/80 text-[#6E6E73] hover:text-[#1D1D1F] text-xs font-medium transition-all cursor-pointer flex-shrink-0"
             >
-              <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-[9px] text-white font-bold">
-                C
-              </span>
-              <span className="truncate max-w-[140px]">Canvas Studio</span>
+              <BookOpen className="w-3.5 h-3.5 text-[#6E6E73]" />
+              <span className="truncate max-w-[140px]">Architecture Canvas</span>
             </button>
 
-            {/* Active Tab - AI Chat (Clean tab without cross icon) */}
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-[#1D1D1F] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-black/[0.06] flex-shrink-0">
-              <div className="w-4 h-4 rounded-md bg-gradient-to-tr from-[#6366F1] to-[#8B5CF6] flex items-center justify-center text-white">
-                <Sparkles className="w-2.5 h-2.5" />
-              </div>
+            {/* Active Tab - AI Chat */}
+            <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-[#1D1D1F] text-xs font-semibold shadow-[0_2px_10px_rgba(79,70,229,0.06)] border border-black/[0.08] flex-shrink-0">
+              <Sparkles className="w-3 h-3 text-[#4F46E5]" />
               <span>AI Chat</span>
             </div>
           </div>
 
-
-          {/* Right Header Navigation */}
+          {/* Right Action Tools in Top Nav */}
           <div className="flex items-center gap-2">
-            {/* Header spacer */}
+            <button
+              onClick={() => navigate('/')}
+              className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-[#86868B] hover:text-[#1D1D1F] px-2.5 py-1 rounded-full border border-black/[0.06] bg-white/70 hover:bg-white transition-all cursor-pointer"
+            >
+              <span>Landing Page</span>
+              <span>&rarr;</span>
+            </button>
           </div>
         </div>
 
-
         {/* Main Workspace Body: Sidebar + Chat Canvas */}
-        <div className="flex flex-1 h-[calc(100%-44px)] overflow-hidden relative">
+        <div className="flex flex-1 h-[calc(100%-52px)] overflow-hidden relative">
           
           {/* Mobile Backdrop Scrim */}
           {isSidebarOpen && (
             <div
               onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden fixed inset-0 z-20 bg-slate-900/20 backdrop-blur-xs transition-opacity"
+              className="md:hidden fixed inset-0 z-20 bg-black/20 backdrop-blur-xs transition-opacity"
               aria-hidden="true"
             />
           )}
 
-          {/* Left Sidebar Navigation */}
+          {/* Left Sidebar Navigation — Styled like ProductFrame Explorer */}
           <aside
-            className={`fixed md:static inset-y-0 left-0 z-30 flex flex-col border-r border-black/[0.05] bg-[#FFFFFF]/90 backdrop-blur-xl transition-all duration-300 ease-in-out shadow-2xl md:shadow-none ${
-              isSidebarOpen ? 'w-64 sm:w-68 translate-x-0' : 'w-0 -translate-x-full overflow-hidden'
+            className={`fixed md:static inset-y-0 left-0 z-30 flex flex-col border-r border-black/[0.06] bg-[#FFFFFF]/95 backdrop-blur-xl transition-all duration-300 ease-in-out shadow-2xl md:shadow-none ${
+              isSidebarOpen ? 'w-64 sm:w-70 translate-x-0' : 'w-0 -translate-x-full overflow-hidden'
             }`}
           >
-            {/* Brand Header */}
-            <div className="p-4 flex items-center justify-between">
-              <div
-                onClick={() => navigate('/')}
-                className="flex items-center gap-2.5 cursor-pointer"
-              >
-                <img src="/Logo.png" alt="Aethria" className="w-7 h-7 object-contain rounded-lg shadow-sm" />
-                <div>
-                  <span className="font-extrabold text-base tracking-tight text-[#0F172A]">
-                    Aethria
-                  </span>
-                </div>
+            {/* Sidebar Header & Action */}
+            <div className="p-4 pb-2 flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-[#86868B]">
+                  Workspace Explorer
+                </span>
+                <span className="text-xs font-bold text-[#1D1D1F]">
+                  Intelligence Sessions
+                </span>
               </div>
 
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleNewSessionAndNavigate}
+                  aria-label="New session"
+                  className="p-1.5 rounded-full text-[#4F46E5] hover:bg-[#4F46E5]/10 transition-all cursor-pointer"
+                  title="Create New Session"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  aria-label="Collapse sidebar"
+                  className="md:hidden p-1.5 rounded-full text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] transition-all cursor-pointer"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* New Session Button */}
+            <div className="px-3.5 py-1.5">
               <button
-                onClick={() => setIsSidebarOpen(false)}
-                aria-label="Collapse sidebar"
-                className="md:hidden p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] transition-all cursor-pointer"
+                onClick={handleNewSessionAndNavigate}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-full bg-white border border-black/[0.08] text-xs font-semibold text-[#1D1D1F] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-[#4F46E5]/40 hover:shadow-[0_6px_20px_rgba(79,70,229,0.08)] transition-all cursor-pointer"
               >
-                <PanelLeftClose className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5 text-[#4F46E5]" />
+                <span>New Session</span>
               </button>
             </div>
 
             {/* Search Input with ⌘ Shortcut Pill */}
-            <div className="px-3.5 pb-2">
+            <div className="px-3.5 py-1.5">
               <div className="relative flex items-center">
-                <Search className="absolute left-3 w-3.5 h-3.5 text-[#94A3B8]" />
+                <Search className="absolute left-3 w-3.5 h-3.5 text-[#86868B]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search conversations..."
-                  className="w-full pl-8 pr-8 py-2 bg-[#F4F5F8] border border-black/[0.03] rounded-xl text-xs text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:bg-white focus:border-[#6366F1]/40 focus:ring-2 focus:ring-[#6366F1]/10 transition-all font-normal"
+                  placeholder="Search repository history..."
+                  className="w-full pl-8 pr-8 py-2 bg-[#F4F5F7] border border-black/[0.04] rounded-full text-xs text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:bg-white focus:border-[#4F46E5]/40 focus:ring-2 focus:ring-[#4F46E5]/10 transition-all font-normal"
                 />
-                <span className="absolute right-2.5 text-[10px] text-[#94A3B8] font-mono px-1 py-0.5 rounded bg-white border border-black/[0.05] shadow-2xs">
-                  ⌘
+                <span className="absolute right-2.5 text-[10px] text-[#86868B] font-mono px-1.5 py-0.5 rounded-full bg-white border border-black/[0.06] shadow-2xs">
+                  ⌘K
                 </span>
               </div>
             </div>
 
             {/* Core Primary Navigation Menu */}
-            <div className="px-3 py-1 space-y-0.5 text-xs font-medium text-[#64748B]">
+            <div className="px-3 py-1 space-y-0.5 text-xs font-medium text-[#6E6E73]">
               <button
                 onClick={() => {
                   setActiveNavTab('home');
@@ -376,11 +410,11 @@ export default function ChatWorkspace({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
                   activeNavTab === 'home'
-                    ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
-                    : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                    ? 'bg-[#F4F5F7] text-[#1D1D1F] font-semibold'
+                    : 'hover:bg-[#F8FAFC] hover:text-[#1D1D1F]'
                 }`}
               >
-                <Home className="w-4 h-4 text-[#6366F1]" />
+                <Home className="w-4 h-4 text-[#4F46E5]" />
                 <span>Home</span>
               </button>
 
@@ -391,11 +425,11 @@ export default function ChatWorkspace({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
                   activeNavTab === 'chat'
-                    ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
-                    : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                    ? 'bg-[#4F46E5]/10 text-[#4F46E5] font-semibold'
+                    : 'hover:bg-[#F8FAFC] hover:text-[#1D1D1F]'
                 }`}
               >
-                <Sparkles className="w-4 h-4 text-[#6366F1]" />
+                <Sparkles className="w-4 h-4 text-[#4F46E5]" />
                 <span>AI Chat</span>
               </button>
 
@@ -407,11 +441,11 @@ export default function ChatWorkspace({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
                   activeNavTab === 'canvas'
-                    ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
-                    : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                    ? 'bg-[#F4F5F7] text-[#1D1D1F] font-semibold'
+                    : 'hover:bg-[#F8FAFC] hover:text-[#1D1D1F]'
                 }`}
               >
-                <BookOpen className="w-4 h-4 text-[#6366F1]" />
+                <BookOpen className="w-4 h-4 text-[#4F46E5]" />
                 <span>Architecture Canvas</span>
               </button>
 
@@ -423,11 +457,11 @@ export default function ChatWorkspace({
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all cursor-pointer text-left ${
                   activeNavTab === 'projects'
-                    ? 'bg-[#F4F5F8] text-[#0F172A] font-semibold'
-                    : 'hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                    ? 'bg-[#F4F5F7] text-[#1D1D1F] font-semibold'
+                    : 'hover:bg-[#F8FAFC] hover:text-[#1D1D1F]'
                 }`}
               >
-                <Clock className="w-4 h-4 text-[#6366F1]" />
+                <Clock className="w-4 h-4 text-[#4F46E5]" />
                 <span>VS Code Projects</span>
               </button>
             </div>
@@ -437,7 +471,7 @@ export default function ChatWorkspace({
               
               {/* Today Section */}
               <div>
-                <div className="px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[#94A3B8]">
+                <div className="px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] font-semibold text-[#86868B]">
                   Today
                 </div>
                 <div className="space-y-0.5 mt-1">
@@ -448,8 +482,8 @@ export default function ChatWorkspace({
                         onClick={() => handleSelectSessionMobile(sess.id)}
                         className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
                           activeSessionId === sess.id
-                            ? 'bg-[#EEF2FF] text-[#4F46E5] font-semibold'
-                            : 'text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A]'
+                            ? 'bg-[#4F46E5]/10 text-[#4F46E5] font-semibold border border-[#4F46E5]/15'
+                            : 'text-[#6E6E73] hover:bg-[#F4F5F7] hover:text-[#1D1D1F]'
                         }`}
                       >
                         <span className="truncate flex-1 mr-1.5">{sess.title || "New Conversation"}</span>
@@ -461,7 +495,7 @@ export default function ChatWorkspace({
                               e.stopPropagation();
                               setSessionToDelete(sess.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 text-[#94A3B8] hover:text-[#FF3B30] rounded transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-[#86868B] hover:text-[#FF3B30] rounded transition-all"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -469,14 +503,14 @@ export default function ChatWorkspace({
                       </div>
                     ))
                   ) : (
-                    <div className="px-2.5 py-1 text-[11px] text-[#94A3B8] italic">No chats today</div>
+                    <div className="px-2.5 py-1 text-[11px] text-[#86868B] italic">No chats today</div>
                   )}
                 </div>
               </div>
 
               {/* Previous 7 Days Section */}
               <div>
-                <div className="px-2.5 py-1 text-[11px] font-semibold tracking-normal text-[#94A3B8]">
+                <div className="px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] font-semibold text-[#86868B]">
                   Previous 7 Days
                 </div>
                 <div className="space-y-0.5 mt-1">
@@ -487,8 +521,8 @@ export default function ChatWorkspace({
                         onClick={() => handleSelectSessionMobile(sess.id)}
                         className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
                           activeSessionId === sess.id
-                            ? 'bg-[#EEF2FF] text-[#4F46E5] font-semibold'
-                            : 'text-[#64748B] hover:bg-[#F4F5F8] hover:text-[#0F172A]'
+                            ? 'bg-[#4F46E5]/10 text-[#4F46E5] font-semibold border border-[#4F46E5]/15'
+                            : 'text-[#6E6E73] hover:bg-[#F4F5F7] hover:text-[#1D1D1F]'
                         }`}
                       >
                         <span className="truncate flex-1 mr-1.5">{sess.title || 'Previous Session'}</span>
@@ -500,7 +534,7 @@ export default function ChatWorkspace({
                               e.stopPropagation();
                               setSessionToDelete(sess.id);
                             }}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 text-[#94A3B8] hover:text-[#FF3B30] rounded transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-[#86868B] hover:text-[#FF3B30] rounded transition-all"
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -508,23 +542,22 @@ export default function ChatWorkspace({
                       </div>
                     ))
                   ) : (
-                    <div className="px-2.5 py-1 text-[11px] text-[#94A3B8] italic">No previous chats</div>
+                    <div className="px-2.5 py-1 text-[11px] text-[#86868B] italic">No previous chats</div>
                   )}
                 </div>
               </div>
 
             </div>
 
-
             {/* User Account / Profile Status */}
-            <div className="p-3 border-t border-black/[0.04] bg-[#F8FAFC]/50">
+            <div className="p-3 border-t border-black/[0.04] bg-[#F4F5F7]/50">
               {isAuthenticated && user ? (
                 <div
                   onClick={() => {
                     if (onOpenProfile) onOpenProfile();
                     else navigate('/profile');
                   }}
-                  className="flex items-center justify-between p-2 rounded-xl bg-white hover:bg-[#EEF2FF]/60 border border-black/[0.04] hover:border-[#6366F1]/30 transition-all cursor-pointer group shadow-2xs"
+                  className="flex items-center justify-between p-2 rounded-xl bg-white hover:bg-[#EEF2FF]/60 border border-black/[0.04] hover:border-[#4F46E5]/30 transition-all cursor-pointer group shadow-2xs"
                   title="View Profile"
                 >
                   <div className="flex items-center gap-2.5 overflow-hidden">
@@ -535,13 +568,13 @@ export default function ChatWorkspace({
                         className="w-7 h-7 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#6366F1] to-[#EC4899] text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-xs">
+                      <div className="w-7 h-7 rounded-full bg-[#4F46E5] text-white flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-xs">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="overflow-hidden text-left">
-                      <p className="text-xs font-semibold text-[#0F172A] group-hover:text-[#4F46E5] transition-colors truncate">{user.name}</p>
-                      <p className="text-[10px] text-[#94A3B8] truncate">{user.email}</p>
+                      <p className="text-xs font-semibold text-[#1D1D1F] group-hover:text-[#4F46E5] transition-colors truncate">{user.name}</p>
+                      <p className="text-[10px] text-[#86868B] truncate">{user.email}</p>
                     </div>
                   </div>
                   <button
@@ -552,7 +585,7 @@ export default function ChatWorkspace({
                       navigate('/');
                     }}
                     aria-label="Sign out"
-                    className="p-1.5 text-[#94A3B8] hover:text-[#FF3B30] hover:bg-black/[0.04] rounded-lg transition-all cursor-pointer"
+                    className="p-1.5 text-[#86868B] hover:text-[#FF3B30] hover:bg-black/[0.04] rounded-lg transition-all cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
@@ -561,9 +594,9 @@ export default function ChatWorkspace({
                 <button
                   type="button"
                   onClick={onOpenAuth}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white border border-black/[0.08] text-xs font-medium text-[#0F172A] hover:bg-[#F8FAFC] shadow-2xs transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-full bg-white border border-black/[0.08] text-xs font-medium text-[#1D1D1F] hover:bg-[#F8FAFC] shadow-2xs transition-all cursor-pointer"
                 >
-                  <LogIn className="w-3.5 h-3.5 text-[#6366F1]" />
+                  <LogIn className="w-3.5 h-3.5 text-[#4F46E5]" />
                   <span>Sign In</span>
                 </button>
               )}
@@ -571,16 +604,16 @@ export default function ChatWorkspace({
           </aside>
 
           {/* Main Workspace Canvas Area */}
-          <main className="relative z-10 flex-1 flex flex-col h-full overflow-hidden bg-gradient-to-b from-white/95 to-[#FAFBFF]/90">
+          <main className="relative z-10 flex-1 flex flex-col h-full overflow-hidden bg-[#F4F5F7]">
             
             {/* Workspace Canvas Top Subheader */}
-            <header className="h-14 px-4 sm:px-6 flex items-center justify-between border-b border-black/[0.03] select-none">
+            <header className="h-14 px-4 sm:px-6 flex items-center justify-between border-b border-black/[0.04] bg-white/70 backdrop-blur-xl select-none">
               <div className="flex items-center gap-3">
                 {!isSidebarOpen && (
                   <button
                     onClick={() => setIsSidebarOpen(true)}
                     aria-label="Open sidebar"
-                    className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] transition-all cursor-pointer animate-fadeIn"
+                    className="p-1.5 rounded-full text-[#86868B] hover:text-[#1D1D1F] hover:bg-black/[0.04] transition-all cursor-pointer animate-fadeIn"
                   >
                     <PanelLeftOpen className="w-4 h-4" />
                   </button>
@@ -591,13 +624,13 @@ export default function ChatWorkspace({
                   <button
                     type="button"
                     onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-black/[0.06] shadow-[0_2px_8px_rgba(0,0,0,0.03)] text-xs font-semibold text-[#0F172A] hover:border-[#6366F1]/40 transition-all cursor-pointer group"
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-black/[0.08] shadow-[0_2px_8px_rgba(0,0,0,0.03)] text-xs font-semibold text-[#1D1D1F] hover:border-[#4F46E5]/40 transition-all cursor-pointer group"
                   >
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#6366F1] to-[#8B5CF6] flex items-center justify-center text-white text-[9px] shadow-2xs">
+                    <div className="w-4 h-4 rounded-full bg-[#4F46E5] flex items-center justify-center text-white text-[9px] shadow-2xs">
                       <Sparkles className="w-2.5 h-2.5" />
                     </div>
                     <span>{selectedModel.name}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#94A3B8] group-hover:text-[#0F172A] transition-transform" />
+                    <ChevronDown className="w-3.5 h-3.5 text-[#86868B] group-hover:text-[#1D1D1F] transition-transform" />
                   </button>
 
                   {/* Dropdown Menu */}
@@ -608,9 +641,9 @@ export default function ChatWorkspace({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -6, scale: 0.97 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="absolute top-full left-0 mt-2 w-72 bg-white/95 backdrop-blur-2xl rounded-2xl border border-black/[0.08] shadow-[0_12px_36px_rgba(0,0,0,0.1)] p-2 z-50"
+                        className="absolute top-full left-0 mt-2 w-72 bg-white/95 backdrop-blur-2xl rounded-2xl border border-black/[0.08] shadow-[0_16px_40px_rgba(0,0,0,0.12)] p-2 z-50"
                       >
-                        <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                        <div className="px-2.5 py-1.5 text-[10px] font-bold text-[#86868B] uppercase tracking-[0.14em]">
                           Select Intelligence Engine
                         </div>
                         <div className="space-y-1 mt-1">
@@ -624,18 +657,18 @@ export default function ChatWorkspace({
                               }}
                               className={`w-full text-left p-2.5 rounded-xl transition-all flex items-start justify-between cursor-pointer ${
                                 selectedModel.id === model.id
-                                  ? 'bg-[#EEF2FF] text-[#4F46E5]'
-                                  : 'hover:bg-[#F8FAFC] text-[#0F172A]'
+                                  ? 'bg-[#4F46E5]/10 text-[#4F46E5]'
+                                  : 'hover:bg-[#F4F5F7] text-[#1D1D1F]'
                               }`}
                             >
                               <div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-xs font-bold">{model.name}</span>
-                                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-semibold bg-black/[0.04] text-[#64748B]">
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-black/[0.04] text-[#6E6E73]">
                                     {model.badge}
                                   </span>
                                 </div>
-                                <p className="text-[11px] text-[#64748B] mt-0.5 leading-snug">{model.desc}</p>
+                                <p className="text-[11px] text-[#6E6E73] mt-0.5 leading-snug">{model.desc}</p>
                               </div>
                               {selectedModel.id === model.id && (
                                 <Check className="w-4 h-4 text-[#4F46E5] flex-shrink-0 mt-0.5" />
@@ -655,22 +688,22 @@ export default function ChatWorkspace({
                   <button
                     type="button"
                     onClick={onStopAudio}
-                    className="px-2.5 py-1 bg-[#FF3B30]/10 hover:bg-[#FF3B30]/20 text-[#D70015] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-3 py-1 bg-[#FF3B30]/10 hover:bg-[#FF3B30]/20 text-[#D70015] rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <StopCircle className="w-3.5 h-3.5 animate-pulse" />
                     <span className="hidden sm:inline">Stop Voice</span>
                   </button>
                 )}
 
-                {/* Male / Female Voice Selector Pill */}
-                <div className="flex items-center gap-1 p-0.5 bg-[#F4F5F8] rounded-full border border-black/[0.04]">
+                {/* Male / Female Voice Selector Pill Switch */}
+                <div className="flex items-center gap-1 p-0.5 bg-white/80 rounded-full border border-black/[0.06] shadow-2xs">
                   <button
                     type="button"
                     onClick={() => onSelectVoiceGender('female')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
                       selectedVoiceGender === 'female'
-                        ? 'bg-white text-[#0F172A] shadow-2xs font-semibold'
-                        : 'text-[#64748B] hover:text-[#0F172A]'
+                        ? 'bg-[#1D1D1F] text-white shadow-2xs font-semibold'
+                        : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                     }`}
                   >
                     Female
@@ -679,10 +712,10 @@ export default function ChatWorkspace({
                   <button
                     type="button"
                     onClick={() => onSelectVoiceGender('male')}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
                       selectedVoiceGender === 'male'
-                        ? 'bg-white text-[#0F172A] shadow-2xs font-semibold'
-                        : 'text-[#64748B] hover:text-[#0F172A]'
+                        ? 'bg-[#1D1D1F] text-white shadow-2xs font-semibold'
+                        : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                     }`}
                   >
                     Male
@@ -692,7 +725,7 @@ export default function ChatWorkspace({
                 <button
                   onClick={onClearChat}
                   aria-label="Clear chat messages"
-                  className="p-1.5 text-[#94A3B8] hover:text-[#FF3B30] hover:bg-black/[0.04] rounded-xl transition-all cursor-pointer"
+                  className="p-2 text-[#86868B] hover:text-[#FF3B30] hover:bg-black/[0.04] rounded-full transition-all cursor-pointer"
                   title="Clear Chat"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -714,51 +747,42 @@ export default function ChatWorkspace({
                 isInitialState ? 'flex flex-col justify-center no-scrollbar' : 'no-scrollbar sm:custom-scrollbar'
               }`}
             >
-              {/* Initial Welcome Hero State */}
+              {/* Initial Welcome Hero State — Styled after Landing Page Bento & Hero */}
               {isInitialState && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="pt-2 sm:pt-4 pb-2 text-center space-y-6 max-w-xl mx-auto my-auto"
+                  className="pt-2 sm:pt-4 pb-2 text-center space-y-6 max-w-2xl mx-auto my-auto"
                 >
-                  {/* Aethria Official Brand Logo Emblem */}
-                  <motion.div
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-                    className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto"
-                  >
-                    {/* Ambient Aura Glow */}
-                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#A855F7] via-[#6366F1] to-[#38BDF8] blur-2xl opacity-40 animate-pulse" />
-                    
-                    {/* Logo Glass Emblem Container */}
-                    <div className="relative w-full h-full rounded-full bg-white/95 backdrop-blur-xl border border-black/[0.08] shadow-[0_16px_40px_rgba(99,102,241,0.15),0_1px_3px_rgba(0,0,0,0.05)] p-4 flex items-center justify-center">
-                      <img
-                        src="/Logo.png"
-                        alt="Aethria AI Logo"
-                        className="w-full h-full object-contain rounded-full drop-shadow-sm"
-                      />
-                    </div>
-                  </motion.div>
+                  {/* Kicker Pill Tag */}
+                  <div className="flex justify-center">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] text-[10px] font-bold uppercase tracking-[0.14em] border border-[#4F46E5]/15">
+                      <Sparkles className="w-3 h-3" />
+                      Persistent Codebase Intelligence
+                    </span>
+                  </div>
 
                   {/* Hero Greeting & Headline */}
-                  <div className="space-y-1.5">
-                    <h2 className="text-xl sm:text-2xl font-bold text-[#0F172A] tracking-tight">
-                      {timeGreeting}, {greetingName}
-                    </h2>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-[-0.03em] text-[#0F172A]">
-                      How Can I <span className="bg-gradient-to-r from-[#6366F1] via-[#4F46E5] to-[#3B82F6] bg-clip-text text-transparent">Assist You Today?</span>
+                  <div className="space-y-2">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-[-0.04em] text-[#1D1D1F] leading-[1.05]">
+                      Your codebase.
+                      <br />
+                      <span className="text-[#4F46E5]">Connected to AI.</span>
                     </h1>
 
-                    {/* Scientist/Philosopher Wisdom Quote */}
-                    <p className="text-xs text-[#64748B] italic pt-1 max-w-md mx-auto">
-                      “{currentQuote.quote}” — <span className="font-semibold text-[#4F46E5]">{currentQuote.author}</span>
+                    {/* Dynamic Greeting & Quote */}
+                    <p className="text-xs sm:text-sm text-[#6E6E73] max-w-md mx-auto leading-relaxed pt-1">
+                      {timeGreeting}, {greetingName}. Ask questions across your architecture, propose multi-file changes, or speak hands-free.
+                    </p>
+                    <p className="text-[11px] text-[#86868B] italic pt-0.5 max-w-md mx-auto">
+                      “{currentQuote.quote}” — <span className="font-semibold text-[#1D1D1F]">{currentQuote.author}</span>
                     </p>
                   </div>
 
-                  {/* Floating Starter Prompt Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-lg mx-auto text-left pt-2">
-                    {starterCards.slice(0, 2).map((card, idx) => {
+                  {/* Bento-Style Starter Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto text-left pt-2">
+                    {starterCards.map((card, idx) => {
                       const Icon = card.icon;
                       return (
                         <motion.button
@@ -766,16 +790,24 @@ export default function ChatWorkspace({
                           whileHover={{ y: -3, scale: 1.01 }}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => onSendMessage(card.prompt)}
-                          className="p-3.5 rounded-2xl bg-white border border-black/[0.05] shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(99,102,241,0.08)] hover:border-[#6366F1]/40 transition-all cursor-pointer text-left group"
+                          className="p-4 rounded-2xl bg-white border border-black/[0.07] shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_32px_rgba(79,70,229,0.08)] hover:border-[#4F46E5]/40 transition-all cursor-pointer text-left group flex flex-col justify-between"
                         >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="p-1.5 rounded-xl bg-[#F8FAFC] text-[#0F172A] group-hover:text-[#4F46E5] group-hover:bg-[#EEF2FF] transition-all">
-                              <Icon className="w-3.5 h-3.5" />
-                            </span>
-                            <ChevronRight className="w-3.5 h-3.5 text-[#94A3B8] group-hover:translate-x-0.5 transition-transform" />
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="p-1.5 rounded-lg bg-[#F4F5F7] text-[#1D1D1F] group-hover:text-[#4F46E5] group-hover:bg-[#4F46E5]/10 transition-all">
+                                <Icon className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-[#4F46E5] bg-[#4F46E5]/10 px-2 py-0.5 rounded-full">
+                                {idx === 0 ? 'architecture' : idx === 1 ? 'algorithm' : idx === 2 ? 'groq-lpu' : 'topology'}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-semibold text-[#1D1D1F] mb-0.5 group-hover:text-[#4F46E5] transition-colors">{card.title}</h4>
+                            <p className="text-[11px] text-[#6E6E73] line-clamp-2 leading-relaxed">{card.subtitle}</p>
                           </div>
-                          <h4 className="text-xs font-semibold text-[#0F172A] mb-0.5">{card.title}</h4>
-                          <p className="text-[11px] text-[#64748B] line-clamp-1">{card.subtitle}</p>
+                          <div className="mt-3 pt-2 border-t border-black/[0.04] flex items-center justify-between text-[10px] text-[#86868B]">
+                            <span className="font-mono">Ask intelligence</span>
+                            <span className="group-hover:translate-x-1 text-[#4F46E5] font-bold transition-transform">&rarr;</span>
+                          </div>
                         </motion.button>
                       );
                     })}
@@ -783,7 +815,6 @@ export default function ChatWorkspace({
 
                 </motion.div>
               )}
-
 
               {/* Active Conversation Messages */}
               {!isInitialState &&
@@ -801,20 +832,20 @@ export default function ChatWorkspace({
               {/* Reasoning Loading State */}
               {isLoading && (
                 <div className="flex flex-col items-start gap-2 w-full animate-fadeIn max-w-[85%]">
-                  <div className="flex items-center gap-2 px-1 text-[11px] text-[#94A3B8]">
-                    <div className="w-4 h-4 rounded-full bg-[#6366F1] flex items-center justify-center text-white">
+                  <div className="flex items-center gap-2 px-1 text-[11px] text-[#86868B]">
+                    <div className="w-4 h-4 rounded-full bg-[#4F46E5] flex items-center justify-center text-white">
                       <Sparkles className="w-2.5 h-2.5" />
                     </div>
                     <span className="font-bold text-[#4F46E5]">{selectedModel.name}</span>
                   </div>
-                  <div className="rounded-[22px] p-4 bg-white border border-black/[0.06] shadow-[0_4px_24px_rgba(99,102,241,0.04)] w-full space-y-3">
+                  <div className="rounded-2xl p-4 bg-white border border-black/[0.06] shadow-[0_4px_24px_rgba(79,70,229,0.04)] w-full space-y-3">
                     <div className="flex items-center gap-3 text-xs font-semibold text-[#4F46E5]">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Synthesizing solution & optimizing logic...</span>
                     </div>
                     <div className="space-y-2">
-                      <div className="h-2.5 bg-gradient-to-r from-[#EEF2FF] via-[#E0E7FF] to-[#EEF2FF] rounded-full animate-pulse w-4/5" />
-                      <div className="h-2.5 bg-gradient-to-r from-[#EEF2FF] via-[#E0E7FF] to-[#EEF2FF] rounded-full animate-pulse w-3/5" />
+                      <div className="h-2 bg-gradient-to-r from-[#EEF2FF] via-[#E0E7FF] to-[#EEF2FF] rounded-full animate-pulse w-4/5" />
+                      <div className="h-2 bg-gradient-to-r from-[#EEF2FF] via-[#E0E7FF] to-[#EEF2FF] rounded-full animate-pulse w-3/5" />
                     </div>
                   </div>
                 </div>
@@ -837,7 +868,7 @@ export default function ChatWorkspace({
               </div>
             )}
 
-            {/* Floating Bottom Prompt Box */}
+            {/* Floating Bottom Prompt Box — Landing Composer Aesthetics */}
             <div className="p-3 sm:p-5 max-w-3xl mx-auto w-full">
               
               {/* Dynamic Follow-up Suggestions Bar (When in active chat) */}
@@ -847,7 +878,7 @@ export default function ChatWorkspace({
                     <button
                       key={pIdx}
                       onClick={() => onSendMessage(prompt)}
-                      className="whitespace-nowrap px-3 py-1 rounded-full bg-white border border-black/[0.06] text-xs text-[#64748B] hover:text-[#0F172A] hover:border-[#6366F1]/40 transition-all cursor-pointer shadow-2xs flex-shrink-0"
+                      className="whitespace-nowrap px-3 py-1 rounded-full bg-white border border-black/[0.06] text-xs text-[#6E6E73] hover:text-[#1D1D1F] hover:border-[#4F46E5]/40 transition-all cursor-pointer shadow-2xs flex-shrink-0"
                     >
                       {prompt}
                     </button>
@@ -856,19 +887,19 @@ export default function ChatWorkspace({
               )}
 
               {/* Main Card Prompt Container */}
-              <div className="rounded-[26px] bg-white border border-black/[0.07] shadow-[0_12px_40px_-8px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] p-3 sm:p-4 focus-within:border-[#6366F1]/50 focus-within:ring-4 focus-within:ring-[#6366F1]/10 transition-all flex flex-col gap-3">
+              <div className="rounded-[28px] bg-white border border-black/[0.08] shadow-[0_16px_48px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.02)] p-3.5 sm:p-4.5 focus-within:border-[#4F46E5]/50 focus-within:shadow-[0_20px_60px_rgba(79,70,229,0.1)] transition-all flex flex-col gap-3">
                 
                 {/* Top Input Area with Sparkle Icon */}
                 <div className="flex items-start gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[#8B5CF6] mt-0.5 flex-shrink-0" />
+                  <Sparkles className="w-4 h-4 text-[#4F46E5] mt-1 flex-shrink-0" />
                   <textarea
                     ref={textareaRef}
                     rows={1}
                     value={promptText}
                     onChange={(e) => onChangePrompt(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={isListening ? 'Listening to speech...' : 'Initiate a query or send a command to the AI...'}
-                    className="flex-1 bg-transparent text-sm text-[#0F172A] placeholder:text-[#94A3B8] outline-none resize-none font-normal max-h-36 overflow-y-auto leading-relaxed"
+                    placeholder={isListening ? 'Listening to speech...' : 'Ask the codebase, propose diffs, or execute multi-file changes...'}
+                    className="flex-1 bg-transparent text-sm text-[#1D1D1F] placeholder:text-[#86868B] outline-none resize-none font-normal max-h-36 overflow-y-auto leading-relaxed"
                     disabled={isLoading}
                   />
                   {promptText.trim().length > 0 && (
@@ -876,15 +907,15 @@ export default function ChatWorkspace({
                       type="button"
                       onClick={() => onChangePrompt('')}
                       aria-label="Clear prompt text"
-                      className="p-1 text-[#94A3B8] hover:text-[#0F172A] transition-colors cursor-pointer"
+                      className="p-1 text-[#86868B] hover:text-[#1D1D1F] transition-colors cursor-pointer"
                     >
                       <XCircle className="w-4 h-4" />
                     </button>
                   )}
                 </div>
 
-                {/* Bottom Action Buttons Row */}
-                <div className="flex items-center justify-between pt-1">
+                {/* Bottom Action Buttons Row — Landing Pill Style */}
+                <div className="flex items-center justify-between pt-1 border-t border-black/[0.04]">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     
                     {/* Attachment Icon Button */}
@@ -892,7 +923,7 @@ export default function ChatWorkspace({
                       type="button"
                       aria-label="Attach file or code"
                       onClick={() => onChangePrompt(promptText + ' [Attached context from codebase]')}
-                      className="p-1.5 rounded-xl text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F5F8] transition-all cursor-pointer"
+                      className="p-1.5 rounded-full text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] transition-all cursor-pointer"
                       title="Attach File"
                     >
                       <Paperclip className="w-4 h-4" />
@@ -902,7 +933,7 @@ export default function ChatWorkspace({
                     <button
                       type="button"
                       onClick={() => onChangePrompt(promptText ? promptText + ' [Provide deep algorithmic reasoning]' : 'Provide a deep reasoning breakdown for ')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F5F8] hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#64748B] text-xs font-medium transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4F5F7] hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#6E6E73] text-[11px] font-semibold tracking-wider uppercase border border-black/[0.03] transition-all cursor-pointer"
                     >
                       <Lightbulb className="w-3.5 h-3.5 text-[#EAB308]" />
                       <span>Reasoning</span>
@@ -912,17 +943,17 @@ export default function ChatWorkspace({
                     <button
                       type="button"
                       onClick={() => onChangePrompt(promptText ? promptText + ' [Draw visual architecture diagram]' : 'Create an architecture visual diagram for ')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F5F8] hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#64748B] text-xs font-medium transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4F5F7] hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#6E6E73] text-[11px] font-semibold tracking-wider uppercase border border-black/[0.03] transition-all cursor-pointer"
                     >
-                      <Wand2 className="w-3.5 h-3.5 text-[#A855F7]" />
-                      <span className="hidden sm:inline">Create Image</span>
+                      <Wand2 className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                      <span className="hidden sm:inline">Architecture Canvas</span>
                     </button>
 
                     {/* Deep Research Pill Button */}
                     <button
                       type="button"
                       onClick={() => onChangePrompt(promptText ? promptText + ' [Conduct comprehensive deep research]' : 'Conduct deep research and benchmarking for ')}
-                      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F5F8] hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#64748B] text-xs font-medium transition-all cursor-pointer"
+                      className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F4F5F7] hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#6E6E73] text-[11px] font-semibold tracking-wider uppercase border border-black/[0.03] transition-all cursor-pointer"
                     >
                       <Layers className="w-3.5 h-3.5 text-[#3B82F6]" />
                       <span>Deep Research</span>
@@ -932,7 +963,7 @@ export default function ChatWorkspace({
                     <button
                       type="button"
                       onClick={onOpenContinuousVoice}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#4F46E5] hover:to-[#7C3AED] text-white text-xs font-semibold shadow-xs hover:shadow-md active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white text-[11px] font-semibold tracking-wider uppercase shadow-[0_4px_16px_rgba(79,70,229,0.2)] active:scale-95 transition-all cursor-pointer flex-shrink-0"
                       title="Start real-time continuous voice conversation"
                     >
                       <Mic className="w-3.5 h-3.5" />
@@ -940,17 +971,16 @@ export default function ChatWorkspace({
                     </button>
                   </div>
 
-
                   {/* Send & Mic Actions */}
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={onToggleListening}
                       aria-label={isListening ? 'Stop microphone' : 'Start voice mode'}
-                      className={`p-2 rounded-xl transition-all cursor-pointer ${
+                      className={`p-2 rounded-full transition-all cursor-pointer ${
                         isListening
                           ? 'bg-[#FF3B30] text-white shadow-md animate-pulse'
-                          : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F4F5F8]'
+                          : 'text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F4F5F7]'
                       }`}
                       title={isListening ? 'Stop Voice' : 'Voice Input'}
                     >
@@ -962,9 +992,9 @@ export default function ChatWorkspace({
                       onClick={() => onSendMessage()}
                       disabled={!promptText.trim() || isLoading}
                       aria-label="Send message"
-                      className="p-2.5 rounded-xl bg-[#0F172A] hover:bg-black text-white active:scale-95 transition-all shadow-xs cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+                      className="inline-flex items-center justify-center p-2.5 rounded-full bg-[#1D1D1F] hover:bg-black text-white active:scale-95 transition-all shadow-xs cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

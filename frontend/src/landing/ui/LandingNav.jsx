@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FolderCode, LogOut, User } from 'lucide-react';
 import MagneticButton from './MagneticButton';
 
@@ -19,9 +19,19 @@ export default function LandingNav({
   onConnect
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
-    <header className="landing-nav">
+    <header className={`landing-nav ${scrolled ? 'is-scrolled' : 'is-top'}`}>
       <div className="landing-nav-inner">
         <a href="#intro" className="landing-brand" data-cursor="view">
           <img src="/Logo.png" alt="" className="h-6 w-6 rounded-md object-contain" />

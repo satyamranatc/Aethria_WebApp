@@ -5,11 +5,20 @@ export default function ProductivityBento() {
   return (
     <section id="product" className="huly-section">
       <div className="huly-section-head">
+        <div className="bento-shuttle-eyebrow">
+          <span className="shuttle-pulse-dot" />
+          <span>Continuous Intelligence</span>
+        </div>
         <h2>Unmatched codebase intelligence</h2>
         <p>
           Aethria is architecture, change, review, and voice in one layer — so your AI never starts
           from a blank file again.
         </p>
+
+        {/* Subtle, premium hairline laser shuttle */}
+        <div className="bento-shuttle-track">
+          <div className="bento-shuttle-laser" />
+        </div>
       </div>
 
       <div className="huly-bento">
@@ -18,6 +27,7 @@ export default function ProductivityBento() {
             <div className="fake-cmd">
               <Command className="h-4 w-4" />
               <span>Ask the repository…</span>
+              <span className="cmd-cursor" />
               <kbd>⌘K</kbd>
             </div>
             <ul className="fake-list">
@@ -51,9 +61,9 @@ export default function ProductivityBento() {
         <article className="bento-card wide">
           <div className="bento-visual topo">
             <span className="node">server.js</span>
-            <i />
+            <span className="topo-link"><span className="topo-pulse" /></span>
             <span className="node on">authMiddleware.js</span>
-            <i />
+            <span className="topo-link"><span className="topo-pulse delay" /></span>
             <span className="node">User.js</span>
           </div>
           <p>

@@ -486,26 +486,26 @@ export default function ProjectWorkspacePage({
   }, [activeFile]);
 
   return (
-    <div className="h-screen w-screen bg-[#FBFBFD] text-[#1D1D1F] flex flex-col overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Inter',sans-serif]">
+    <div className="h-screen w-screen bg-[#F4F5F7] text-[#1D1D1F] flex flex-col overflow-hidden font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Inter',sans-serif] selection:bg-[#4F46E5]/15 selection:text-[#4F46E5]">
       
-      {/* 1. Global Workspace Topbar */}
-      <header className="h-12 bg-white border-b border-black/[0.06] px-4 flex items-center justify-between flex-shrink-0 select-none z-20">
+      {/* 1. Global Workspace Topbar — Landing Aesthetic */}
+      <header className="h-13 bg-[#F4F5F7]/80 backdrop-blur-xl border-b border-black/[0.06] px-4 sm:px-6 flex items-center justify-between flex-shrink-0 select-none z-20">
         <div className="flex items-center gap-3">
           <button
             onClick={onBackToCommandCenter}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-black/[0.04] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-black/[0.08] bg-white/80 hover:bg-white text-xs font-semibold text-[#6E6E73] hover:text-[#1D1D1F] transition-all cursor-pointer shadow-2xs group"
             title="Return to Project Command Center"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
             <span>Command Center</span>
           </button>
 
           <div className="h-4 w-px bg-black/[0.08]" />
 
           <div className="flex items-center gap-2">
-            <FolderCode className="w-4 h-4 text-[#4F46E5]" />
+            <img src="/Logo.png" alt="Aethria" className="w-5 h-5 object-contain rounded-md" />
             <span className="text-xs font-bold text-[#1D1D1F] tracking-tight">{project.name}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EEF2FF] text-[#4F46E5] font-semibold border border-indigo-100">
+            <span className="text-[10px] uppercase tracking-[0.14em] px-2.5 py-0.5 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] font-bold border border-[#4F46E5]/15">
               {project.framework || 'Full Stack'}
             </span>
             <span className="text-[10.5px] text-[#86868B] font-mono flex items-center gap-1">
@@ -518,7 +518,7 @@ export default function ProjectWorkspacePage({
         {/* Live Status & Quick Action Buttons */}
         <div className="flex items-center gap-2.5">
           {/* VS Code Bridge Telemetry Heartbeat */}
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 text-xs font-semibold border border-emerald-500/20">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>VS Code Bridge: Auto-Sync</span>
           </div>
@@ -530,9 +530,9 @@ export default function ProjectWorkspacePage({
                 setSelectedChange(changes.find((c) => c.status === 'pending'));
                 setViewMode(viewMode === 'diff' ? 'code' : 'diff');
               }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold border border-amber-200 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/15 text-amber-800 text-xs font-bold border border-amber-500/20 transition-all cursor-pointer shadow-2xs"
             >
-              <GitCommit className="w-3.5 h-3.5" />
+              <GitCommit className="w-3.5 h-3.5 text-amber-600" />
               <span>{changes.filter((c) => c.status === 'pending').length} Diffs to Review</span>
             </button>
           )}
@@ -544,7 +544,7 @@ export default function ProjectWorkspacePage({
               handleRunAudit();
             }}
             disabled={isRunningReview}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] hover:from-[#4338CA] hover:to-[#6D28D9] text-white text-xs font-bold shadow-md shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-semibold shadow-[0_4px_16px_rgba(79,70,229,0.25)] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             title="Audit Clean Code, Modularity, DRY principles & Secrets"
           >
             {isRunningReview ? (
@@ -555,7 +555,6 @@ export default function ProjectWorkspacePage({
             <span>{isRunningReview ? 'Auditing Code...' : 'Scan Clean Code'}</span>
           </button>
 
-
           {/* Interactive Canvas Architecture Bridge */}
           <button
             onClick={() => {
@@ -563,53 +562,53 @@ export default function ProjectWorkspacePage({
                 onOpenCanvas(`System architecture topology for ${project.name} (${project.framework || 'Full Stack'})`);
               }
             }}
-            className="flex items-center gap-1 px-3 py-1 rounded-xl bg-[#F5F5F7] hover:bg-[#EAEAEA] text-[#1D1D1F] text-xs font-semibold border border-black/[0.06] transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#F4F5F7] hover:bg-white text-[#1D1D1F] text-xs font-semibold border border-black/[0.06] transition-all cursor-pointer shadow-2xs"
             title="Open codebase system architecture canvas"
           >
-            <Workflow className="w-3.5 h-3.5 text-indigo-500" />
+            <Workflow className="w-3.5 h-3.5 text-[#4F46E5]" />
             <span className="hidden sm:inline">Architecture</span>
           </button>
 
           {/* AI Sidebar Toggle */}
           <button
             onClick={() => setIsAiSidebarOpen(!isAiSidebarOpen)}
-            className={`p-1.5 rounded-lg border text-xs transition-all cursor-pointer ${
+            className={`p-2 rounded-full border text-xs transition-all cursor-pointer shadow-2xs ${
               isAiSidebarOpen
-                ? 'bg-[#EEF2FF] text-[#4F46E5] border-indigo-200'
-                : 'bg-white text-[#6E6E73] border-black/[0.06] hover:text-[#1D1D1F]'
+                ? 'bg-[#4F46E5]/10 text-[#4F46E5] border-[#4F46E5]/25'
+                : 'bg-white text-[#6E6E73] border-black/[0.08] hover:text-[#1D1D1F]'
             }`}
             title="Toggle AI Copilot Sidebar"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-3.5 h-3.5" />
           </button>
         </div>
       </header>
 
-      {/* Real Developer Project Telemetry Bar (Files, Folders, Lines of Code & Language Breakdown) */}
-      <div className="h-8 bg-[#F8FAFC] border-b border-black/[0.05] px-4 flex items-center justify-between text-xs text-[#64748B] select-none overflow-x-auto no-scrollbar flex-shrink-0">
+      {/* Real Developer Project Telemetry Bar */}
+      <div className="h-8 bg-white/70 border-b border-black/[0.05] px-4 sm:px-6 flex items-center justify-between text-xs text-[#6E6E73] select-none overflow-x-auto no-scrollbar flex-shrink-0 font-mono">
         <div className="flex items-center gap-3.5 flex-shrink-0">
           <div className="flex items-center gap-1.5 font-medium">
-            <FolderCode className="w-3.5 h-3.5 text-[#6366F1]" />
-            <span className="font-bold text-[#0F172A]">{computedStats.totalFolders}</span>
-            <span className="text-[11px]">Folders</span>
+            <FolderCode className="w-3.5 h-3.5 text-[#4F46E5]" />
+            <span className="font-bold text-[#1D1D1F]">{computedStats.totalFolders}</span>
+            <span className="text-[11px] font-sans">Folders</span>
           </div>
 
-          <span className="text-black/[0.15]">·</span>
+          <span className="text-black/[0.15]">&middot;</span>
 
           <div className="flex items-center gap-1.5 font-medium">
-            <FileCode className="w-3.5 h-3.5 text-[#3B82F6]" />
-            <span className="font-bold text-[#0F172A]">{computedStats.totalFiles}</span>
-            <span className="text-[11px]">Files</span>
+            <FileCode className="w-3.5 h-3.5 text-[#4F46E5]" />
+            <span className="font-bold text-[#1D1D1F]">{computedStats.totalFiles}</span>
+            <span className="text-[11px] font-sans">Files</span>
           </div>
 
-          <span className="text-black/[0.15]">·</span>
+          <span className="text-black/[0.15]">&middot;</span>
 
           <div className="flex items-center gap-1.5 font-medium">
-            <Code className="w-3.5 h-3.5 text-[#10B981]" />
-            <span className="font-bold text-[#0F172A]">{computedStats.totalLines.toLocaleString()}</span>
-            <span className="text-[11px]">Lines of Code</span>
-            <span className="hidden lg:inline text-[10px] text-[#94A3B8] font-mono ml-1">
-              ({computedStats.codeLines.toLocaleString()} code · {computedStats.commentLines.toLocaleString()} comments · {computedStats.blankLines.toLocaleString()} blank)
+            <Code className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="font-bold text-[#1D1D1F]">{computedStats.totalLines.toLocaleString()}</span>
+            <span className="text-[11px] font-sans">Lines of Code</span>
+            <span className="hidden lg:inline text-[10px] text-[#86868B] ml-1 font-sans">
+              ({computedStats.codeLines.toLocaleString()} code &middot; {computedStats.commentLines.toLocaleString()} comments)
             </span>
           </div>
         </div>
@@ -618,9 +617,9 @@ export default function ProjectWorkspacePage({
           {computedStats.languages.slice(0, 4).map((l, idx) => (
             <span
               key={idx}
-              className="px-2 py-0.5 rounded-md bg-white border border-black/[0.05] text-[10px] font-semibold text-[#334155] shadow-2xs"
+              className="px-2 py-0.5 rounded-full bg-[#F4F5F7] border border-black/[0.04] text-[10px] font-semibold text-[#1D1D1F]"
             >
-              {l.name} <span className="text-[#6366F1] font-bold">{l.percentage}%</span>
+              {l.name} <span className="text-[#4F46E5] font-bold">{l.percentage}%</span>
             </span>
           ))}
         </div>
@@ -629,25 +628,24 @@ export default function ProjectWorkspacePage({
       {/* 2. Main 3-Pane VS Code + AI Developer Workspace */}
       <div className="flex-1 flex overflow-hidden">
 
-        
         {/* ================================================================= */}
-        {/* PANE 1: FILE EXPLORER (LEFT) */}
+        {/* PANE 1: FILE EXPLORER (LEFT) — Styled like ProductFrame Explorer */}
         {/* ================================================================= */}
-        <aside className="w-64 bg-[#F8FAFC] border-r border-black/[0.06] flex flex-col flex-shrink-0 overflow-hidden select-none">
+        <aside className="w-64 bg-[#F4F5F7]/60 md:bg-white/90 backdrop-blur-xl border-r border-black/[0.06] flex flex-col flex-shrink-0 overflow-hidden select-none">
           {/* Explorer Header */}
-          <div className="h-9 px-3 border-b border-black/[0.05] flex items-center justify-between text-[11px] font-bold tracking-wider uppercase text-[#86868B]">
+          <div className="h-9 px-3.5 border-b border-black/[0.05] flex items-center justify-between text-[10px] font-bold tracking-[0.14em] uppercase text-[#86868B]">
             <span>Files & Code</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsNewFileInputOpen(!isNewFileInputOpen)}
-                className="p-1 rounded hover:bg-black/[0.06] text-[#1D1D1F] transition-colors cursor-pointer"
+                className="p-1 rounded-full hover:bg-black/[0.04] text-[#1D1D1F] transition-colors cursor-pointer"
                 title="Create new file"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={loadWorkspace}
-                className="p-1 rounded hover:bg-black/[0.06] text-[#1D1D1F] transition-colors cursor-pointer"
+                className="p-1 rounded-full hover:bg-black/[0.04] text-[#1D1D1F] transition-colors cursor-pointer"
                 title="Refresh file tree"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -664,19 +662,19 @@ export default function ProjectWorkspacePage({
                 value={newFilePath}
                 onChange={(e) => setNewFilePath(e.target.value)}
                 placeholder="e.g. src/utils/auth.js"
-                className="w-full px-2 py-1 text-xs border border-black/[0.1] rounded-md outline-none focus:border-[#4F46E5]"
+                className="w-full px-2.5 py-1 text-xs border border-black/[0.08] rounded-full outline-none focus:border-[#4F46E5]"
               />
               <div className="flex justify-end gap-1 text-[10px]">
                 <button
                   type="button"
                   onClick={() => setIsNewFileInputOpen(false)}
-                  className="px-2 py-0.5 text-[#86868B]"
+                  className="px-2.5 py-0.5 text-[#86868B]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-2.5 py-0.5 bg-[#1D1D1F] text-white rounded font-semibold"
+                  className="px-3 py-0.5 bg-[#1D1D1F] text-white rounded-full font-semibold"
                 >
                   Create
                 </button>
@@ -694,19 +692,19 @@ export default function ProjectWorkspacePage({
                   onClick={() => handleSelectFile(f)}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer group ${
                     isSelected
-                      ? 'bg-[#1D1D1F] text-white font-medium shadow-2xs'
-                      : 'text-[#475569] hover:bg-black/[0.04]'
+                      ? 'bg-[#4F46E5]/10 text-[#4F46E5] font-semibold border border-[#4F46E5]/15'
+                      : 'text-[#6E6E73] hover:bg-[#F4F5F7] hover:text-[#1D1D1F]'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate mr-1">
-                    <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-white' : 'text-[#86868B]'}`} />
+                    <FileCode className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-[#4F46E5]' : 'text-[#86868B]'}`} />
                     <span className="truncate">{f.path}</span>
                   </div>
 
                   <button
                     onClick={(e) => handleDeleteFile(f._id, f.path, e)}
                     className={`opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/10 transition-opacity ${
-                      isSelected ? 'text-white/80 hover:text-white' : 'text-[#86868B] hover:text-[#FF3B30]'
+                      isSelected ? 'text-[#4F46E5] hover:text-[#FF3B30]' : 'text-[#86868B] hover:text-[#FF3B30]'
                     }`}
                     title="Delete file"
                   >
@@ -718,7 +716,7 @@ export default function ProjectWorkspacePage({
           </div>
 
           {/* Local VS Code Path & Status Telemetry */}
-          <div className="p-3 border-t border-black/[0.05] bg-white/60 text-[10px] text-[#64748B] space-y-1">
+          <div className="p-3 border-t border-black/[0.05] bg-white/70 text-[10px] text-[#6E6E73] space-y-1">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-[#1D1D1F]">Local VS Code</span>
               <span className="text-emerald-600 font-bold">Linked</span>
@@ -735,7 +733,7 @@ export default function ProjectWorkspacePage({
         <main className="flex-1 flex flex-col overflow-hidden bg-white">
           
           {/* File Tabs Bar (VS Code Style) */}
-          <div className="h-9 bg-[#F8FAFC] border-b border-black/[0.06] flex items-center justify-between px-2 flex-shrink-0 overflow-x-auto select-none">
+          <div className="h-9 bg-[#F4F5F7]/80 border-b border-black/[0.06] flex items-center justify-between px-2 flex-shrink-0 overflow-x-auto select-none">
             <div className="flex items-center gap-1 overflow-x-auto max-w-[calc(100%-240px)]">
               {openFiles.map((f) => {
                 const isActive = activeFileId === f._id && viewMode === 'code';
@@ -749,14 +747,14 @@ export default function ProjectWorkspacePage({
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-t-lg text-xs font-mono transition-all cursor-pointer border-t-2 ${
                       isActive
                         ? 'bg-white text-[#1D1D1F] border-[#4F46E5] font-semibold shadow-2xs'
-                        : 'bg-transparent text-[#64748B] border-transparent hover:bg-black/[0.03]'
+                        : 'bg-transparent text-[#6E6E73] border-transparent hover:bg-black/[0.03]'
                     }`}
                   >
                     <FileCode className="w-3 h-3 text-[#86868B]" />
                     <span className="truncate max-w-[140px]">{f.name || f.path}</span>
                     <button
                       onClick={(e) => handleCloseTab(f._id, e)}
-                      className="p-0.5 rounded hover:bg-black/10 text-[#86868B] hover:text-[#1D1D1F]"
+                      className="p-0.5 rounded-full hover:bg-black/10 text-[#86868B] hover:text-[#1D1D1F]"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -771,7 +769,7 @@ export default function ProjectWorkspacePage({
                   <span>Diff: {selectedChange.path}</span>
                   <button
                     onClick={() => setViewMode('code')}
-                    className="p-0.5 rounded hover:bg-black/10 text-[#86868B]"
+                    className="p-0.5 rounded-full hover:bg-black/10 text-[#86868B]"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -782,11 +780,11 @@ export default function ProjectWorkspacePage({
             {/* View Mode & Code Actions */}
             <div className="flex items-center gap-2 shrink-0">
               {/* 3-Mode View Switcher */}
-              <div className="flex items-center bg-[#F1F5F9] p-0.5 rounded-lg border border-black/[0.05] text-[11px]">
+              <div className="flex items-center bg-[#F4F5F7] p-0.5 rounded-full border border-black/[0.05] text-[11px]">
                 <button
                   onClick={() => setViewMode('code')}
-                  className={`px-2.5 py-0.5 rounded font-semibold transition-all cursor-pointer ${
-                    viewMode === 'code' ? 'bg-white text-[#4F46E5] shadow-2xs' : 'text-[#64748B] hover:text-[#0F172A]'
+                  className={`px-3 py-0.5 rounded-full font-semibold transition-all cursor-pointer ${
+                    viewMode === 'code' ? 'bg-white text-[#4F46E5] shadow-2xs' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                   }`}
                 >
                   Code Editor
@@ -798,8 +796,8 @@ export default function ProjectWorkspacePage({
                       if (!selectedChange && changes.length > 0) setSelectedChange(changes[0]);
                       setViewMode('diff');
                     }}
-                    className={`px-2.5 py-0.5 rounded font-semibold transition-all cursor-pointer ${
-                      viewMode === 'diff' ? 'bg-white text-amber-600 shadow-2xs' : 'text-[#64748B] hover:text-[#0F172A]'
+                    className={`px-3 py-0.5 rounded-full font-semibold transition-all cursor-pointer ${
+                      viewMode === 'diff' ? 'bg-white text-amber-600 shadow-2xs' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                     }`}
                   >
                     Diffs ({changes.filter((c) => c.status === 'pending').length})
@@ -811,11 +809,11 @@ export default function ProjectWorkspacePage({
                     setViewMode('audit');
                     if (issues.length === 0) handleRunAudit();
                   }}
-                  className={`px-2.5 py-0.5 rounded font-semibold transition-all cursor-pointer flex items-center gap-1 ${
-                    viewMode === 'audit' ? 'bg-white text-[#7C3AED] shadow-2xs' : 'text-[#64748B] hover:text-[#0F172A]'
+                  className={`px-3 py-0.5 rounded-full font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    viewMode === 'audit' ? 'bg-white text-[#4F46E5] shadow-2xs' : 'text-[#6E6E73] hover:text-[#1D1D1F]'
                   }`}
                 >
-                  <Sparkles className="w-3 h-3 text-[#7C3AED]" />
+                  <Sparkles className="w-3 h-3 text-[#4F46E5]" />
                   <span>Clean Code Health</span>
                 </button>
               </div>
@@ -827,7 +825,7 @@ export default function ProjectWorkspacePage({
                     navigator.clipboard.writeText(fileContent);
                     alert('Code copied to clipboard');
                   }}
-                  className="p-1.5 rounded-lg hover:bg-black/[0.05] text-[#6E6E73] hover:text-[#1D1D1F] transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full hover:bg-black/[0.05] text-[#6E6E73] hover:text-[#1D1D1F] transition-colors cursor-pointer"
                   title="Copy code"
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -839,7 +837,7 @@ export default function ProjectWorkspacePage({
                 <button
                   onClick={handleSaveCode}
                   disabled={isSavingCode || !activeFileId}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-xs transition-all cursor-pointer ${
                     saveSuccess
                       ? 'bg-[#10B981] text-white'
                       : 'bg-[#1D1D1F] hover:bg-black text-white'
@@ -862,7 +860,7 @@ export default function ProjectWorkspacePage({
           {/* Center Viewport: Code Buffer OR Side-by-Side Diff OR Clean Code Audit Dashboard */}
           <div className="flex-1 flex overflow-hidden bg-white">
             {viewMode === 'audit' ? (
-              <div className="flex-1 overflow-y-auto bg-[#F8FAFC]">
+              <div className="flex-1 overflow-y-auto bg-[#F4F5F7]">
                 <CleanCodeAuditSection
                   project={project}
                   healthScore={project.healthScore}
@@ -880,7 +878,7 @@ export default function ProjectWorkspacePage({
               /* Side-by-Side Diff Inspector */
               <div className="flex-1 flex flex-col overflow-hidden">
 
-                <div className="p-3 px-5 bg-amber-50/50 border-b border-amber-200/60 flex items-center justify-between text-xs">
+                <div className="p-3 px-5 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-xs">
                   <div>
                     <span className="font-bold text-[#1D1D1F]">Reviewing AI Diff Proposal: </span>
                     <span className="font-mono text-[#4F46E5]">{selectedChange.path}</span>
@@ -889,14 +887,14 @@ export default function ProjectWorkspacePage({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleRejectChange(selectedChange)}
-                      className="px-3 py-1 rounded-xl bg-white hover:bg-red-50 text-red-600 border border-red-200 font-semibold cursor-pointer"
+                      className="px-3 py-1 rounded-full bg-white hover:bg-red-50 text-red-600 border border-red-200 font-semibold cursor-pointer text-xs"
                     >
                       Reject
                     </button>
                     <button
                       onClick={() => handleApproveChange(selectedChange)}
                       disabled={isApplyingChange}
-                      className="px-3.5 py-1 rounded-xl bg-[#10B981] hover:bg-emerald-600 text-white font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-1 rounded-full bg-[#10B981] hover:bg-emerald-600 text-white font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50 text-xs"
                     >
                       {isApplyingChange && <Loader2 className="w-3 h-3 animate-spin" />}
                       <span>Approve & Apply to VS Code</span>
@@ -907,7 +905,7 @@ export default function ProjectWorkspacePage({
                 <div className="flex-1 flex overflow-hidden font-mono text-xs">
                   {/* Original Code */}
                   <div className="flex-1 flex flex-col border-r border-black/[0.06] overflow-hidden bg-[#FAFAFA]">
-                    <div className="p-2 bg-[#F1F5F9] border-b border-black/[0.04] text-[10px] font-bold text-[#64748B] uppercase flex items-center justify-between">
+                    <div className="p-2 bg-[#F1F5F9] border-b border-black/[0.04] text-[10px] font-bold text-[#6E6E73] uppercase tracking-wider flex items-center justify-between">
                       <span>Current Code in Repo</span>
                       <span className="font-mono text-[9px] text-slate-400">Baseline</span>
                     </div>
@@ -922,14 +920,14 @@ export default function ProjectWorkspacePage({
                     />
                   </div>
 
-                  {/* Proposed Code */}
-                  <div className="flex-1 flex flex-col overflow-hidden bg-[#16161A]">
-                    <div className="p-2 bg-[#0F0F12] border-b border-white/[0.08] text-[10px] font-bold text-emerald-400 uppercase flex items-center justify-between">
+                  {/* Proposed Code — Styled like ProductFrame Window */}
+                  <div className="flex-1 flex flex-col overflow-hidden bg-[#111217]">
+                    <div className="p-2 bg-[#16171D] border-b border-white/[0.08] text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
                       <span>AI Proposed Changes (Ready to Apply)</span>
                       <span className="font-mono text-[9px] text-emerald-400/80">VS Code Dark+</span>
                     </div>
                     <pre
-                      className="flex-1 p-4 overflow-auto text-[#E6EDF3] leading-relaxed bg-[#16161A] select-text"
+                      className="flex-1 p-4 overflow-auto text-[#E6EDF3] leading-relaxed bg-[#111217] select-text"
                       dangerouslySetInnerHTML={{
                         __html: highlightCode(
                           sanitizeCodeContent(selectedChange.proposedContent || ''),
@@ -947,9 +945,9 @@ export default function ProjectWorkspacePage({
               </div>
             ) : activeFile ? (
               /* Code Editor with Clean Multi-Line Numbers Gutter */
-              <div className="flex-1 flex bg-white font-mono text-xs text-[#0F172A] overflow-hidden">
+              <div className="flex-1 flex bg-white font-mono text-xs text-[#1D1D1F] overflow-hidden">
                 {/* Line Numbers Gutter */}
-                <div className="w-12 bg-[#F8FAFC] border-r border-black/[0.04] p-4 text-right select-none text-[#94A3B8] overflow-hidden">
+                <div className="w-12 bg-[#F4F5F7]/70 border-r border-black/[0.04] p-4 text-right select-none text-[#86868B] overflow-hidden">
                   {fileContent.split('\n').map((_, i) => (
                     <div key={i} className="leading-relaxed">
                       {i + 1}
@@ -962,7 +960,7 @@ export default function ProjectWorkspacePage({
                   value={fileContent}
                   onChange={(e) => setFileContent(e.target.value)}
                   spellCheck="false"
-                  className="flex-1 p-4 bg-transparent outline-none resize-none leading-relaxed overflow-auto font-mono text-xs text-[#0F172A]"
+                  className="flex-1 p-4 bg-transparent outline-none resize-none leading-relaxed overflow-auto font-mono text-xs text-[#1D1D1F]"
                 />
               </div>
             ) : (
@@ -980,22 +978,22 @@ export default function ProjectWorkspacePage({
         {isAiSidebarOpen && (
           <aside className="w-80 lg:w-96 bg-white border-l border-black/[0.06] flex flex-col flex-shrink-0 overflow-hidden shadow-xs animate-fadeIn">
             {/* Copilot Header */}
-            <div className="h-9 px-4 border-b border-black/[0.05] bg-[#F8FAFC] flex items-center justify-between">
+            <div className="h-9 px-4 border-b border-black/[0.05] bg-[#F4F5F7]/70 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
                 <span className="text-xs font-bold text-[#1D1D1F]">AI Copilot Workspace</span>
               </div>
-              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                 Context Loaded
               </span>
             </div>
 
             {/* Active Context Banner */}
-            <div className="p-2.5 px-4 bg-[#EEF2FF] border-b border-indigo-100 text-[11px] text-[#4F46E5] flex items-center justify-between">
-              <span className="truncate">
+            <div className="p-2.5 px-4 bg-[#4F46E5]/10 border-b border-[#4F46E5]/15 text-[11px] text-[#4F46E5] flex items-center justify-between">
+              <span className="truncate font-medium">
                 {activeFile ? `✦ Context: ${activeFile.path} (${fileContent.split('\n').length} lines)` : '✦ Context: Whole Codebase'}
               </span>
-              <span className="text-[10px] font-mono text-indigo-400">Groq LLM</span>
+              <span className="text-[10px] font-mono text-[#4F46E5]">Groq LLM</span>
             </div>
 
             {/* Context-Aware Sensible Quick Action Chips */}
@@ -1005,7 +1003,7 @@ export default function ProjectWorkspacePage({
                   key={idx}
                   onClick={() => handleSendAiMessage(chip.prompt)}
                   disabled={isAiStreaming}
-                  className="px-2 py-0.5 rounded-md bg-white hover:bg-[#EEF2FF] hover:text-[#4F46E5] text-[#475569] text-[10px] font-medium border border-black/[0.06] transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                  className="px-2.5 py-0.5 rounded-full bg-white hover:bg-[#4F46E5]/10 hover:text-[#4F46E5] text-[#6E6E73] text-[10px] font-medium border border-black/[0.06] transition-all cursor-pointer disabled:opacity-50 shadow-xs"
                 >
                   {chip.label}
                 </button>
@@ -1020,9 +1018,9 @@ export default function ProjectWorkspacePage({
                   className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`max-w-[95%] rounded-2xl leading-relaxed ${
+                    className={`max-w-[95%] rounded-[20px] leading-relaxed ${
                       msg.role === 'user'
-                        ? 'p-3 bg-[#1D1D1F] text-white rounded-br-none'
+                        ? 'p-3 bg-[#111217] text-white border border-white/[0.08] shadow-xs rounded-br-none'
                         : 'p-3.5 bg-white text-[#1D1D1F] rounded-bl-none border border-black/[0.08] shadow-xs'
                     }`}
                   >
@@ -1063,13 +1061,13 @@ export default function ProjectWorkspacePage({
                 value={aiInput}
                 onChange={(e) => setAiInput(e.target.value)}
                 placeholder={activeFile ? `Ask about ${activeFile.name} or prompt changes...` : 'Ask AI Copilot...'}
-                className="flex-1 px-3 py-2 rounded-xl bg-[#F8FAFC] border border-black/[0.06] text-xs outline-none focus:border-[#4F46E5] transition-all"
+                className="flex-1 px-3.5 py-2 rounded-full bg-[#F4F5F7] border border-black/[0.06] text-xs text-[#1D1D1F] placeholder:text-[#86868B] outline-none focus:border-[#4F46E5]/50 focus:ring-2 focus:ring-[#4F46E5]/10 transition-all"
                 disabled={isAiStreaming}
               />
               <button
                 type="submit"
                 disabled={isAiStreaming || !aiInput.trim()}
-                className="p-2 rounded-xl bg-[#4F46E5] hover:bg-[#4338CA] text-white transition-all cursor-pointer disabled:opacity-50"
+                className="p-2 rounded-full bg-[#1D1D1F] hover:bg-black text-white transition-all cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
