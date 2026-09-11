@@ -386,12 +386,13 @@ export default function App() {
             micVolume={micVolume}
             currentLiveTranscript={currentLiveTranscript}
             lastAssistantReply={lastAssistantReply}
-            voiceGender={continuousVoiceGender}
+            voiceGender={continuousVoiceGender || selectedVoiceGender}
             onToggleMute={toggleMute}
             onTogglePause={togglePause}
             onToggleVoiceGender={() =>
               handleSelectVoiceGender(continuousVoiceGender === 'female' ? 'male' : 'female')
             }
+            onSelectVoiceGender={handleSelectVoiceGender}
             onReplayLast={replayLastResponse}
             errorMessage={continuousVoiceError}
           />

@@ -99,11 +99,10 @@ export default function AuthModal({
             role="tab"
             aria-selected={mode === 'login'}
             onClick={() => setMode('login')}
-            className={`py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1]/40 ${
-              mode === 'login'
+            className={`py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1]/40 ${mode === 'login'
                 ? 'bg-white text-[#1D1D1F] shadow-sm font-semibold'
                 : 'text-[#86868B] hover:text-[#1D1D1F]'
-            }`}
+              }`}
           >
             Sign In
           </button>
@@ -112,11 +111,10 @@ export default function AuthModal({
             role="tab"
             aria-selected={mode === 'register'}
             onClick={() => setMode('register')}
-            className={`py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1]/40 ${
-              mode === 'register'
+            className={`py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1]/40 ${mode === 'register'
                 ? 'bg-white text-[#1D1D1F] shadow-sm font-semibold'
                 : 'text-[#86868B] hover:text-[#1D1D1F]'
-            }`}
+              }`}
           >
             Create Account
           </button>

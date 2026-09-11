@@ -6,6 +6,7 @@ import LandingNav from '../landing/ui/LandingNav';
 import HeroStage from '../landing/huly/HeroStage';
 import ProductivityBento from '../landing/huly/ProductivityBento';
 import SyncGrid from '../landing/huly/SyncGrid';
+import KeyboardShowcaseSection from '../landing/huly/KeyboardShowcaseSection';
 import KnowledgeSection from '../landing/huly/KnowledgeSection';
 import JoinSection from '../landing/huly/JoinSection';
 import '../landing/landing.css';
@@ -52,6 +53,7 @@ export default function LandingPage({
         <HeroStage onConnect={handleConnect} />
         <ProductivityBento />
         <SyncGrid />
+        <KeyboardShowcaseSection />
         <KnowledgeSection />
         <JoinSection onConnect={handleConnect} />
       </main>

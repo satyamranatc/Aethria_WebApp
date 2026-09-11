@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Copy, Check, Sparkles, Bot, User, Workflow } from 'lucide-react';
+import { Volume2, Copy, Check, User, Workflow } from 'lucide-react';
 import FormattedMessage from './FormattedMessage';
 
 export default function MessageBubble({
@@ -53,12 +53,14 @@ export default function MessageBubble({
 
       {/* Message Card — Landing Aesthetic (Obsidian for user, Pure paper for assistant) */}
       <div
-        className={`group relative max-w-[95%] sm:max-w-[85%] rounded-[24px] transition-all ${
+        className={`group relative transition-all ${
           isAssistant
-            ? message.isError
-              ? 'p-4 sm:p-5 bg-[#FFF2F2] border border-[#FF3B30]/20 text-[#D70015] rounded-tl-sm shadow-xs'
-              : 'p-5 sm:p-6 bg-white text-[#1D1D1F] border border-black/[0.08] shadow-[0_8px_28px_rgba(79,70,229,0.04),0_1px_3px_rgba(0,0,0,0.02)] rounded-tl-sm'
-            : 'p-4 sm:p-5 bg-[#111217] text-[#F4F4F5] border border-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-tr-sm'
+            ? `w-full max-w-full sm:max-w-[98%] rounded-[24px] rounded-tl-sm ${
+                message.isError
+                  ? 'p-4 sm:p-5 bg-[#FFF2F2] border border-[#FF3B30]/20 text-[#D70015] shadow-xs'
+                  : 'p-5 sm:p-7 bg-white text-[#1D1D1F] border border-black/[0.08] shadow-[0_8px_28px_rgba(79,70,229,0.04),0_1px_3px_rgba(0,0,0,0.02)]'
+              }`
+            : 'max-w-[90%] sm:max-w-[80%] p-4 sm:p-5 bg-[#111217] text-[#F4F4F5] border border-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-[24px] rounded-tr-sm'
         }`}
       >
         {/* Rich Content Renderer */}
@@ -73,11 +75,10 @@ export default function MessageBubble({
                 type="button"
                 onClick={() => (isCurrentSpeaking ? onStopAudio() : onSpeak(message.content, message.id))}
                 aria-label={isCurrentSpeaking ? 'Stop voice playback' : 'Read aloud with Neural Voice'}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/40 ${
-                  isCurrentSpeaking
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all cursor-pointer text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4F46E5]/40 ${isCurrentSpeaking
                     ? 'bg-[#4F46E5]/10 text-[#4F46E5] border border-[#4F46E5]/30 shadow-xs'
                     : 'bg-[#F4F5F7] hover:bg-white text-[#6E6E73] hover:text-[#1D1D1F] border border-black/[0.04]'
-                }`}
+                  }`}
               >
                 {isCurrentSpeaking ? (
                   <>

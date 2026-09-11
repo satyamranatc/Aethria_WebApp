@@ -56,8 +56,8 @@ void main() {
   // Top rim of the product box
   float boxTop = clamp(uBox.y, 0.35, 0.85);
 
-  // Dynamic beam contact X position (centered at the contact target)
-  float beamX = (uTargetX > 0.0 ? uTargetX : mix(0.580, 0.572, uWide)) + (uMouse.x - 0.5) * 0.010;
+  // Dynamic beam contact X position (shifted right to leave generous breathing room for the headline)
+  float beamX = (uTargetX > 0.0 ? uTargetX : mix(0.640, 0.630, uWide)) + (uMouse.x - 0.5) * 0.010;
   float x = (uv.x - beamX) * aspect;
 
   // Subtle organic curvature along the beam descent
@@ -246,26 +246,27 @@ export default function HeroAtmosphere() {
         const bRight = (boxRect.right - wrapRect.left) / wrapRect.width;
         const bBottom = (boxRect.bottom - wrapRect.top) / wrapRect.height;
 
-        let targetX = bLeft + (bRight - bLeft) * 0.62;
+        let targetX = bLeft + (bRight - bLeft) * 0.68;
         if (inbox && inbox.offsetParent !== null) {
           const inboxRect = inbox.getBoundingClientRect();
           if (inboxRect.width > 0) {
-            targetX = (inboxRect.left - wrapRect.left) / wrapRect.width;
+            // Shift into the Intelligence panel for balanced right alignment and clear headline breathing room
+            targetX = (inboxRect.left - wrapRect.left + inboxRect.width * 0.32) / wrapRect.width;
           }
         } else if (bRight > bLeft) {
-          targetX = (bLeft + bRight) * 0.5;
+          targetX = (bLeft + bRight) * 0.58;
         }
 
-        // Keep target comfortably centered within frame boundaries
+        // Keep target comfortably within frame boundaries
         if (bRight > bLeft) {
-          targetX = Math.max(bLeft + (bRight - bLeft) * 0.30, Math.min(bRight - (bRight - bLeft) * 0.20, targetX));
+          targetX = Math.max(bLeft + (bRight - bLeft) * 0.35, Math.min(bRight - (bRight - bLeft) * 0.12, targetX));
         }
 
         gl.uniform4f(uBox, bLeft, bTop, bRight, bBottom);
         gl.uniform1f(uTargetX, targetX);
       } else {
         gl.uniform4f(uBox, 0.12, 0.58, 0.88, 0.95);
-        gl.uniform1f(uTargetX, 0.64);
+        gl.uniform1f(uTargetX, 0.66);
       }
     };
 
