@@ -76,7 +76,7 @@ export default function InteractiveKeyboard() {
     }
 
     if (labelText) {
-      setActiveLabel(`Key pressed: ${labelText}`);
+      setActiveLabel(labelText);
     }
 
     setTimeout(() => {
@@ -95,7 +95,7 @@ export default function InteractiveKeyboard() {
 
       setActiveKeys((prev) => new Set(prev).add(e.code));
       if (soundEnabled) playMechanicalKeySound(0.24);
-      setActiveLabel(`Key pressed: ${e.key.length === 1 ? e.key.toUpperCase() : e.code}`);
+      setActiveLabel(e.key.length === 1 ? e.key.toUpperCase() : e.code);
     };
 
     const handleKeyUp = (e) => {
