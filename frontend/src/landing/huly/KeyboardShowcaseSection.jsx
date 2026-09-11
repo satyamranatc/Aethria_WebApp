@@ -4,7 +4,7 @@ import InteractiveKeyboard from '../../components/common/InteractiveKeyboard';
 
 export default function KeyboardShowcaseSection() {
   return (
-    <section id="developers" className="keyboard-showcase-section">
+    <section id="developers" className="keyboard-showcase-section" aria-labelledby="keyboard-showcase-title">
       
       {/* Ambient background glow */}
       <div className="keyboard-ambient-glow" aria-hidden="true">
@@ -17,6 +17,7 @@ export default function KeyboardShowcaseSection() {
         {/* Section Header */}
         <div className="keyboard-section-head">
           <motion.h2
+            id="keyboard-showcase-title"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}

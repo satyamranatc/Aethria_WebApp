@@ -122,11 +122,11 @@ export default function InteractiveKeyboard() {
   };
 
   return (
-    <div ref={containerRef} className="apple-keyboard-container">
+    <div ref={containerRef} className="apple-keyboard-container" role="region" aria-label="Interactive Mac Keyboard demonstration">
       
       {/* Sleek Blended Control Bar — Matches Aethria design standards */}
-      <div className="apple-keyboard-toolbar">
-        <div className="toolbar-shortcuts">
+      <div className="apple-keyboard-toolbar" role="toolbar" aria-label="Keyboard shortcuts demonstration toolbar">
+        <div className="toolbar-shortcuts" role="group" aria-label="Feature shortcuts">
           {PRESET_SHORTCUTS.map((sc, i) => {
             const IconComponent = sc.icon;
             return (
@@ -135,8 +135,9 @@ export default function InteractiveKeyboard() {
                 type="button"
                 onClick={() => runPreset(sc)}
                 className="keyboard-preset-pill"
+                aria-label={`Demonstrate ${sc.name}: ${sc.label}`}
               >
-                <IconComponent className="w-3.5 h-3.5 text-[#4F46E5]" />
+                <IconComponent className="w-3.5 h-3.5 text-[#4F46E5]" aria-hidden="true" />
                 <span>{sc.name}</span>
               </button>
             );
@@ -144,8 +145,8 @@ export default function InteractiveKeyboard() {
         </div>
 
         <div className="toolbar-controls">
-          <div className="keyboard-status-pill">
-            <span className="status-live-dot" />
+          <div className="keyboard-status-pill" role="status" aria-live="polite">
+            <span className="status-live-dot" aria-hidden="true" />
             <span className="status-live-text">{activeLabel}</span>
           </div>
 
@@ -153,16 +154,18 @@ export default function InteractiveKeyboard() {
             type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`keyboard-sound-pill ${soundEnabled ? 'is-active' : ''}`}
+            aria-pressed={soundEnabled}
+            aria-label={soundEnabled ? 'Mute keyboard mechanical audio clicks' : 'Enable keyboard mechanical audio clicks'}
             title={soundEnabled ? 'Mechanical audio ON (Click to mute)' : 'Audio muted (Click to enable)'}
           >
             {soundEnabled ? (
               <>
-                <Volume2 className="w-3.5 h-3.5 text-[#4F46E5]" />
+                <Volume2 className="w-3.5 h-3.5 text-[#4F46E5]" aria-hidden="true" />
                 <span>Audio On</span>
               </>
             ) : (
               <>
-                <VolumeX className="w-3.5 h-3.5 text-[#86868B]" />
+                <VolumeX className="w-3.5 h-3.5 text-[#86868B]" aria-hidden="true" />
                 <span>Muted</span>
               </>
             )}
@@ -170,8 +173,8 @@ export default function InteractiveKeyboard() {
         </div>
       </div>
 
-      {/* Floating Apple Magic Keyboard — Seamlessly Blended with Landing Page */}
-      <div className="apple-magic-keyboard-outer">
+      {/* Floating Apple Magic Keyboard — Seamlessly Blended with Landing Page (Decorative visual simulator) */}
+      <div className="apple-magic-keyboard-outer" aria-hidden="true">
         <div className="apple-magic-keyboard">
 
           {/* ROW 0: Function Keys with Laser-Engraved Clean SVG Icons (No emojis) */}

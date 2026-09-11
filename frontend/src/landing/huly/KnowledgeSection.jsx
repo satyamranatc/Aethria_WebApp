@@ -34,7 +34,7 @@ export default function KnowledgeSection() {
   };
 
   return (
-    <section id="intelligence" className="aethria-metabrain-section">
+    <section id="intelligence" className="aethria-metabrain-section" aria-labelledby="metabrain-heading">
       
       {/* Background Laser Aura Lines */}
       <div className="metabrain-laser-bg" aria-hidden="true">
@@ -49,6 +49,7 @@ export default function KnowledgeSection() {
         {/* Header — Clean Title & Subtitle with Laser Shuttle Guideway */}
         <div className="metabrain-header">
           <motion.h2
+            id="metabrain-heading"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -70,7 +71,7 @@ export default function KnowledgeSection() {
           </motion.p>
 
           {/* Subtle, Premium Section Shuttle Guideway */}
-          <div className="bento-shuttle-track metabrain-shuttle">
+          <div className="bento-shuttle-track metabrain-shuttle" aria-hidden="true">
             <div className="bento-shuttle-laser" />
           </div>
         </div>
@@ -113,18 +114,21 @@ export default function KnowledgeSection() {
             >
               <div className="card-copy">
                 <div className="card-title-row">
-                  <span className="card-glyph">¶</span>
+                  <span className="card-glyph" aria-hidden="true">¶</span>
                   <h3>Take notes.</h3>
                 </div>
-                <p>Create documents to keep track of team resources <span className="blinking-cursor">|</span></p>
+                <p>Create documents to keep track of team resources <span className="blinking-cursor" aria-hidden="true">|</span></p>
               </div>
 
               {/* Slash Command / Block Menu Mockup */}
-              <div className="notes-block-menu">
+              <div className="notes-block-menu" role="tablist" aria-label="Document block formats">
                 <div className="block-menu-header">Basic blocks</div>
                 
-                <div
-                  className={`block-menu-item ${activeBlock === 'text' ? 'active' : ''}`}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeBlock === 'text'}
+                  className={`block-menu-item text-left w-full ${activeBlock === 'text' ? 'active' : ''}`}
                   onClick={() => setActiveBlock('text')}
                 >
                   <span className="block-icon">
@@ -134,10 +138,13 @@ export default function KnowledgeSection() {
                     <span className="block-title">Text</span>
                     <span className="block-sub">Embed a sub-page inside page</span>
                   </div>
-                </div>
+                </button>
 
-                <div
-                  className={`block-menu-item ${activeBlock === 'todo' ? 'active' : ''}`}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeBlock === 'todo'}
+                  className={`block-menu-item text-left w-full ${activeBlock === 'todo' ? 'active' : ''}`}
                   onClick={() => setActiveBlock('todo')}
                 >
                   <span className="block-icon">
@@ -147,10 +154,13 @@ export default function KnowledgeSection() {
                     <span className="block-title">To-do list</span>
                     <span className="block-sub">Track tasks with a to-do list</span>
                   </div>
-                </div>
+                </button>
 
-                <div
-                  className={`block-menu-item ${activeBlock === 'link' ? 'active' : ''}`}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeBlock === 'link'}
+                  className={`block-menu-item text-left w-full ${activeBlock === 'link' ? 'active' : ''}`}
                   onClick={() => setActiveBlock('link')}
                 >
                   <span className="block-icon">
@@ -159,7 +169,7 @@ export default function KnowledgeSection() {
                   <div className="block-info">
                     <span className="block-title">Link to page</span>
                   </div>
-                </div>
+                </button>
               </div>
             </motion.div>
 
@@ -177,7 +187,7 @@ export default function KnowledgeSection() {
                 <p>Schedule your personal events and todos.</p>
               </div>
 
-              <div className="tasks-checklist">
+              <div className="tasks-checklist" role="group" aria-label="Interactive task checklist">
                 {[
                   { id: 0, label: 'Automated testing' },
                   { id: 1, label: 'Initial usability assessment' },
@@ -187,6 +197,16 @@ export default function KnowledgeSection() {
                   return (
                     <motion.div
                       key={task.id}
+                      role="checkbox"
+                      tabIndex={0}
+                      aria-checked={isChecked}
+                      aria-label={`Task: ${task.label}`}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          toggleTask(task.id);
+                        }
+                      }}
                       whileTap={{ scale: 0.97 }}
                       className={`task-item ${isChecked ? 'completed' : ''}`}
                       onClick={() => toggleTask(task.id)}
@@ -232,12 +252,12 @@ export default function KnowledgeSection() {
                 <div className="event-footer">
                   <div className="avatar-cluster">
                     <motion.span whileHover={{ scale: 1.25, zIndex: 10 }} className="av av-1">
-                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="" />
+                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="Team member" />
                     </motion.span>
                     <motion.span whileHover={{ scale: 1.25, zIndex: 10 }} className="av av-2">
-                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=faces" alt="" />
+                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=faces" alt="Team member" />
                     </motion.span>
-                    <span className="av av-plus">+2</span>
+                    <span className="av av-plus" aria-label="Plus 2 additional team members">+2</span>
                   </div>
                 </div>
               </div>
@@ -251,8 +271,8 @@ export default function KnowledgeSection() {
               transition={{ duration: 0.5, delay: 0.15 }}
               className="metabrain-card-dial"
             >
-              <div className="circular-clock-widget group">
-                <div className="dial-numbers-ring">
+              <div className="circular-clock-widget group" role="region" aria-label="Event scheduler widget">
+                <div className="dial-numbers-ring" aria-hidden="true">
                   <span className="num n-top">12</span>
                   <span className="num n-left">11</span>
                   <span className="num n-right">28</span>
@@ -269,6 +289,8 @@ export default function KnowledgeSection() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-[#10B981] text-[9px] font-bold text-white shadow-xs"
+                    role="status"
+                    aria-label={`${addedEventCount} events scheduled`}
                   >
                     +{addedEventCount}
                   </motion.div>
@@ -278,11 +300,11 @@ export default function KnowledgeSection() {
                   whileHover={{ scale: 1.15, rotate: 90 }}
                   whileTap={{ scale: 0.88 }}
                   onClick={() => setAddedEventCount((c) => c + 1)}
-                  aria-label="Add event"
+                  aria-label="Add event to calendar"
                   className="dial-add-btn"
                   title="Schedule new event"
                 >
-                  <Plus className="w-4 h-4 text-white" />
+                  <Plus className="w-4 h-4 text-white" aria-hidden="true" />
                 </motion.button>
               </div>
             </motion.div>
@@ -301,14 +323,14 @@ export default function KnowledgeSection() {
                 <p>Send DM and create group chats.</p>
               </div>
 
-              <div className="chat-thread-preview">
+              <div className="chat-thread-preview" role="log" aria-label="Team chat preview" aria-live="polite">
                 <div className="chat-msg msg-received">
                   <div className="msg-bubble">
                     <span className="mention">@Mark</span> Their decision is very important
                   </div>
                   <img
                     src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=48&h=48&fit=crop&crop=faces"
-                    alt="avatar"
+                    alt="Mark"
                     className="chat-avatar"
                   />
                 </div>
@@ -316,7 +338,7 @@ export default function KnowledgeSection() {
                 <div className="chat-msg msg-sent">
                   <img
                     src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=48&h=48&fit=crop&crop=faces"
-                    alt="avatar"
+                    alt="John"
                     className="chat-avatar"
                   />
                   <div className="msg-bubble">
@@ -333,7 +355,7 @@ export default function KnowledgeSection() {
                     >
                       <img
                         src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=48&h=48&fit=crop&crop=faces"
-                        alt="avatar"
+                        alt="You"
                         className="chat-avatar"
                       />
                       <div className="msg-bubble">
@@ -343,22 +365,23 @@ export default function KnowledgeSection() {
                   )}
                 </AnimatePresence>
 
-                <form onSubmit={handleSendChat} className="chat-input-pill">
+                <form onSubmit={handleSendChat} className="chat-input-pill" aria-label="Send message to team">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Type a message..."
+                    aria-label="Message content"
                     className="bg-transparent text-xs text-white placeholder:text-[#86868B] outline-none flex-1"
                   />
                   <motion.button
                     type="submit"
                     whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.85 }}
-                    aria-label="Send"
+                    aria-label="Send message"
                     className="text-white/60 hover:text-[#38BDF8] transition-colors cursor-pointer"
                   >
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-3.5 h-3.5" aria-hidden="true" />
                   </motion.button>
                 </form>
               </div>
@@ -385,8 +408,8 @@ export default function KnowledgeSection() {
 
               <div className="voice-stage-arena">
                 {/* Acoustic Horizon Arc Glowing Light Spill */}
-                <div className={`acoustic-horizon-glow ${isVoiceActive ? 'active' : ''}`} />
-                <div className="acoustic-rings-container">
+                <div className={`acoustic-horizon-glow ${isVoiceActive ? 'active' : ''}`} aria-hidden="true" />
+                <div className="acoustic-rings-container" aria-hidden="true">
                   <div className={`acoustic-ring ring-3 ${isVoiceActive ? 'pulsing' : ''}`} />
                   <div className={`acoustic-ring ring-2 ${isVoiceActive ? 'pulsing' : ''}`} />
                   <div className={`acoustic-ring ring-1 ${isVoiceActive ? 'pulsing' : ''}`} />
@@ -394,19 +417,19 @@ export default function KnowledgeSection() {
 
                 {/* Floating Member Avatars with Fluid Kinetic Oscillations */}
                 <div className="avatar-orbit orbit-an float-avatar-1">
-                  <div className="orb-av av-initials">AN</div>
+                  <div className="orb-av av-initials" aria-label="Member AN">AN</div>
                 </div>
                 <div className="avatar-orbit orbit-1 float-avatar-2">
-                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="Member" className="orb-av" />
+                  <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces" alt="Team member" className="orb-av" />
                 </div>
                 <div className="avatar-orbit orbit-2 float-avatar-3">
-                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=faces" alt="Member" className="orb-av" />
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=faces" alt="Team member" className="orb-av" />
                 </div>
                 <div className="avatar-orbit orbit-3 float-avatar-4">
-                  <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=64&h=64&fit=crop&crop=faces" alt="Member" className="orb-av" />
+                  <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=64&h=64&fit=crop&crop=faces" alt="Team member" className="orb-av" />
                 </div>
                 <div className="avatar-orbit orbit-4 float-avatar-2">
-                  <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=faces" alt="Member" className="orb-av" />
+                  <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=64&h=64&fit=crop&crop=faces" alt="Team member" className="orb-av" />
                 </div>
 
                 {/* Glowing Center Microphone Orb */}
@@ -415,11 +438,13 @@ export default function KnowledgeSection() {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.92 }}
                   onClick={() => setIsVoiceActive(!isVoiceActive)}
+                  aria-pressed={isVoiceActive}
+                  aria-label={isVoiceActive ? "Mute team real-time voice sync" : "Activate team real-time voice sync"}
                   className={`voice-center-orb ${isVoiceActive ? 'active' : ''}`}
                   title={isVoiceActive ? 'Voice active (click to mute)' : 'Voice muted (click to activate)'}
                 >
-                  <div className="orb-inner-wave" />
-                  <Mic className="w-5 h-5 text-white relative z-10" />
+                  <div className="orb-inner-wave" aria-hidden="true" />
+                  <Mic className="w-5 h-5 text-white relative z-10" aria-hidden="true" />
                 </motion.button>
               </div>
             </motion.div>

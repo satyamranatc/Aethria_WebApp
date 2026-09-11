@@ -11,9 +11,9 @@ const FEATURES = [
 
 export default function SyncGrid() {
   return (
-    <section id="architecture" className="huly-sync">
+    <section id="architecture" className="huly-sync" aria-labelledby="architecture-title">
       <div className="huly-section-head light">
-        <h2>Sync with VS Code. Both ways.</h2>
+        <h2 id="architecture-title">Sync with VS Code. Both ways.</h2>
         <p>
           Use Aethria as the intelligence front-end for your local editor — then push verified
           changes back with one approval.

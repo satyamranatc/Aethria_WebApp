@@ -65,15 +65,19 @@ export default function LandingNav({
                 className="landing-user"
                 onClick={() => setMenuOpen((v) => !v)}
                 data-cursor="view"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-label="User account menu"
               >
                 <span className="landing-avatar">{user.name.charAt(0).toUpperCase()}</span>
                 <span className="hidden max-w-[110px] truncate sm:inline">{user.name}</span>
               </button>
               {menuOpen && (
-                <div className="landing-user-menu">
+                <div className="landing-user-menu" role="menu" aria-label="Account options">
                   <p className="px-3 pb-2 text-[11px] text-[#86868B]">{user.email}</p>
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       setMenuOpen(false);
                       onOpenProjects?.();
@@ -83,6 +87,7 @@ export default function LandingNav({
                   </button>
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       setMenuOpen(false);
                       onOpenProfile?.();
@@ -92,6 +97,7 @@ export default function LandingNav({
                   </button>
                   <button
                     type="button"
+                    role="menuitem"
                     className="text-[#FF3B30]"
                     onClick={() => {
                       setMenuOpen(false);

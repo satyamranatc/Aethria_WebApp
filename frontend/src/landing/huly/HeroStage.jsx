@@ -18,11 +18,11 @@ export default function HeroStage({ onConnect }) {
   }, { scope: rootRef });
 
   return (
-    <section id="intro" ref={rootRef} className="huly-hero">
+    <section id="intro" ref={rootRef} className="huly-hero" aria-labelledby="hero-title">
       <HeroAtmosphere />
       <div className="huly-hero-inner">
         <div className="huly-hero-copy">
-          <h1>
+          <h1 id="hero-title">
             Your codebase.
             <br />
             Connected to AI.
@@ -34,7 +34,7 @@ export default function HeroStage({ onConnect }) {
           <button type="button" className="huly-pill" onClick={onConnect}>
             <span className="huly-pill-glow" aria-hidden="true" />
             See in action
-            <span>→</span>
+            <span aria-hidden="true">→</span>
           </button>
         </div>
         <ProductFrame />
