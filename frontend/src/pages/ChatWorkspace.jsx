@@ -48,8 +48,18 @@ const VEDANTA_SCIENCE_QUOTES = [
     origin: "Quantum Physicist & Vedantin"
   },
   {
+    quote: "You are not the intellect that processes thoughts; you are the silent awareness in which all thoughts arise and dissolve.",
+    author: "Acharya Prashant",
+    origin: "Vedanta & Consciousness"
+  },
+  {
     quote: "Tat Tvam Asi (तत्त्वमसि) — You are that. The observer, the code, and the cosmos are indivisible.",
     author: "Chandogya Upanishad",
+    origin: "Advaita Vedanta"
+  },
+  {
+    quote: "When the observer realizes he is not separate from the observed, all fear ends. In oneness, there is no second to be afraid of.",
+    author: "Acharya Prashant",
     origin: "Advaita Vedanta"
   },
   {
@@ -58,9 +68,19 @@ const VEDANTA_SCIENCE_QUOTES = [
     origin: "Physics & Philosophy"
   },
   {
+    quote: "Artificial intelligence can optimize all combinations of thoughts, but it cannot touch the silence from which thoughts emerge. That silence is your true self.",
+    author: "Acharya Prashant",
+    origin: "Philosophy of Mind & AI"
+  },
+  {
     quote: "The perceived plurality is only an appearance; the underlying reality is one unbroken consciousness.",
     author: "Adi Shankaracharya",
     origin: "Advaita Philosophy"
+  },
+  {
+    quote: "True knowledge does not burden the mind with more concepts; it strips away the false until only the unconditioned remains.",
+    author: "Acharya Prashant",
+    origin: "Vedantic Inquiry"
   },
   {
     quote: "We are a way for the cosmos to know itself — an instrument through which the universe understands its own architecture.",
