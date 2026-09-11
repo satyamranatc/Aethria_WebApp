@@ -235,7 +235,7 @@ export default function HeroAtmosphere() {
 
     const updateBoxAndTarget = () => {
       const host = wrap.parentElement || wrap;
-      const frame = host.querySelector('.product-window') || host.querySelector('.product-frame');
+      const frame = host.querySelector('.product-window-shell') || host.querySelector('.product-window') || host.querySelector('.product-frame');
       const inbox = host.querySelector('.product-inbox');
       const wrapRect = wrap.getBoundingClientRect();
 

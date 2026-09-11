@@ -4,8 +4,8 @@ export default function ProductFrame() {
   return (
     <div className="product-frame" aria-hidden="true">
       <span className="product-hit" />
-      <span className="product-rim" />
       <div className="product-window-shell">
+        <span className="product-rim" />
         <div className="product-window-topbar">
           <div className="product-dots">
             <span className="p-dot close" />
