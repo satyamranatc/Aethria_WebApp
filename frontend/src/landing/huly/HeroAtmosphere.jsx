@@ -74,26 +74,37 @@ void main() {
   float dy = boxTop - y;
 
   // ------------------------------------------------------------------------
-  // 1. MAJESTIC VOLUMETRIC BEAM COLUMN (Descending from cosmos to workspace)
+  // 1. VOLUMETRIC ATMOSPHERIC NEBULA & COSMIC SMOKE CLOUDS
   // ------------------------------------------------------------------------
-  float flareHeight = 0.34;
+  vec2 nebulaUv = vec2(x * 1.35 + sin(y * 2.8 + uTime * 0.08) * 0.12, y * 1.7 - uTime * 0.06);
+  float nebFbm1 = fbm(nebulaUv * 1.5);
+  float nebFbm2 = fbm(nebulaUv * 2.8 + vec2(nebFbm1 * 1.3, uTime * 0.03));
+  float nebulaPuff = smoothstep(0.28, 0.78, nebFbm2);
+  // Billowy nebula clouds drifting across the upper & mid cosmic atmosphere
+  float nebulaMask = exp(-pow(abs(x) / 0.85, 1.6)) * smoothstep(0.04, 0.28, y) * (1.0 - smoothstep(boxTop - 0.10, boxTop + 0.08, y));
+  float nebula = nebulaPuff * nebulaMask * 0.55;
+
+  // ------------------------------------------------------------------------
+  // 2. MAJESTIC VOLUMETRIC BEAM COLUMN (Laser pillar with trumpet flare)
+  // ------------------------------------------------------------------------
+  float flareHeight = 0.26;
   float flareProg = clamp(1.0 - max(0.0, dy) / flareHeight, 0.0, 1.0);
-  float flareCurve = pow(flareProg, 2.2);
+  float flareCurve = pow(flareProg, 3.5);
 
-  // Symmetrical beam width profiles: column above, flaring out towards contact
-  float coreWidth  = mix(0.012, 0.044, flareCurve);
-  float spineWidth = mix(0.035, 0.115, flareCurve);
-  float haloWidth  = mix(0.075, 0.220, flareCurve);
-  float auraWidth  = mix(0.160, 0.400, flareCurve);
+  // Symmetrical beam width profiles: slender laser pillar above, refined trumpet flare
+  float coreWidth  = mix(0.006, 0.032, flareCurve);
+  float spineWidth = mix(0.016, 0.088, flareCurve);
+  float haloWidth  = mix(0.040, 0.170, flareCurve);
+  float auraWidth  = mix(0.085, 0.290, flareCurve);
 
-  // Continuous radial intensity profiles (symmetrical, seamless, beautifully balanced)
+  // Continuous radial intensity profiles
   float core       = exp(-pow(x / coreWidth, 2.0));
   float cyanSpine  = exp(-pow(x / spineWidth, 2.0));
   float halo       = exp(-pow(abs(x) / haloWidth, 1.8));
   float aura       = exp(-pow(abs(x) / auraWidth, 1.8));
 
   // ------------------------------------------------------------------------
-  // 2. ORGANIC DOWNWARD PLASMA STREAM & LIVING SILK FILAMENTS
+  // 3. ORGANIC DOWNWARD PLASMA STREAM & LIVING SILK FILAMENTS
   // ------------------------------------------------------------------------
   float flowSpeed = uTime * 1.3;
   float stream = fbm(vec2(x * 16.0, y * 4.2 - flowSpeed));
@@ -104,72 +115,98 @@ void main() {
   float wave2 = cos(abs(x) * 48.0 - y * 18.0 + uTime * 3.0);
   float silk = exp(-pow(abs(x) / (haloWidth * 1.15), 2.0)) * (0.65 + 0.25 * wave1 + 0.10 * wave2) * flareCurve;
 
+  // Box rim containment mask: smoothly rolls off at window edges to eliminate any leakage past corners
+  float rimMask = smoothstep(uBox.x - 0.002, uBox.x + 0.018, uv.x) * smoothstep(uBox.z + 0.002, uBox.z - 0.016, uv.x);
+
   // ------------------------------------------------------------------------
-  // 3. PHOTONIC CONTACT CREST & ILLUMINATED RIM (At boxTop)
+  // 4. DISTINCT FIBER-OPTIC CAUSTIC FILAMENTS (Diverging along the flare)
+  // ------------------------------------------------------------------------
+  float rayNormX = x / max(spineWidth * 1.35, 0.005);
+  float rayCoord1 = rayNormX * 15.0;
+  float rayCoord2 = rayNormX * 24.0;
+  float rayWarp = sin(y * 14.0 - uTime * 2.2) * 0.4;
+  float f1 = pow(0.5 + 0.5 * cos(rayCoord1 + rayWarp), 7.0);
+  float f2 = pow(0.5 + 0.5 * sin(rayCoord2 - uTime * 1.6), 8.0);
+  float causticFilaments = (f1 * 0.65 + f2 * 0.45) * exp(-pow(abs(x) / (haloWidth * 1.15), 2.0)) * flareCurve * (0.25 + 0.75 * rimMask);
+
+  // ------------------------------------------------------------------------
+  // 5. PHOTONIC CONTACT CREST & ILLUMINATED RIM (Strictly bounded to card top)
   // ------------------------------------------------------------------------
   float distToRim = abs(dy);
-  float rimSpan = exp(-pow(x / 0.20, 2.0));
+  float rimSpan = exp(-pow(x / 0.18, 2.0));
 
-  // Incandescent contact focal point
-  float contactHot = exp(-pow(distToRim / 0.008, 2.0)) * rimSpan;
+  // Incandescent contact focal point (contained within box bounds)
+  float contactHot = exp(-pow(distToRim / 0.006, 2.0)) * rimSpan * rimMask;
 
-  // Warm amber / copper contact seam
-  float amberSeam = exp(-pow(distToRim / 0.003, 2.0)) * rimSpan * 0.90;
+  // Warm amber / copper contact seam (contained within box bounds)
+  float amberSeam = exp(-pow(distToRim / 0.0025, 2.0)) * rimSpan * 0.92 * rimMask;
 
   // Soft atmospheric contact bloom
-  vec2 bloomP = vec2(x / 0.32, dy / 0.13);
-  float bloom = exp(-dot(bloomP, bloomP));
+  vec2 bloomP = vec2(x / 0.22, dy / 0.10);
+  float bloom = exp(-dot(bloomP, bloomP)) * (0.15 + 0.85 * rimMask);
 
   // ------------------------------------------------------------------------
-  // 4. SEAMLESS VERTICAL CONTINUITY (NO RAZOR-SHARP CUTOFF!)
+  // 6. SEAMLESS VERTICAL CONTINUITY (No knife-edge cutoff, zero side bleed)
   // ------------------------------------------------------------------------
-  // Below the rim, the light softly wraps behind the card with a smooth
-  // exponential decay — completely eliminating any hard horizontal knife edge!
   float depthBelow = max(0.0, -dy);
   float underglow = exp(-pow(depthBelow / 0.15, 2.0));
-  float verticalEnvelope = (y <= boxTop) ? 1.0 : underglow;
+
+  // Horizontal containment: checks if pixel is horizontally outside the window shell
+  float outsideBox = smoothstep(uBox.z - 0.008, uBox.z + 0.008, uv.x) + smoothstep(uBox.x + 0.008, uBox.x - 0.008, uv.x);
+  outsideBox = clamp(outsideBox, 0.0, 1.0);
+
+  // Seamless vertical envelope: stops any flare skirt or underglow from leaking past corners into open air
+  float verticalEnvelope = (y <= boxTop)
+      ? (1.0 - outsideBox * smoothstep(boxTop - 0.04, boxTop, y) * 0.95)
+      : underglow * (1.0 - outsideBox);
 
   // ------------------------------------------------------------------------
-  // 5. SHIMMERING COSMIC PARTICLES (Matrix field within the light stream)
+  // 7. AMBIENT DOT-MATRIX / HALFTONE FIELD (Signature tech grid)
   // ------------------------------------------------------------------------
-  vec2 gridCoord = gl_FragCoord.xy / 8.5;
-  vec2 gridF = fract(gridCoord) - 0.5;
-  float dotDist = length(gridF);
-  float starMask = 1.0 - smoothstep(0.08, 0.26, dotDist);
-  float starField = exp(-pow(x / 0.28, 2.0)) * smoothstep(0.04, 0.35, y);
-  float twinkle = 0.5 + 0.5 * sin(dot(floor(gridCoord), vec2(12.9898, 78.233)) + uTime * 3.2);
-  float particles = starMask * starField * twinkle * 0.38;
+  vec2 dotGrid = gl_FragCoord.xy / 8.5;
+  vec2 dotFract = fract(dotGrid) - 0.5;
+  float dotDist = length(dotFract);
+  float dotShape = 1.0 - smoothstep(0.08, 0.24, dotDist);
+  // Subtle ambient illumination from the beam aura and nebula across the sky
+  float ambientIllum = exp(-pow(abs(x) / 0.95, 1.5)) * smoothstep(0.02, 0.28, y);
+  float dotMatrix = dotShape * (ambientIllum * 0.22 + nebula * 0.35 + halo * 0.25);
 
   // ------------------------------------------------------------------------
-  // 6. HIGH-CONTRAST PHOTONIC PALETTE (Award-winning aura on white)
+  // 8. HIGH-CONTRAST PHOTONIC PALETTE
   // ------------------------------------------------------------------------
-  vec3 colIndigo = vec3(0.20, 0.24, 0.88);  // Deep celestial indigo
-  vec3 colCyan   = vec3(0.10, 0.74, 1.00);  // Electric neon cyan
-  vec3 colViolet = vec3(0.58, 0.32, 0.96);  // Radiant silk violet
+  vec3 colIndigo = vec3(0.18, 0.22, 0.88);  // Deep celestial indigo
+  vec3 colCyan   = vec3(0.10, 0.78, 1.00);  // Electric neon cyan
+  vec3 colViolet = vec3(0.56, 0.32, 0.96);  // Radiant silk violet
   vec3 colWhite  = vec3(1.00, 1.00, 1.00);  // Pure incandescent white
   vec3 colAmber  = vec3(1.00, 0.64, 0.22);  // Warm copper/amber contact seam
+  vec3 colNebula = vec3(0.22, 0.26, 0.94);  // Cosmic atmospheric nebula
 
   vec3 colorOut = vec3(0.0);
-  // Atmospheric aura & silk
+  // Volumetric nebula & ambient halftone grid
+  colorOut += colNebula * (nebula * 0.90);
+  colorOut += colCyan   * (dotMatrix * 0.85);
+  // Atmospheric aura, silk & caustic filaments
   colorOut += colIndigo * (aura * 0.40 * plasma);
-  colorOut += colViolet * (halo * 0.60 * plasma + silk * 0.75);
-  // Electric core spine & sparkles
-  colorOut += colCyan   * (cyanSpine * 0.90 * plasma + particles * 0.70);
+  colorOut += colViolet * (halo * 0.60 * plasma + silk * 0.65 + causticFilaments * 0.70);
+  // Electric core spine & caustic filaments
+  colorOut += colCyan   * (cyanSpine * 0.90 * plasma + causticFilaments * 0.65);
   // Incandescent core & contact crest
-  colorOut += colWhite  * (core * 1.60 * plasma + contactHot * 1.50 + bloom * 0.60);
+  colorOut += colWhite  * (core * 1.65 * plasma + contactHot * 1.55 + bloom * 0.60);
   // Warm contact highlight seam
-  colorOut += colAmber  * (amberSeam * 0.85);
+  colorOut += colAmber  * (amberSeam * 0.88);
 
   // Alpha composition
   float alpha = core * 1.00
               + cyanSpine * 0.85
               + halo * 0.55
               + aura * 0.35
-              + silk * 0.60
+              + silk * 0.50
+              + causticFilaments * 0.75
+              + nebula * 0.65
+              + dotMatrix * 0.45
               + contactHot * 0.95
-              + amberSeam * 0.70
-              + bloom * 0.50
-              + particles * 0.35;
+              + amberSeam * 0.75
+              + bloom * 0.50;
 
   alpha = clamp(alpha * along * verticalEnvelope, 0.0, 1.0);
   colorOut = clamp(colorOut, 0.0, 1.0);
