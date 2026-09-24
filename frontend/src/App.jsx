@@ -9,6 +9,8 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const CanvasPage = lazy(() => import('./pages/CanvasPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const ContinuousVoiceOverlay = lazy(() => import('./components/voice/ContinuousVoiceOverlay'));
+const VoiceStudioPage = lazy(() => import('./pages/VoiceStudioPage'));
+
 
 import { useAuth } from './hooks/useAuth';
 import { useChat } from './hooks/useChat';
@@ -218,6 +220,7 @@ export default function App() {
                 isAuthenticated={isAuthenticated}
                 onOpenProfile={() => navigate('/profile')}
                 onOpenProjects={() => navigate('/projects')}
+                onOpenBuilder={() => navigate('/builder')}
                 onOpenAuth={handleOpenAuth}
                 onLogout={logout}
               />
@@ -257,6 +260,7 @@ export default function App() {
                 onOpenProfile={() => navigate('/profile')}
                 onOpenCanvas={handleOpenCanvas}
                 onOpenProjects={() => navigate('/projects')}
+                onOpenBuilder={() => navigate('/builder')}
                 onOpenContinuousVoice={handleOpenContinuousVoice}
                 onOpenAuth={handleOpenAuth}
                 onLogout={() => {
@@ -300,12 +304,35 @@ export default function App() {
                 onOpenProfile={() => navigate('/profile')}
                 onOpenCanvas={handleOpenCanvas}
                 onOpenProjects={() => navigate('/projects')}
+                onOpenBuilder={() => navigate('/builder')}
                 onOpenContinuousVoice={handleOpenContinuousVoice}
                 onOpenAuth={handleOpenAuth}
                 onLogout={() => {
                   logout();
                   navigate('/');
                 }}
+              />
+            }
+          />
+
+                    {/* Aethria Live Voice Builder Studio */}
+          <Route
+            path="/builder"
+            element={
+              <VoiceStudioPage
+                user={user}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={handleOpenAuth}
+              />
+            }
+          />
+          <Route
+            path="/voice-studio"
+            element={
+              <VoiceStudioPage
+                user={user}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={handleOpenAuth}
               />
             }
           />

@@ -15,6 +15,7 @@ export default function LandingNav({
   onOpenAuth,
   onOpenProfile,
   onOpenProjects,
+  onOpenBuilder,
   onLogout,
   onConnect
 }) {
@@ -54,6 +55,15 @@ export default function LandingNav({
             }}
           >
             Projects
+          </button>
+                  <button
+            type="button"
+            data-cursor="view"
+            className="flex items-center gap-1.5 text-[#4F46E5] font-semibold transition-colors hover:text-[#4338CA]"
+            onClick={onOpenBuilder}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5] animate-pulse" />
+            <span>Voice Studio</span>
           </button>
         </nav>
 

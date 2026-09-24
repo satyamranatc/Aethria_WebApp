@@ -19,6 +19,7 @@ export default function LandingPage({
   isAuthenticated,
   onOpenProfile,
   onOpenProjects,
+  onOpenBuilder,
   onOpenAuth,
   onLogout
 }) {
@@ -46,6 +47,7 @@ export default function LandingPage({
         onOpenAuth={onOpenAuth}
         onOpenProfile={onOpenProfile}
         onOpenProjects={onOpenProjects}
+        onOpenBuilder={onOpenBuilder}
         onLogout={onLogout}
         onConnect={handleConnect}
       />
