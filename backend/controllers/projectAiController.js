@@ -1,3 +1,4 @@
+import { executeGroqChatWithFallback } from "../utils/groqClient.js";
 import Groq from "groq-sdk";
 import crypto from "crypto";
 import path from "path";
@@ -1107,3 +1108,172 @@ Return RAW JSON ONLY:
 };
 
 
+
+// ==========================================
+// AI SMART VOICE CANVAS WORKSPACE DECOMPOSER
+// ==========================================
+export const syncVoiceCanvasToWorkspace = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { canvasHtml, customInstruction = "", mode = "smart" } = req.body;
+
+    if (!canvasHtml || !canvasHtml.trim()) {
+      return res.status(400).json({ error: "canvasHtml is required." });
+    }
+
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    // 1. Scan workspace files from MongoDB
+    const allFiles = await ProjectFile.find({ projectId: id, isBinary: false }).lean();
+    const filePaths = allFiles.map((f) => f.path);
+
+    // 2. Identify workspace framework & signature files
+    const packageJsonFile = allFiles.find((f) => f.path === "package.json" || f.path.endsWith("/package.json"));
+    let packageJson = {};
+    if (packageJsonFile && packageJsonFile.content) {
+      try {
+        packageJson = JSON.parse(packageJsonFile.content);
+      } catch (e) {}
+    }
+
+    const allDeps = {
+      ...(packageJson.dependencies || {}),
+      ...(packageJson.devDependencies || {})
+    };
+
+    const isReact =
+      Boolean(allDeps.react) ||
+      filePaths.some((p) => /\.(jsx|tsx)$/.test(p)) ||
+      (project.framework && project.framework.toLowerCase().includes("react"));
+
+    const isNext =
+      Boolean(allDeps.next) ||
+      filePaths.some((p) => p.startsWith("pages/") || p.startsWith("app/") || p.startsWith("src/app"));
+
+    const hasReactRouter =
+      Boolean(allDeps["react-router-dom"]) ||
+      Boolean(allDeps["react-router"]);
+
+    // Find main/app file
+    const appFile = allFiles.find((f) =>
+      ["src/App.jsx", "src/App.tsx", "src/App.js", "App.jsx", "App.tsx", "App.js"].includes(f.path)
+    );
+
+    const indexHtmlFile = allFiles.find((f) =>
+      ["index.html", "public/index.html", "src/index.html"].includes(f.path)
+    );
+
+    // Construct context summary
+    let contextDescription = `PROJECT NAME: ${project.name}\nDETECTED FRAMEWORK: ${
+      isNext ? "Next.js" : isReact ? "React (Vite/CRA)" : allFiles.length === 0 ? "Empty Workspace" : "Vanilla HTML/CSS/JS"
+    }\nEXISTING FILES (${filePaths.length}):\n${filePaths.slice(0, 40).join("\n")}`;
+
+    if (appFile && appFile.content) {
+      contextDescription += `\n\nEXISTING APP ENTRY FILE (${appFile.path}):\n\`\`\`javascript\n${appFile.content.slice(0, 2500)}\n\`\`\``;
+    }
+
+    if (packageJsonFile && packageJsonFile.content) {
+      contextDescription += `\n\nPACKAGE.JSON DEPENDENCIES:\n${JSON.stringify(allDeps, null, 2)}`;
+    }
+
+    const systemPrompt = `You are Aethria's Principal Software Architect & Code Decomposer.
+The user built a visual webpage/component on the Aethria Voice Canvas.
+Your mission: Intelligently decompose and integrate this canvas into the user's ACTUAL workspace files.
+
+CRITICAL ARCHITECTURAL RULES:
+1. NEVER DUMP MONOLITHIC CODE INTO A SINGLE FILE:
+   - If React or Next.js is detected (or App.jsx exists):
+     * Extract the Navbar into a clean, reusable component (e.g. \`src/components/Navbar.jsx\`).
+     * Extract the Main Content / Hero / Sections into a dedicated page view (e.g. \`src/pages/HomePage.jsx\` or \`src/components/HomePage.jsx\`).
+     * Convert HTML to proper JSX (class -> className, self-closing tags like <img />, <br />, <input />, React imports).
+     * ACT SMART WITH APP.JSX:
+       - If \`App.jsx\` exists, do NOT wipe out existing providers, themes, or state.
+       - Use browser router or clean imports: import \`Navbar\` and \`HomePage\` (e.g. with \`react-router-dom\` <Routes><Route path="/" element={<HomePage />} /></Routes> or clean return component layout).
+       - Provide the updated \`App.jsx\` with proper imports.
+   - If Vanilla HTML / CSS (No React or Next.js):
+     * NO TAILWIND: Convert Tailwind utility classes into clean, modern raw CSS rules.
+     * Decompose into \`index.html\` (clean semantic HTML without Tailwind, linking to stylesheet) and \`styles.css\` (modern flexbox/grid variables and styling).
+     * If interactive scripts needed, add \`main.js\`.
+   - If Workspace is Empty:
+     * Create the best-practice project structure (e.g. \`index.html\`, \`styles.css\`, \`main.js\` or React starter if preferred).
+
+2. DIRECTORY INTELLIGENCE:
+   - Always specify full paths (e.g. \`src/components/Navbar.jsx\`, \`src/pages/HomePage.jsx\`, \`src/App.jsx\`).
+   - If the folder does not exist yet, the sync engine will create it automatically.
+
+3. STRICT JSON OUTPUT FORMAT (NO MARKDOWN WRAPPERS):
+{
+  "workspaceType": "react" | "next" | "vanilla" | "empty",
+  "summary": "Concise summary of how the canvas was decomposed across files",
+  "proposals": [
+    {
+      "path": "path/to/file.ext",
+      "type": "create" | "update",
+      "description": "What this file contains and why",
+      "diff": "+ Summary of changes",
+      "proposedContent": "complete drop-in file code without markdown quotes"
+    }
+  ]
+}`;
+
+    const userPrompt = `WORKSPACE CONTEXT:\n${contextDescription}\n\nVOICE CANVAS HTML TO DECOMPOSE:\n\`\`\`html\n${canvasHtml}\n\`\`\`${
+      customInstruction ? `\n\nUSER INSTRUCTION:\n${customInstruction}` : ""
+    }`;
+
+    const { completion, model: usedModel } = await executeGroqChatWithFallback({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      model: "openai/gpt-oss-120b",
+      fallbackModel: "openai/gpt-oss-20b",
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+      max_tokens: 3800
+    });
+
+    let raw = completion.choices[0]?.message?.content || "{}";
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) raw = match[0];
+    let parsed = JSON.parse(raw);
+
+    if (!parsed || !Array.isArray(parsed.proposals) || parsed.proposals.length === 0) {
+      throw new Error("AI decomposition returned empty file proposals.");
+    }
+
+    // Save pending ProjectChange records for each proposed file
+    const createdChanges = [];
+    for (const prop of parsed.proposals) {
+      let origContent = "";
+      if (prop.path) {
+        const existing = allFiles.find((f) => f.path === prop.path);
+        if (existing) origContent = existing.content || "";
+      }
+
+      const change = new ProjectChange({
+        projectId: id,
+        path: prop.path,
+        type: prop.type || (origContent ? "update" : "create"),
+        description: prop.description || parsed.summary || "AI voice canvas sync",
+        originalContent: origContent,
+        proposedContent: sanitizeCodeContent(prop.proposedContent || origContent),
+        diff: prop.diff || `+ Modularized for: ${prop.path}`,
+        status: "pending"
+      });
+      await change.save();
+      createdChanges.push(change);
+    }
+
+    return res.json({
+      success: true,
+      workspaceType: parsed.workspaceType || (isReact ? "react" : "vanilla"),
+      summary: parsed.summary || `Decomposed voice canvas into ${createdChanges.length} modular files.`,
+      model: usedModel,
+      changes: createdChanges
+    });
+  } catch (error) {
+    console.error("Sync Voice Canvas To Workspace Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to decompose and sync voice canvas." });
+  }
+};

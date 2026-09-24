@@ -50,6 +50,9 @@ export default function ProjectCommandCenterPage({
   useEffect(() => {
     if (isAuthenticated) {
       loadProjects();
+    } else {
+      setIsLoading(false);
+      setProjects([]);
     }
   }, [isAuthenticated, loadProjects]);
 
@@ -73,6 +76,50 @@ export default function ProjectCommandCenterPage({
   const totalFiles = projects.reduce((acc, p) => acc + (p.totalFiles || p.stats?.totalFiles || 0), 0);
   const totalOpenTasks = projects.reduce((acc, p) => acc + (p.openTaskCount || 0), 0);
   const totalOpenIssues = projects.reduce((acc, p) => acc + (p.openIssueCount || 0), 0);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F4F5F7] text-[#1D1D1F] flex flex-col font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Inter',sans-serif]">
+        <header className="sticky top-0 z-30 h-14 bg-[#F4F5F7]/80 backdrop-blur-xl border-b border-black/[0.06] px-4 sm:px-8 flex items-center justify-between">
+          <button
+            onClick={onBackToWorkspace}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-black/[0.08] bg-white/80 hover:bg-white text-xs font-semibold text-[#6E6E73] hover:text-[#1D1D1F] transition-all cursor-pointer shadow-2xs group"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span>AI Workspace</span>
+          </button>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6 text-center">
+          <div className="max-w-md w-full p-8 sm:p-10 rounded-[28px] bg-white border border-black/[0.08] shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center mx-auto border border-[#4F46E5]/15">
+              <FolderCode className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold tracking-tight text-[#1D1D1F]">Sign In Required</h2>
+              <p className="text-xs text-[#6E6E73] leading-relaxed">
+                Projects and VS Code workspace synchronization require an authenticated Aethria account. Sign in or register to access your repositories.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2.5">
+              <button
+                onClick={onOpenAuth}
+                className="w-full py-2.5 rounded-full bg-[#1D1D1F] hover:bg-black text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              >
+                Sign In / Register
+              </button>
+              <button
+                onClick={onBackToWorkspace}
+                className="w-full py-2 rounded-full bg-[#F4F5F7] hover:bg-[#E5E7EB] text-[#1D1D1F] text-xs font-semibold border border-black/[0.06] transition-all cursor-pointer"
+              >
+                Back to Workspace
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F4F5F7] text-[#1D1D1F] flex flex-col font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display','Inter',sans-serif] selection:bg-[#4F46E5]/15 selection:text-[#4F46E5]">

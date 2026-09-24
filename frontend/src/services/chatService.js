@@ -1,13 +1,13 @@
-import axios from 'axios';
+import axios from "axios";
 
 const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  if (import.meta.env.PROD || (typeof window !== 'undefined' && window.location.hostname.includes('aethria.in'))) {
-    return 'https://aethria-backend.onrender.com';
+  if (import.meta.env.PROD || (typeof window !== "undefined" && window.location.hostname.includes("aethria.in"))) {
+    return "https://aethria-backend.onrender.com";
   }
-  return 'http://localhost:5000';
+  return "http://localhost:5000";
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -15,19 +15,34 @@ const API_BASE_URL = getApiBaseUrl();
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json'
+    "Content-Type": "application/json"
   },
   timeout: 30000
 });
 
 // Attach JWT token from localStorage to every outgoing request
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('voicebox_token');
+  const token = localStorage.getItem("voicebox_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Cleanly handle 401 Unauthorized responses by purging expired/stale tokens
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("voicebox_token");
+      localStorage.removeItem("voicebox_user");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("aethria:unauthorized"));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const sendChatRequest = async ({ messages, temperature = 0.7 }) => {
   const sanitizedMessages = messages.map(m => ({
@@ -35,7 +50,7 @@ export const sendChatRequest = async ({ messages, temperature = 0.7 }) => {
     content: m.content
   }));
 
-  const response = await apiClient.post('/api/chat', {
+  const response = await apiClient.post("/api/chat", {
     messages: sanitizedMessages,
     temperature
   });
@@ -43,9 +58,9 @@ export const sendChatRequest = async ({ messages, temperature = 0.7 }) => {
   return response.data;
 };
 
-export const fetchTTSAudio = async (text, gender = 'female') => {
-  const response = await apiClient.post('/api/tts/generate', { text, gender }, {
-    responseType: 'blob'
+export const fetchTTSAudio = async (text, gender = "female") => {
+  const response = await apiClient.post("/api/tts/generate", { text, gender }, {
+    responseType: "blob"
   });
   return response.data;
 };
@@ -56,7 +71,7 @@ export const summarizeVoiceConversation = async (messages) => {
     content: m.content
   }));
 
-  const response = await apiClient.post('/api/chat/summarize', {
+  const response = await apiClient.post("/api/chat/summarize", {
     messages: sanitizedMessages
   });
 

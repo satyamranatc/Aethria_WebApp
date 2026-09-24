@@ -14,6 +14,18 @@ export function useAuth() {
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
 
+  // Synchronize on 401 unauthorized events across tabs/components
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setToken(null);
+      setUser(null);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("aethria:unauthorized", handleUnauthorized);
+      return () => window.removeEventListener("aethria:unauthorized", handleUnauthorized);
+    }
+  }, []);
+
   // Validate token on mount
   useEffect(() => {
     if (token && !user) {

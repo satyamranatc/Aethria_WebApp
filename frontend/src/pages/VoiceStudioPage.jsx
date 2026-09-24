@@ -33,7 +33,7 @@ import {
 import SEOHead from '../components/common/SEOHead';
 import { generateCanvasUpdate } from '../services/builderGroqService';
 import { elevenLabsStudio, VERIFIED_ELEVENLABS_VOICES } from '../services/elevenlabsStudioService';
-import { fetchUserProjects, proposeCodeChange } from '../services/projectService';
+import { fetchUserProjects, proposeCodeChange, syncVoiceCanvasToWorkspace } from '../services/projectService';
 
 export default function VoiceStudioPage({
   user,
@@ -65,6 +65,8 @@ export default function VoiceStudioPage({
   const [userProjects, setUserProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [targetFilePath, setTargetFilePath] = useState('src/components/VoiceComponent.jsx');
+  const [syncMode, setSyncMode] = useState('smart'); // 'smart' | 'manual'
+  const [customSyncInstruction, setCustomSyncInstruction] = useState('');
   const [isVsCodeModalOpen, setIsVsCodeModalOpen] = useState(false);
   const [isSyncingToVsCode, setIsSyncingToVsCode] = useState(false);
   const [vsCodeSuccessNotice, setVsCodeSuccessNotice] = useState(null);
@@ -153,7 +155,7 @@ export default function VoiceStudioPage({
     URL.revokeObjectURL(url);
   };
 
-  // Push to VS Code Trigger
+  // Smart Push to VS Code Trigger
   const handlePushToVsCode = async () => {
     if (!canvasHtml) return;
 
@@ -171,19 +173,40 @@ export default function VoiceStudioPage({
     setVsCodeSuccessNotice(null);
 
     try {
-      const result = await proposeCodeChange(selectedProjectId, {
-        path: targetFilePath.trim() || 'src/components/VoiceComponent.jsx',
-        proposedContent: canvasHtml,
-        description: 'Generated via Aethria Voice Studio with ElevenLabs'
-      });
-
-      if (result) {
-        setVsCodeSuccessNotice({
-          path: targetFilePath,
-          projectId: selectedProjectId
+      if (syncMode === 'smart') {
+        const result = await syncVoiceCanvasToWorkspace(selectedProjectId, {
+          canvasHtml,
+          customInstruction: customSyncInstruction
         });
-        setIsVsCodeModalOpen(false);
-        speakResponse('Pushed to your VS Code workspace.');
+
+        if (result && result.changes && result.changes.length > 0) {
+          setVsCodeSuccessNotice({
+            paths: result.changes.map(c => c.path),
+            summary: result.summary,
+            workspaceType: result.workspaceType,
+            projectId: selectedProjectId
+          });
+          setIsVsCodeModalOpen(false);
+          speakResponse(`Decomposed into ${result.changes.length} modular files and pushed to VS Code.`);
+        } else {
+          throw new Error('AI decomposition returned empty file proposals.');
+        }
+      } else {
+        const result = await proposeCodeChange(selectedProjectId, {
+          path: targetFilePath.trim() || 'src/components/VoiceComponent.jsx',
+          proposedContent: canvasHtml,
+          description: 'Generated via Aethria Voice Studio with ElevenLabs'
+        });
+
+        if (result) {
+          setVsCodeSuccessNotice({
+            paths: [targetFilePath.trim() || 'src/components/VoiceComponent.jsx'],
+            summary: 'Single component change proposed',
+            projectId: selectedProjectId
+          });
+          setIsVsCodeModalOpen(false);
+          speakResponse('Pushed to your VS Code workspace.');
+        }
       }
     } catch (err) {
       setErrorNotice(err.response?.data?.error || err.message || 'Failed to sync with VS Code');
@@ -839,19 +862,37 @@ export default function VoiceStudioPage({
 
         {/* Success Notice for VS Code Push */}
         {vsCodeSuccessNotice && (
-          <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white border border-black/[0.08] shadow-xl flex items-start gap-3 max-w-md animate-in slide-in-from-bottom duration-300">
+          <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-white border border-black/[0.08] shadow-xl flex items-start gap-3 max-w-lg animate-in slide-in-from-bottom duration-300">
             <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="flex-1">
-              <h4 className="text-xs font-semibold text-[#1D1D1F] mb-0.5">Proposed to VS Code!</h4>
-              <p className="text-[11px] text-[#6E6E73] leading-relaxed">
-                Change proposal created for <code className="text-[#4F46E5] bg-[#4F46E5]/10 px-1 rounded">{vsCodeSuccessNotice.path}</code>. Open VS Code to review the live diff in your Aethria status bar!
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="text-xs font-semibold text-[#1D1D1F]">Smart Sync Pushed to VS Code!</h4>
+                {vsCodeSuccessNotice.workspaceType && (
+                  <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {vsCodeSuccessNotice.workspaceType}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-[#6E6E73] leading-relaxed mb-2">
+                {vsCodeSuccessNotice.summary || 'Modular file changes proposed for your workspace.'}
               </p>
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                {(vsCodeSuccessNotice.paths || []).map((p, idx) => (
+                  <span key={idx} className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#4F46E5]/10 text-[#4F46E5] border border-[#4F46E5]/20 flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-[#4F46E5]" />
+                    {p}
+                  </span>
+                ))}
+              </div>
+              <span className="text-[10px] text-[#86868B] block mt-1.5">
+                Open VS Code and click "Review Diff" in your Aethria status bar to apply changes.
+              </span>
             </div>
             <button
               onClick={() => setVsCodeSuccessNotice(null)}
-              className="text-[#86868B] hover:text-[#1D1D1F] text-xs font-medium"
+              className="text-[#86868B] hover:text-[#1D1D1F] text-xs font-medium cursor-pointer"
             >
               ✕
             </button>
@@ -882,7 +923,7 @@ export default function VoiceStudioPage({
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1">Target Project</label>
+                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1">Target Synced Project</label>
                   {userProjects.length > 0 ? (
                     <select
                       value={selectedProjectId}
@@ -902,19 +943,79 @@ export default function VoiceStudioPage({
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1">Target File Path in Workspace</label>
-                  <input 
-                    type="text"
-                    value={targetFilePath}
-                    onChange={(e) => setTargetFilePath(e.target.value)}
-                    placeholder="src/components/VoiceComponent.jsx"
-                    className="w-full bg-[#F4F5F7] border border-black/[0.06] rounded-xl px-3 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5]"
-                  />
-                  <span className="text-[10px] text-[#86868B] mt-1 block">
-                    VS Code will display this change as a proposed diff before applying.
-                  </span>
+                {/* Mode Selector: Smart Decomposer vs Manual File */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-[#1D1D1F]">Sync Strategy</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSyncMode('smart')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                        syncMode === 'smart'
+                          ? 'border-[#4F46E5] bg-[#4F46E5]/5 text-[#1D1D1F]'
+                          : 'border-black/[0.06] bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
+                        <span className="text-xs font-semibold">Smart Modular</span>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-[#6E6E73]">
+                        Scans workspace, splits Navbar & Home Page, updates App.jsx with routing.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSyncMode('manual')}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                        syncMode === 'manual'
+                          ? 'border-[#4F46E5] bg-[#4F46E5]/5 text-[#1D1D1F]'
+                          : 'border-black/[0.06] bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Layers className="w-3.5 h-3.5 text-[#6E6E73]" />
+                        <span className="text-xs font-semibold">Single File</span>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-[#6E6E73]">
+                        Dumps the voice canvas directly into a single target file path.
+                      </p>
+                    </button>
+                  </div>
                 </div>
+
+                {syncMode === 'smart' ? (
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1">
+                      Custom Architecture Directive <span className="text-[#86868B] font-normal">(Optional)</span>
+                    </label>
+                    <input 
+                      type="text"
+                      value={customSyncInstruction}
+                      onChange={(e) => setCustomSyncInstruction(e.target.value)}
+                      placeholder="e.g. Use React Router, place pages in src/pages/, no Tailwind if vanilla"
+                      className="w-full bg-[#F4F5F7] border border-black/[0.06] rounded-xl px-3 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5]"
+                    />
+                    <span className="text-[10px] text-[#86868B] mt-1 block">
+                      AI scans existing project files and creates necessary folders and modular components.
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1">Target File Path in Workspace</label>
+                    <input 
+                      type="text"
+                      value={targetFilePath}
+                      onChange={(e) => setTargetFilePath(e.target.value)}
+                      placeholder="src/components/VoiceComponent.jsx"
+                      className="w-full bg-[#F4F5F7] border border-black/[0.06] rounded-xl px-3 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5]"
+                    />
+                    <span className="text-[10px] text-[#86868B] mt-1 block">
+                      VS Code will display this change as a proposed diff before applying.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2">

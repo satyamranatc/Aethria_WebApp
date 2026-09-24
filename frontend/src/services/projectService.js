@@ -2,8 +2,17 @@ import apiClient from './chatService';
 
 // Projects CRUD & Filters
 export const fetchUserProjects = async (params = {}) => {
-  const response = await apiClient.get('/api/projects', { params });
-  return response.data?.projects || [];
+  const token = typeof window !== "undefined" ? localStorage.getItem("voicebox_token") : null;
+  if (!token) return [];
+  try {
+    const response = await apiClient.get('/api/projects', { params });
+    return response.data?.projects || [];
+  } catch (err) {
+    if (err.response?.status === 401) {
+      return [];
+    }
+    throw err;
+  }
 };
 
 export const createNewProject = async (projectData) => {
@@ -184,4 +193,12 @@ export const proposeAiCodePlan = async (projectId, { prompt, targetFilePath = ''
 export const fetchProjectArchitectureGraph = async (projectId) => {
   const response = await apiClient.get(`/api/projects/${projectId}/ai/architecture-graph`);
   return response.data?.architecture || null;
+};
+
+export const syncVoiceCanvasToWorkspace = async (projectId, { canvasHtml, customInstruction = "" }) => {
+  const response = await apiClient.post(`/api/projects/${projectId}/ai/sync-voice-canvas`, {
+    canvasHtml,
+    customInstruction
+  });
+  return response.data || null;
 };

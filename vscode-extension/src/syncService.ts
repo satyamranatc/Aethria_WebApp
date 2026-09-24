@@ -150,7 +150,9 @@ export class SyncService {
 
       const rootPath = workspaceFolders[0].uri.fsPath;
       const diffManager = new DiffManager(rootPath, serverUrl, token);
-      await diffManager.reviewAndApplyChange(pendingChanges[0]);
+      for (const change of pendingChanges) {
+        await diffManager.reviewAndApplyChange(change);
+      }
       this.notifyStateChange();
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to fetch pending changes: ${err.message}`);

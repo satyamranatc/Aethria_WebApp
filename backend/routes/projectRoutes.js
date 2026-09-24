@@ -31,7 +31,8 @@ import {
   aiEditFile,
   chatWithProject,
   proposeAiCodePlan,
-  generateArchitectureFromRepo
+  generateArchitectureFromRepo,
+  syncVoiceCanvasToWorkspace
 } from "../controllers/projectAiController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -82,5 +83,6 @@ router.post("/:id/ai/generate-tasks", generateProjectTasksFromAi);
 router.post("/:id/ai/chat", chatWithProject);
 router.post("/:id/ai/plan-and-propose", proposeAiCodePlan);
 router.get("/:id/ai/architecture-graph", generateArchitectureFromRepo);
+router.post("/:id/ai/sync-voice-canvas", syncVoiceCanvasToWorkspace);
 
 export default router;
