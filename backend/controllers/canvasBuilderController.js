@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+import { executeGroqChatWithFallback } from "../utils/groqClient.js";
 
 export const handleCanvasBuilder = async (req, res) => {
   try {
@@ -7,15 +7,6 @@ export const handleCanvasBuilder = async (req, res) => {
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: "A valid messages array is required." });
     }
-
-    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
-    if (!apiKey || apiKey === "your_groq_api_key_here") {
-      return res.status(500).json({
-        error: "GROQ_API_KEY is not configured in backend/.env. Please configure your Groq API key."
-      });
-    }
-
-    const groq = new Groq({ apiKey });
 
     const recentHistory = messages.slice(-6).map((m) => ({
       role: m.role || "user",
@@ -52,6 +43,7 @@ You must format your response with these exact delimiters:
 ===HTML===
 [Complete updated HTML page/component code with Tailwind CSS]`;
 
+    // Preserved full context with live canvas state
     const groqMessages = [
       { role: "system", content: systemPromptContent },
       ...(currentHtml && currentHtml.trim().length > 10
@@ -60,26 +52,14 @@ You must format your response with these exact delimiters:
       ...recentHistory
     ];
 
-    let selectedModel = model;
-    let completion;
-
-    try {
-      completion = await groq.chat.completions.create({
-        messages: groqMessages,
-        model: selectedModel,
-        temperature,
-        max_tokens: 3800
-      });
-    } catch (primaryErr) {
-      console.warn("Primary model " + selectedModel + " failed in builder, trying fallback openai/gpt-oss-20b:", primaryErr.message);
-      selectedModel = "openai/gpt-oss-20b";
-      completion = await groq.chat.completions.create({
-        messages: groqMessages,
-        model: selectedModel,
-        temperature,
-        max_tokens: 3800
-      });
-    }
+    // Execute with automated multi-key rotation and context preservation
+    const { completion, model: usedModel, activeKeyIndex } = await executeGroqChatWithFallback({
+      messages: groqMessages,
+      model,
+      fallbackModel: "openai/gpt-oss-20b",
+      temperature,
+      max_tokens: 3800
+    });
 
     const rawContent = completion.choices?.[0]?.message?.content || "";
 
@@ -118,7 +98,8 @@ You must format your response with these exact delimiters:
       success: true,
       speech: speech || "Canvas updated. What would you like to build next?",
       html: html,
-      model: selectedModel,
+      model: usedModel,
+      activeKeyIndex,
       usage: completion.usage
     });
   } catch (error) {

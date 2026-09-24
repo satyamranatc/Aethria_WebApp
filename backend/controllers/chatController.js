@@ -1,4 +1,4 @@
-import Groq from "groq-sdk";
+import { executeGroqChatWithFallback } from "../utils/groqClient.js";
 
 export const handleChat = async (req, res) => {
   try {
@@ -7,15 +7,6 @@ export const handleChat = async (req, res) => {
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: "A valid messages array is required." });
     }
-
-    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
-    if (!apiKey || apiKey === "your_groq_api_key_here") {
-      return res.status(500).json({
-        error: "GROQ_API_KEY is not configured in backend/.env. Please configure your Groq API key."
-      });
-    }
-
-    const groq = new Groq({ apiKey });
 
     // Aethria AI System Prompt
     const systemPrompt = {
@@ -50,27 +41,13 @@ CORE PRINCIPLES & MODULAR CODE ARCHITECTURE:
    - Format all code with proper markdown language fences (e.g. \`\`\`javascript, \`\`\`typescript, \`\`\`python, \`\`\`go, \`\`\`rust, \`\`\`sql).`
     };
 
-
-    let selectedModel = model;
-    let completion;
-
-    try {
-      completion = await groq.chat.completions.create({
-        messages: [systemPrompt, ...messages],
-        model: selectedModel,
-        temperature: temperature,
-        max_tokens: Math.min(max_tokens, 4096),
-      });
-    } catch (primaryErr) {
-      console.warn(`Primary model ${selectedModel} failed, trying fallback openai/gpt-oss-20b:`, primaryErr.message);
-      selectedModel = "openai/gpt-oss-20b";
-      completion = await groq.chat.completions.create({
-        messages: [systemPrompt, ...messages],
-        model: selectedModel,
-        temperature: temperature,
-        max_tokens: Math.min(max_tokens, 4096),
-      });
-    }
+    const { completion, model: selectedModel, activeKeyIndex } = await executeGroqChatWithFallback({
+      messages: [systemPrompt, ...messages],
+      model,
+      fallbackModel: "openai/gpt-oss-20b",
+      temperature,
+      max_tokens: Math.min(max_tokens, 4096)
+    });
 
     const reply = completion.choices[0]?.message?.content || "No response generated.";
 
@@ -81,6 +58,7 @@ CORE PRINCIPLES & MODULAR CODE ARCHITECTURE:
         content: reply
       },
       model: selectedModel,
+      activeKeyIndex,
       usage: completion.usage
     });
   } catch (error) {
@@ -99,13 +77,6 @@ export const summarizeVoiceSession = async (req, res) => {
       return res.status(400).json({ error: "Messages array is required for summary." });
     }
 
-    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API;
-    if (!apiKey) {
-      return res.status(500).json({ error: "Groq API key is not configured." });
-    }
-
-    const groq = new Groq({ apiKey });
-
     const formattedConversation = messages
       .filter((m) => m.content && m.content.trim())
       .map((m) => `${m.role === "user" ? "User" : "Aethria"}: ${m.content}`)
@@ -117,12 +88,13 @@ Provide a clear, 2-3 bullet point summary of key discussion points, decisions, o
 Transcript:
 ${formattedConversation}`;
 
-    const completion = await groq.chat.completions.create({
+    const { completion, model: selectedModel } = await executeGroqChatWithFallback({
       messages: [
         { role: "system", content: "You are a concise executive summarizer. Output 2-3 clean bullet points without emojis." },
         { role: "user", content: prompt }
       ],
       model: "openai/gpt-oss-120b",
+      fallbackModel: "openai/gpt-oss-20b",
       temperature: 0.2,
       max_tokens: 512
     });
@@ -131,7 +103,8 @@ ${formattedConversation}`;
 
     return res.json({
       success: true,
-      summary
+      summary,
+      model: selectedModel
     });
   } catch (error) {
     console.error("Voice Summarization Error:", error);
