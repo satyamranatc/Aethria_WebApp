@@ -4,9 +4,11 @@
     "slug": "aethria-remote",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/splash.png",
       "backgroundColor": "#FBFBFD",
       "resizeMode": "contain"
     },
@@ -17,6 +19,7 @@
     "android": {
       "package": "com.aethria.remote",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FBFBFD"
       },
       "permissions": [
@@ -26,7 +29,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-asset"

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Smartphone } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -22,7 +23,15 @@ export default function Footer() {
           <span>&copy; {new Date().getFullYear()}</span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 flex-wrap">
+          <a
+            href="/Aethria-Remote.apk"
+            download="Aethria-Remote.apk"
+            className="flex items-center gap-1.5 text-[#1D1D1F] hover:text-[#4F46E5] transition-colors font-medium no-underline"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-[#4F46E5]" />
+            <span>Android APK</span>
+          </a>
           <span className="hover:text-[#1D1D1F] transition-colors cursor-pointer">Architecture</span>
           <span className="hover:text-[#1D1D1F] transition-colors cursor-pointer">Security</span>
           <span className="hover:text-[#1D1D1F] transition-colors cursor-pointer">Neural Voice</span>

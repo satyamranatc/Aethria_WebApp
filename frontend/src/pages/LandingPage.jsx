@@ -8,6 +8,7 @@ import ProductivityBento from '../landing/huly/ProductivityBento';
 import SyncGrid from '../landing/huly/SyncGrid';
 import KeyboardShowcaseSection from '../landing/huly/KeyboardShowcaseSection';
 import KnowledgeSection from '../landing/huly/KnowledgeSection';
+import MobileAppSection from '../landing/huly/MobileAppSection';
 import JoinSection from '../landing/huly/JoinSection';
 import '../landing/landing.css';
 
@@ -57,6 +58,7 @@ export default function LandingPage({
         <SyncGrid />
         <KeyboardShowcaseSection />
         <KnowledgeSection />
+        <MobileAppSection />
         <JoinSection onConnect={handleConnect} />
       </main>
       <Footer />

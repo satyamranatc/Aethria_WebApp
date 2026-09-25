@@ -1,4 +1,5 @@
 import React from 'react';
+import { Smartphone, Download } from 'lucide-react';
 
 export default function JoinSection({ onConnect }) {
   return (
@@ -14,6 +15,16 @@ export default function JoinSection({ onConnect }) {
             See in action
             <span aria-hidden="true">→</span>
           </button>
+          <a
+            href="/Aethria-Remote.apk"
+            download="Aethria-Remote.apk"
+            className="huly-ghost-btn flex items-center gap-2 no-underline"
+            title="Download Aethria Remote Android APK (157 MB)"
+          >
+            <Smartphone className="h-4 w-4 text-[#4F46E5]" />
+            <span>Download APK</span>
+            <Download className="h-3.5 w-3.5 text-[#86868B]" />
+          </a>
           <a
             className="huly-ghost-btn"
             href="https://github.com/satyamranatc/Aethria_WebApp"

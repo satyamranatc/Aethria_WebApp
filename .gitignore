@@ -25,6 +25,8 @@ out/
 **/out/
 *.vsix
 **/*.vsix
+*.apk
+**/*.apk
 
 # Python Artifacts
 __pycache__/
