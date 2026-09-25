@@ -65,17 +65,24 @@ export default function ProductFrame() {
               </article>
               <article>
                 <h4>In change</h4>
-                <div className="card live">
+                <div className="card live highlighted-diff-card">
                   <div className="card-live-tag">
                     <span className="diff-pulse-dot" />
-                    <span>Proposed Diff · 3 files</span>
+                    <span>Proposed Diff · 3 files coordinated</span>
                   </div>
-                  <p>Rate-limit /api/auth with express-rate-limit</p>
+                  <p className="card-intent-title">Rate-limit /api/auth with express-rate-limit</p>
+                  
+                  <div className="diff-files-pills">
+                    <span className="diff-file-pill active">authMiddleware.js</span>
+                    <span className="diff-file-pill">server.js</span>
+                    <span className="diff-file-pill">authRoutes.js</span>
+                  </div>
+
                   <div className="diff-mini-preview">
                     <span className="diff-del">- app.use("/api/auth", authRoutes)</span>
                     <span className="diff-add">+ app.use("/api/auth", authLimiter, authRoutes)</span>
                   </div>
-                  <span className="tag green">ready to apply</span>
+                  <span className="tag green">✓ ready to apply · hot reload</span>
                 </div>
                 <div className="card">
                   <p>Canvas: gateway → guard → schema</p>

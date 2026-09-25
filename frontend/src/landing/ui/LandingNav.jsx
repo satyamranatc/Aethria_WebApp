@@ -143,8 +143,8 @@ export default function LandingNav({
           )}
 
           <MagneticButton type="button" className="landing-cta" onClick={onConnect}>
-            <span className="cta-full">See in action</span>
-            <span className="cta-short">See in action</span>
+            <span className="cta-full">Connect Codebase</span>
+            <span className="cta-short">Connect</span>
           </MagneticButton>
         </div>
       </div>

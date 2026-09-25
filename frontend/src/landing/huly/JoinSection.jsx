@@ -13,7 +13,7 @@ export default function JoinSection({ onConnect }) {
         <p>Give your software a persistent intelligence layer. The editor stays yours.</p>
         <div className="join-actions">
           <button type="button" className="huly-pill" onClick={onConnect}>
-            See in action
+            Connect your codebase
             <span aria-hidden="true">→</span>
           </button>
           <a
