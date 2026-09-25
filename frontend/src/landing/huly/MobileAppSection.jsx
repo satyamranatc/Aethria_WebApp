@@ -157,7 +157,7 @@ export default function MobileAppSection() {
                     </span>
                   </div>
                   <p className="text-xs text-[#86868B] mt-1">
-                    Android 9.0+ · ARM64 / Universal · 164 MB
+                    Android 9.0+ · ARM64 / Universal · 76 MB
                   </p>
                 </div>
 
