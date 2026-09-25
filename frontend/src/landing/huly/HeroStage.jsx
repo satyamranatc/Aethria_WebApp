@@ -50,12 +50,14 @@ export default function HeroStage({ onConnect }) {
             </button>
             <a
               href={APK_DOWNLOAD_URL}
-              className="landing-ghost flex items-center gap-2 px-4 py-2.5 !text-xs !font-semibold uppercase tracking-wider !text-[#1D1D1F] hover:!text-[#4F46E5] !border-black/10 hover:!border-[#4F46E5]/40 no-underline shadow-sm hover:shadow transition-all"
-              title="Download Aethria Remote Android APK (164 MB)"
+              download="Aethria-Remote.apk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-medium text-[#1D1D1F] bg-black/[0.04] hover:bg-black/[0.08] active:scale-[0.98] border border-black/10 transition-all no-underline"
+              title="Download Aethria Remote for Android"
             >
-              <Smartphone className="w-4 h-4 text-[#4F46E5]" />
-              <span>Download APK</span>
-              <Download className="w-3.5 h-3.5 text-[#52525B]" />
+              <Download className="w-3.5 h-3.5 text-[#86868B]" />
+              <span>Download Android App</span>
             </a>
           </div>
         </div>

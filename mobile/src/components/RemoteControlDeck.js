@@ -1,16 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import {
-  Monitor,
-  Tablet,
-  Smartphone,
-  GitPullRequest,
-  Save,
-  Trash2,
-  Code2,
-  RotateCcw
-} from 'lucide-react-native';
-import { THEME } from '../constants/theme';
+import { Monitor, Smartphone, ArrowUpRight, RotateCcw, Trash2 } from 'lucide-react-native';
 
 export default function RemoteControlDeck({
   activeViewport = 'desktop',
@@ -19,141 +9,96 @@ export default function RemoteControlDeck({
 }) {
   return (
     <View style={styles.container}>
-      {/* Section Title */}
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>STUDIO CONTROLS</Text>
-        <Text style={styles.sectionSubtitle}>Controls Desktop Canvas</Text>
+      {/* Top Row: Segmented Viewport Switcher & Clear/Undo */}
+      <View style={styles.topRow}>
+        {/* Segmented Viewport */}
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[
+              styles.segmentItem,
+              activeViewport === 'desktop' && styles.segmentItemActive
+            ]}
+            onPress={() => onSelectViewport?.('desktop')}
+            activeOpacity={0.7}
+          >
+            <Monitor
+              size={13}
+              color={activeViewport === 'desktop' ? '#1D1D1F' : '#86868B'}
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeViewport === 'desktop' && styles.segmentTextActive
+              ]}
+            >
+              Desktop
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentItem,
+              activeViewport === 'mobile' && styles.segmentItemActive
+            ]}
+            onPress={() => onSelectViewport?.('mobile')}
+            activeOpacity={0.7}
+          >
+            <Smartphone
+              size={13}
+              color={activeViewport === 'mobile' ? '#1D1D1F' : '#86868B'}
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeViewport === 'mobile' && styles.segmentTextActive
+              ]}
+            >
+              Phone
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Utility Tools */}
+        <View style={styles.utilityGroup}>
+          <TouchableOpacity
+            style={styles.utilityButton}
+            onPress={() => onTriggerAction?.('undo')}
+            activeOpacity={0.7}
+            title="Undo"
+          >
+            <RotateCcw size={14} color="#6E6E73" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.utilityButton}
+            onPress={() => onTriggerAction?.('clear_canvas')}
+            activeOpacity={0.7}
+            title="Clear canvas"
+          >
+            <Trash2 size={14} color="#6E6E73" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Viewport Control Bar (Segmented Apple Style) */}
-      <View style={styles.viewportRow}>
+      {/* Main Action Bar */}
+      <View style={styles.actionRow}>
+        {/* Sync to VS Code (Primary Dark Pill) */}
         <TouchableOpacity
-          style={[
-            styles.viewportButton,
-            activeViewport === 'desktop' && styles.viewportButtonActive
-          ]}
-          onPress={() => onSelectViewport?.('desktop')}
-          activeOpacity={0.7}
-        >
-          <Monitor
-            size={15}
-            color={activeViewport === 'desktop' ? THEME.colors.accent : THEME.colors.textMuted}
-          />
-          <Text
-            style={[
-              styles.viewportText,
-              activeViewport === 'desktop' && styles.viewportTextActive
-            ]}
-          >
-            Desktop
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.viewportButton,
-            activeViewport === 'tablet' && styles.viewportButtonActive
-          ]}
-          onPress={() => onSelectViewport?.('tablet')}
-          activeOpacity={0.7}
-        >
-          <Tablet
-            size={15}
-            color={activeViewport === 'tablet' ? THEME.colors.accent : THEME.colors.textMuted}
-          />
-          <Text
-            style={[
-              styles.viewportText,
-              activeViewport === 'tablet' && styles.viewportTextActive
-            ]}
-          >
-            Tablet
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.viewportButton,
-            activeViewport === 'mobile' && styles.viewportButtonActive
-          ]}
-          onPress={() => onSelectViewport?.('mobile')}
-          activeOpacity={0.7}
-        >
-          <Smartphone
-            size={15}
-            color={activeViewport === 'mobile' ? THEME.colors.accent : THEME.colors.textMuted}
-          />
-          <Text
-            style={[
-              styles.viewportText,
-              activeViewport === 'mobile' && styles.viewportTextActive
-            ]}
-          >
-            Mobile
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Action Deck Grid */}
-      <View style={styles.actionsGrid}>
-        {/* Push to VS Code */}
-        <TouchableOpacity
-          style={[styles.actionCard, styles.actionCardDark]}
+          style={styles.primaryAction}
           onPress={() => onTriggerAction?.('push_vscode')}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <View style={styles.iconCircleDark}>
-            <GitPullRequest size={16} color="#FFF" />
-          </View>
-          <View style={styles.actionCardBody}>
-            <Text style={styles.actionCardTitleDark}>Push to VS Code</Text>
-            <Text style={styles.actionCardSubDark}>Sync to connected project</Text>
-          </View>
+          <Text style={styles.primaryActionText}>Sync to VS Code</Text>
+          <ArrowUpRight size={15} color="#FFFFFF" />
         </TouchableOpacity>
 
-        {/* Save Build */}
+        {/* Save Design */}
         <TouchableOpacity
-          style={[styles.actionCard, styles.actionCardEmerald]}
+          style={styles.secondaryAction}
           onPress={() => onTriggerAction?.('save_build')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.iconCircleEmerald}>
-            <Save size={16} color={THEME.colors.emeraldDark} />
-          </View>
-          <View style={styles.actionCardBody}>
-            <Text style={styles.actionCardTitleEmerald}>Save Build</Text>
-            <Text style={styles.actionCardSubEmerald}>Preserve speech & code</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Secondary Actions */}
-      <View style={styles.secondaryRow}>
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={() => onTriggerAction?.('toggle_code')}
           activeOpacity={0.7}
         >
-          <Code2 size={13} color={THEME.colors.accent} />
-          <Text style={styles.secondaryText}>Code Panel</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={() => onTriggerAction?.('undo')}
-          activeOpacity={0.7}
-        >
-          <RotateCcw size={13} color={THEME.colors.textSecondary} />
-          <Text style={styles.secondaryText}>Undo</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.secondaryBtn, styles.clearBtn]}
-          onPress={() => onTriggerAction?.('clear_canvas')}
-          activeOpacity={0.7}
-        >
-          <Trash2 size={13} color={THEME.colors.rose} />
-          <Text style={[styles.secondaryText, { color: THEME.colors.rose }]}>Clear</Text>
+          <Text style={styles.secondaryActionText}>Save</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -162,156 +107,104 @@ export default function RemoteControlDeck({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: THEME.spacing.md,
-    paddingVertical: THEME.spacing.xs,
-    backgroundColor: THEME.colors.background
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
+    backgroundColor: '#FBFBFD'
   },
-  headerRow: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6
+    gap: 12
   },
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textMuted,
-    letterSpacing: 0.8
-  },
-  sectionSubtitle: {
-    fontSize: 10,
-    color: THEME.colors.textMuted
-  },
-  viewportRow: {
+  segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: THEME.radius.md,
+    backgroundColor: '#EEEEF0',
+    borderRadius: 12,
     padding: 3,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    marginBottom: THEME.spacing.sm
+    flex: 1,
+    maxWidth: 200
   },
-  viewportButton: {
+  segmentItem: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: THEME.radius.sm,
-    gap: 6
+    gap: 6,
+    paddingVertical: 6,
+    borderRadius: 9
   },
-  viewportButtonActive: {
-    backgroundColor: THEME.colors.surface,
-    elevation: 2,
+  segmentItemActive: {
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
-    shadowRadius: 3
+    shadowRadius: 3,
+    elevation: 1
   },
-  viewportText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#86868B'
   },
-  viewportTextActive: {
-    color: THEME.colors.textPrimary,
-    fontWeight: '700'
+  segmentTextActive: {
+    color: '#1D1D1F',
+    fontWeight: '600'
   },
-  actionsGrid: {
+  utilityGroup: {
     flexDirection: 'row',
-    gap: THEME.spacing.sm,
-    marginBottom: THEME.spacing.sm
+    gap: 8
   },
-  actionCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.lg,
-    gap: 9,
+  utilityButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2
-  },
-  actionCardDark: {
-    backgroundColor: THEME.colors.darkButton,
-    borderColor: '#1E293B'
-  },
-  actionCardEmerald: {
-    backgroundColor: THEME.colors.surface,
-    borderColor: THEME.colors.emeraldBorder
-  },
-  iconCircleDark: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  iconCircleEmerald: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: THEME.colors.emeraldSubtle,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  actionCardBody: {
-    flex: 1
-  },
-  actionCardTitleDark: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFF'
-  },
-  actionCardSubDark: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.65)',
-    marginTop: 1
-  },
-  actionCardTitleEmerald: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: THEME.colors.emeraldDark
-  },
-  actionCardSubEmerald: {
-    fontSize: 9,
-    color: THEME.colors.textSecondary,
-    marginTop: 1
-  },
-  secondaryRow: {
+  actionRow: {
     flexDirection: 'row',
-    gap: THEME.spacing.xs
+    gap: 10
   },
-  secondaryBtn: {
-    flex: 1,
+  primaryAction: {
+    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.colors.surface,
-    paddingVertical: 8,
-    borderRadius: THEME.radius.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    gap: 5,
-    elevation: 1,
+    gap: 6,
+    backgroundColor: '#1D1D1F',
+    paddingVertical: 12,
+    borderRadius: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2
   },
-  clearBtn: {
-    borderColor: THEME.colors.roseBorder,
-    backgroundColor: THEME.colors.roseSubtle
-  },
-  secondaryText: {
-    fontSize: 11,
+  primaryActionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '600',
-    color: THEME.colors.textPrimary
+    letterSpacing: -0.2
+  },
+  secondaryAction: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    paddingVertical: 12,
+    borderRadius: 14
+  },
+  secondaryActionText: {
+    color: '#1D1D1F',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: -0.2
   }
 });

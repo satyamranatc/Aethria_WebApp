@@ -11,7 +11,7 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Radio, Sparkles } from 'lucide-react-native';
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Radio } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 
 export default function AuthSplashScreen({
@@ -20,6 +20,7 @@ export default function AuthSplashScreen({
   serverUrl,
   onOpenServerConfig
 }) {
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,7 +31,7 @@ export default function AuthSplashScreen({
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please enter your email and password.');
+      setErrorMessage('Please enter email and password.');
       return;
     }
     if (mode === 'register' && !name.trim()) {
@@ -42,7 +43,7 @@ export default function AuthSplashScreen({
     setErrorMessage(null);
 
     const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-    const payload = mode === 'login' 
+    const payload = mode === 'login'
       ? { email: email.trim(), password }
       : { name: name.trim(), email: email.trim(), password };
 
@@ -56,15 +57,15 @@ export default function AuthSplashScreen({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed. Please check your credentials.');
+        throw new Error(data.error || 'Authentication failed. Please verify credentials.');
       }
 
       onAuthSuccess({
         token: data.token,
-        user: data.user || { name: name || 'Aethria Developer', email }
+        user: data.user || { name: name || 'Developer', email }
       });
     } catch (err) {
-      setErrorMessage(err.message || 'Unable to connect to Aethria server.');
+      setErrorMessage(err.message || 'Unable to reach Aethria service.');
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +80,7 @@ export default function AuthSplashScreen({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Brand Splash Hero */}
+        {/* Emblem Hero */}
         <View style={styles.heroSection}>
           <View style={styles.logoWrapper}>
             <Image
@@ -89,168 +90,157 @@ export default function AuthSplashScreen({
             />
           </View>
 
-          <View style={styles.titleRow}>
-            <Text style={styles.brandTitle}>Aethria</Text>
-            <View style={styles.versionBadge}>
-              <Text style={styles.versionText}>3.0</Text>
-            </View>
-          </View>
-
-          <Text style={styles.brandTagline}>
-            Voice-Driven Live Workspace
-          </Text>
-          <Text style={styles.brandSubDescription}>
-            Handheld remote controller for Aethria Voice Studio
-          </Text>
+          <Text style={styles.brandTitle}>Aethria</Text>
+          <Text style={styles.brandSubtitle}>Voice Studio Remote</Text>
         </View>
 
-        {/* Clean Apple White Card */}
-        <View style={styles.authCard}>
-          {/* Tabs */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tabButton, mode === 'login' && styles.tabButtonActive]}
-              onPress={() => {
-                setMode('login');
-                setErrorMessage(null);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>
-                Sign In
-              </Text>
-            </TouchableOpacity>
+        {/* Primary Clean Apple Action Card */}
+        <View style={styles.actionCard}>
+          {!showEmailForm ? (
+            <View style={styles.quickAccessSection}>
+              {/* Primary One-Tap Button */}
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={onSkipAuth}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.primaryButtonText}>Connect to Studio</Text>
+                <ArrowRight size={16} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.tabButton, mode === 'register' && styles.tabButtonActive]}
-              onPress={() => {
-                setMode('register');
-                setErrorMessage(null);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabText, mode === 'register' && styles.tabTextActive]}>
-                Create Account
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Error notice */}
-          {errorMessage && (
-            <View style={styles.errorNotice}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
+              {/* Secondary Clean Option */}
+              <TouchableOpacity
+                style={styles.secondaryOption}
+                onPress={() => setShowEmailForm(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.secondaryOptionText}>Sign in with account</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          ) : (
+            <View style={styles.formContainer}>
+              {/* Mode Switcher */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tabButton, mode === 'login' && styles.tabButtonActive]}
+                  onPress={() => {
+                    setMode('login');
+                    setErrorMessage(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, mode === 'login' && styles.tabTextActive]}>
+                    Sign In
+                  </Text>
+                </TouchableOpacity>
 
-          {/* Form Fields */}
-          <View style={styles.formFields}>
-            {mode === 'register' && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.fieldLabel}>Full Name</Text>
+                <TouchableOpacity
+                  style={[styles.tabButton, mode === 'register' && styles.tabButtonActive]}
+                  onPress={() => {
+                    setMode('register');
+                    setErrorMessage(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, mode === 'register' && styles.tabTextActive]}>
+                    New Account
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {errorMessage && (
+                <View style={styles.errorNotice}>
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </View>
+              )}
+
+              {/* Input Fields */}
+              <View style={styles.formFields}>
+                {mode === 'register' && (
+                  <View style={styles.inputBox}>
+                    <User size={16} color={THEME.colors.textMuted} />
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Name"
+                      placeholderTextColor={THEME.colors.textMuted}
+                      value={name}
+                      onChangeText={setName}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                )}
+
                 <View style={styles.inputBox}>
-                  <User size={16} color={THEME.colors.textMuted} />
+                  <Mail size={16} color={THEME.colors.textMuted} />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Satyam Rana"
+                    placeholder="Email"
                     placeholderTextColor={THEME.colors.textMuted}
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
                   />
                 </View>
-              </View>
-            )}
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.fieldLabel}>Email Address</Text>
-              <View style={styles.inputBox}>
-                <Mail size={16} color={THEME.colors.textMuted} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="developer@aethria.in"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
-              </View>
-            </View>
+                <View style={styles.inputBox}>
+                  <Lock size={16} color={THEME.colors.textMuted} />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Password"
+                    placeholderTextColor={THEME.colors.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeBtn}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={16} color={THEME.colors.textMuted} />
+                    ) : (
+                      <Eye size={16} color={THEME.colors.textMuted} />
+                    )}
+                  </TouchableOpacity>
+                </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.fieldLabel}>Password</Text>
-              <View style={styles.inputBox}>
-                <Lock size={16} color={THEME.colors.textMuted} />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="••••••••••••"
-                  placeholderTextColor={THEME.colors.textMuted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
                 <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
+                  style={styles.submitButton}
+                  onPress={handleSubmit}
+                  disabled={isLoading}
+                  activeOpacity={0.85}
                 >
-                  {showPassword ? (
-                    <EyeOff size={16} color={THEME.colors.textMuted} />
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Eye size={16} color={THEME.colors.textMuted} />
+                    <Text style={styles.submitButtonText}>
+                      {mode === 'login' ? 'Sign In' : 'Create Account'}
+                    </Text>
                   )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.backOption}
+                  onPress={() => setShowEmailForm(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.backOptionText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleSubmit}
-              disabled={isLoading}
-              activeOpacity={0.85}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <View style={styles.btnInner}>
-                  <Text style={styles.submitButtonText}>
-                    {mode === 'login' ? 'Sign In to Aethria' : 'Create Aethria Account'}
-                  </Text>
-                  <ArrowRight size={15} color="#FFF" />
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Quick Guest Connect */}
-            <TouchableOpacity
-              style={styles.guestButton}
-              onPress={onSkipAuth}
-              activeOpacity={0.7}
-            >
-              <Sparkles size={14} color={THEME.colors.accent} />
-              <Text style={styles.guestButtonText}>
-                Quick Connect as Remote Controller
-              </Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
 
-        {/* Server Host Pill */}
+        {/* Minimal subtle host info */}
         <TouchableOpacity
-          style={styles.serverPill}
+          style={styles.hostPill}
           onPress={onOpenServerConfig}
           activeOpacity={0.7}
         >
-          <Radio size={12} color={THEME.colors.textMuted} />
-          <Text style={styles.serverText}>Connected Host: {serverUrl}</Text>
+          <View style={styles.hostIndicator} />
+          <Text style={styles.hostText}>Render Cloud Live</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -260,230 +250,205 @@ export default function AuthSplashScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.colors.background
+    backgroundColor: '#FBFBFD'
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: THEME.spacing.lg,
-    paddingVertical: THEME.spacing.xl
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 48
   },
   heroSection: {
     alignItems: 'center',
-    marginBottom: THEME.spacing.lg
+    marginBottom: 36
   },
   logoWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: THEME.radius.lg,
+    width: 80,
+    height: 80,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    marginBottom: 20
   },
   logoImage: {
-    width: 44,
-    height: 44
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4
+    width: 52,
+    height: 52
   },
   brandTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: THEME.colors.textPrimary,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1D1D1F',
     letterSpacing: -0.5
   },
-  versionBadge: {
-    backgroundColor: THEME.colors.surfaceSubtle,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: THEME.radius.full,
+  brandSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#6E6E73',
+    marginTop: 4,
+    letterSpacing: -0.1
+  },
+  actionCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
     borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder
-  },
-  versionText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary
-  },
-  brandTagline: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary,
-    marginBottom: 2
-  },
-  brandSubDescription: {
-    fontSize: 11,
-    color: THEME.colors.textMuted,
-    textAlign: 'center'
-  },
-  authCard: {
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.xl,
-    padding: THEME.spacing.lg,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.05,
-    shadowRadius: 8
+    shadowRadius: 24,
+    elevation: 3
+  },
+  quickAccessSection: {
+    alignItems: 'center',
+    gap: 16
+  },
+  primaryButton: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1D1D1F',
+    paddingVertical: 15,
+    borderRadius: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 2
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.2
+  },
+  secondaryOption: {
+    paddingVertical: 8
+  },
+  secondaryOptionText: {
+    color: '#4F46E5',
+    fontSize: 13,
+    fontWeight: '500'
+  },
+  formContainer: {
+    width: '100%'
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: THEME.radius.md,
+    backgroundColor: '#F4F5F7',
+    borderRadius: 12,
     padding: 3,
-    marginBottom: THEME.spacing.md,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder
+    marginBottom: 16
   },
   tabButton: {
     flex: 1,
     paddingVertical: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: THEME.radius.sm
+    borderRadius: 10
   },
   tabButtonActive: {
     backgroundColor: '#FFFFFF',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1
   },
   tabText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.textSecondary
+    fontWeight: '500',
+    color: '#6E6E73'
   },
   tabTextActive: {
-    color: THEME.colors.textPrimary,
-    fontWeight: '700'
-  },
-  errorNotice: {
-    backgroundColor: THEME.colors.roseSubtle,
-    borderColor: THEME.colors.roseBorder,
-    borderWidth: 1,
-    borderRadius: THEME.radius.md,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: THEME.spacing.sm
-  },
-  errorText: {
-    color: THEME.colors.rose,
-    fontSize: 11,
-    fontWeight: '500'
+    color: '#1D1D1F',
+    fontWeight: '600'
   },
   formFields: {
-    gap: 12
-  },
-  inputGroup: {
-    gap: 4
-  },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4
+    gap: 10
   },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderRadius: THEME.radius.md,
+    backgroundColor: '#FBFBFD',
     borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    paddingHorizontal: 12
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44
   },
   textInput: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    color: THEME.colors.textPrimary,
-    fontSize: 13
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#1D1D1F'
   },
   eyeBtn: {
     padding: 6
   },
   submitButton: {
-    backgroundColor: THEME.colors.darkButton,
-    paddingVertical: 13,
-    borderRadius: THEME.radius.md,
+    backgroundColor: '#1D1D1F',
+    borderRadius: 12,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4
-  },
-  btnInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
+    marginTop: 4
   },
   submitButtonText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700'
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 4
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: THEME.colors.surfaceBorder
-  },
-  dividerText: {
-    paddingHorizontal: 10,
-    fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.textMuted
-  },
-  guestButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    paddingVertical: 11,
-    borderRadius: THEME.radius.md,
-    gap: 6
-  },
-  guestButtonText: {
-    color: THEME.colors.textPrimary,
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600'
   },
-  serverPill: {
+  backOption: {
+    alignItems: 'center',
+    paddingVertical: 6
+  },
+  backOptionText: {
+    fontSize: 12,
+    color: '#6E6E73'
+  },
+  errorNotice: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 12,
+    textAlign: 'center'
+  },
+  hostPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    marginTop: 18
+    gap: 6,
+    marginTop: 28,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 99,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)'
   },
-  serverText: {
-    fontSize: 10,
-    color: THEME.colors.textMuted,
-    fontFamily: 'monospace'
+  hostIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981'
+  },
+  hostText: {
+    fontSize: 11,
+    color: '#6E6E73',
+    fontWeight: '500'
   }
 });

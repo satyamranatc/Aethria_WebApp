@@ -33,7 +33,7 @@ export default function App() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Aethria Voice Studio connected. Speak any prompt to generate live components on your desktop canvas.',
+      content: 'Connected to Aethria Studio. Speak or tap below to build your interface.',
       spoken: true,
       timestamp: Date.now()
     }
@@ -141,7 +141,7 @@ export default function App() {
           ...prev,
           {
             role: 'assistant',
-            content: `Command dispatched: "${text.trim()}". Open your Desktop Voice Studio to see live rendering.`,
+            content: `Creating "${text.trim()}" on your desktop screen.`,
             spoken: false,
             timestamp: Date.now()
           }
@@ -169,19 +169,19 @@ export default function App() {
   const handleTriggerAction = (action) => {
     if (action === 'clear_canvas') {
       Alert.alert(
-        'Clear Desktop Canvas?',
-        'This will reset your desktop studio canvas.',
+        'Reset Canvas',
+        'Are you sure you want to clear your current workspace?',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Clear',
+            text: 'Reset',
             style: 'destructive',
             onPress: () => {
               remoteSocket.sendControlAction('clear_canvas');
               setMessages([
                 {
                   role: 'assistant',
-                  content: 'Canvas cleared. Speak a new command to start building.',
+                  content: 'Canvas reset. Ready for your next idea.',
                   spoken: false,
                   timestamp: Date.now()
                 }

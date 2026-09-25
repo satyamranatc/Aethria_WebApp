@@ -9,16 +9,16 @@ import {
   ScrollView,
   Keyboard
 } from 'react-native';
-import { Mic, MicOff, Send, Sparkles } from 'lucide-react-native';
+import { Mic, MicOff, ArrowUp } from 'lucide-react-native';
 import { THEME } from '../constants/theme';
 
 const SUGGESTIONS = [
-  'Make a modern glassmorphic hero',
-  'Add a SaaS pricing cards section',
-  'Create dark mode navbar with CTA',
-  'Add customer testimonials carousel',
-  'Make a newsletter subscription card',
-  'Make it clean minimalist Apple style'
+  'Modern hero header',
+  'Pricing cards',
+  'Clean navigation bar',
+  'Testimonial grid',
+  'Contact form',
+  'Minimalist landing page'
 ];
 
 export default function VoiceMicDeck({
@@ -30,7 +30,7 @@ export default function VoiceMicDeck({
 }) {
   const [textInput, setTextInput] = useState('');
   
-  // Pulse animation for mic button
+  // Siri-like pulse animation for mic button
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -40,25 +40,25 @@ export default function VoiceMicDeck({
         Animated.sequence([
           Animated.parallel([
             Animated.timing(pulseAnim, {
-              toValue: 1.18,
-              duration: 800,
+              toValue: 1.14,
+              duration: 750,
               useNativeDriver: true
             }),
             Animated.timing(glowAnim, {
               toValue: 1,
-              duration: 800,
+              duration: 750,
               useNativeDriver: true
             })
           ]),
           Animated.parallel([
             Animated.timing(pulseAnim, {
               toValue: 1,
-              duration: 800,
+              duration: 750,
               useNativeDriver: true
             }),
             Animated.timing(glowAnim, {
-              toValue: 0.3,
-              duration: 800,
+              toValue: 0.25,
+              duration: 750,
               useNativeDriver: true
             })
           ])
@@ -91,7 +91,7 @@ export default function VoiceMicDeck({
 
   return (
     <View style={styles.container}>
-      {/* Suggestions Carousel */}
+      {/* Apple style suggestion pills */}
       <View style={styles.suggestionsWrapper}>
         <ScrollView
           horizontal
@@ -103,18 +103,17 @@ export default function VoiceMicDeck({
               key={idx}
               style={styles.suggestionChip}
               onPress={() => handleSuggestionPress(item)}
-              activeOpacity={0.7}
+              activeOpacity={0.65}
             >
-              <Sparkles size={11} color={THEME.colors.accent} style={{ marginRight: 5 }} />
               <Text style={styles.suggestionText}>{item}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Main Microphone Deck */}
+      {/* Main Microphone Button */}
       <View style={styles.micSection}>
-        {/* Glow Halo */}
+        {/* Apple subtle breathing glow */}
         <Animated.View
           style={[
             styles.glowRing,
@@ -125,7 +124,6 @@ export default function VoiceMicDeck({
           ]}
         />
 
-        {/* Mic Button */}
         <TouchableOpacity
           style={[
             styles.micButton,
@@ -135,27 +133,27 @@ export default function VoiceMicDeck({
           activeOpacity={0.85}
         >
           {isListening ? (
-            <MicOff size={32} color="#FFF" />
+            <MicOff size={28} color="#FFFFFF" strokeWidth={2.2} />
           ) : (
-            <Mic size={32} color="#FFF" />
+            <Mic size={28} color="#FFFFFF" strokeWidth={2.2} />
           )}
         </TouchableOpacity>
 
         <Text style={styles.micStatusLabel}>
           {isListening
-            ? 'Listening... Speak your interface idea'
+            ? 'Listening...'
             : desktopState?.status === 'thinking'
-            ? 'Desktop is rendering components...'
-            : 'Tap microphone to speak to desktop'}
+            ? 'Designing interface...'
+            : 'Tap to speak'}
         </Text>
       </View>
 
-      {/* Text Command Fallback Input */}
+      {/* Text Command Input */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.inputField}
-          placeholder="Or type a voice prompt..."
-          placeholderTextColor={THEME.colors.textMuted}
+          placeholder="Describe an interface or type an idea..."
+          placeholderTextColor="#8E8E93"
           value={textInput}
           onChangeText={setTextInput}
           onSubmitEditing={handleSendText}
@@ -164,13 +162,13 @@ export default function VoiceMicDeck({
         <TouchableOpacity
           style={[
             styles.sendButton,
-            !textInput.trim() && { opacity: 0.3 }
+            !textInput.trim() && styles.sendButtonDisabled
           ]}
           onPress={handleSendText}
           disabled={!textInput.trim()}
           activeOpacity={0.7}
         >
-          <Send size={14} color="#FFF" />
+          <ArrowUp size={16} color="#FFFFFF" strokeWidth={2.4} />
         </TouchableOpacity>
       </View>
     </View>
@@ -179,104 +177,102 @@ export default function VoiceMicDeck({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: THEME.spacing.md,
-    paddingVertical: THEME.spacing.sm,
-    backgroundColor: THEME.colors.background
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F2F2F7'
   },
   suggestionsWrapper: {
-    marginBottom: THEME.spacing.sm
+    marginBottom: 10
   },
   suggestionsScroll: {
-    paddingRight: THEME.spacing.md,
-    gap: 7
+    paddingRight: 16,
+    gap: 8
   },
   suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
+    backgroundColor: '#F5F5F7',
     paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: THEME.radius.full,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2
+    borderColor: '#E5E5EA'
   },
   suggestionText: {
-    color: THEME.colors.textPrimary,
-    fontSize: 11,
-    fontWeight: '600'
+    color: '#1D1D1F',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: -0.1
   },
   micSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: THEME.spacing.sm,
+    paddingVertical: 10,
     position: 'relative'
   },
   glowRing: {
     position: 'absolute',
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: THEME.colors.accentGlow,
-    top: THEME.spacing.sm - 14
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(99, 102, 241, 0.25)',
+    top: 0
   },
   micButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: THEME.colors.accent,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#1D1D1F',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: THEME.colors.accent,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4
   },
   micButtonActive: {
-    backgroundColor: THEME.colors.rose,
-    shadowColor: THEME.colors.rose
+    backgroundColor: '#FF3B30',
+    shadowColor: '#FF3B30',
+    shadowOpacity: 0.35
   },
   micStatusLabel: {
-    marginTop: 10,
-    fontSize: 11,
-    color: THEME.colors.textSecondary,
+    marginTop: 8,
+    fontSize: 12,
+    color: '#8E8E93',
     fontWeight: '500',
-    textAlign: 'center'
+    letterSpacing: -0.1
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.radius.lg,
+    backgroundColor: '#F5F5F7',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: THEME.colors.surfaceBorder,
-    paddingHorizontal: THEME.spacing.sm,
-    paddingVertical: 3,
-    marginTop: THEME.spacing.xs,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2
+    borderColor: '#E5E5EA',
+    paddingLeft: 14,
+    paddingRight: 6,
+    height: 44,
+    marginTop: 6
   },
   inputField: {
     flex: 1,
-    color: THEME.colors.textPrimary,
     fontSize: 13,
-    paddingVertical: 7,
-    paddingHorizontal: 8
+    color: '#1D1D1F',
+    paddingVertical: 0
   },
   sendButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: THEME.colors.darkButton,
+    backgroundColor: '#1D1D1F',
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#D1D1D6',
+    opacity: 0.8
   }
 });
+

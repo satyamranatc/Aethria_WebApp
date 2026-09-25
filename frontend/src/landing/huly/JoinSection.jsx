@@ -18,12 +18,14 @@ export default function JoinSection({ onConnect }) {
           </button>
           <a
             href={APK_DOWNLOAD_URL}
+            download="Aethria-Remote.apk"
+            target="_blank"
+            rel="noopener noreferrer"
             className="huly-ghost-btn flex items-center gap-2 no-underline"
-            title="Download Aethria Remote Android APK (157 MB)"
+            title="Download Aethria Remote for Android"
           >
-            <Smartphone className="h-4 w-4 text-[#4F46E5]" />
-            <span>Download APK</span>
             <Download className="h-3.5 w-3.5 text-[#86868B]" />
+            <span>Download Android App</span>
           </a>
           <a
             className="huly-ghost-btn"

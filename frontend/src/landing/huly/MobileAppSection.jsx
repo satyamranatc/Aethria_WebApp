@@ -157,16 +157,19 @@ export default function MobileAppSection() {
                     </span>
                   </div>
                   <p className="text-xs text-[#86868B] mt-1">
-                    Android 9.0+ · ARM64 / Universal · 157 MB
+                    Android 9.0+ · ARM64 / Universal · 164 MB
                   </p>
                 </div>
 
                 <a
                   href={APK_DOWNLOAD_URL}
+                  download="Aethria-Remote.apk"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   onClick={handleDownloadClick}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#4F46E5] hover:bg-[#4338CA] active:scale-[0.98] text-white text-sm font-semibold tracking-wide shadow-md shadow-[#4F46E5]/25 transition-all no-underline"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#1D1D1F] hover:bg-[#000000] active:scale-[0.98] text-white text-sm font-medium tracking-normal shadow-sm transition-all no-underline"
                 >
-                  <Download className={`w-4 h-4 ${downloading ? 'animate-bounce' : ''}`} />
+                  <Download className={`w-4 h-4 text-white ${downloading ? 'animate-bounce' : ''}`} />
                   <span>{downloading ? 'Downloading...' : 'Download APK'}</span>
                 </a>
               </div>
