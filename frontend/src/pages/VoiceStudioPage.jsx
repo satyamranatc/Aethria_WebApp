@@ -23,17 +23,26 @@ import {
   Radio,
   Play,
   ArrowLeft,
-  FolderGit2,
   GitPullRequest,
   CheckCircle2,
-  ExternalLink,
-  Laptop
+  Laptop,
+  FileCode,
+  ShieldCheck,
+  Terminal,
+  ArrowRight,
+  X,
+  CheckCheck
 } from 'lucide-react';
 
 import SEOHead from '../components/common/SEOHead';
 import { generateCanvasUpdate } from '../services/builderGroqService';
 import { elevenLabsStudio, VERIFIED_ELEVENLABS_VOICES } from '../services/elevenlabsStudioService';
-import { fetchUserProjects, proposeCodeChange, syncVoiceCanvasToWorkspace } from '../services/projectService';
+import {
+  fetchUserProjects,
+  proposeCodeChange,
+  planVoiceCanvasSync,
+  applyVoiceCanvasSync
+} from '../services/projectService';
 
 export default function VoiceStudioPage({
   user,
@@ -70,6 +79,11 @@ export default function VoiceStudioPage({
   const [isVsCodeModalOpen, setIsVsCodeModalOpen] = useState(false);
   const [isSyncingToVsCode, setIsSyncingToVsCode] = useState(false);
   const [vsCodeSuccessNotice, setVsCodeSuccessNotice] = useState(null);
+  const [syncStep, setSyncStep] = useState(1); // 1: Setup, 2: Scan & Plan, 3: Diff Preview, 4: Done
+  const [isPlanningSync, setIsPlanningSync] = useState(false);
+  const [syncPlanData, setSyncPlanData] = useState(null);
+  const [selectedProposalIndex, setSelectedProposalIndex] = useState(0);
+  const [excludedProposalPaths, setExcludedProposalPaths] = useState(new Set());
 
   const audioRef = useRef(null);
   const recognizerRef = useRef(null);
@@ -155,58 +169,124 @@ export default function VoiceStudioPage({
     URL.revokeObjectURL(url);
   };
 
-  // Smart Push to VS Code Trigger
-  const handlePushToVsCode = async () => {
-    if (!canvasHtml) return;
-
+  // Open VS Code Sync Modal
+  const handleOpenVsCodeModal = () => {
+    if (!canvasHtml) {
+      setErrorNotice('Canvas is empty. Create a UI component first.');
+      return;
+    }
     if (!isAuthenticated) {
       onOpenAuth?.('Sign in to push code directly to your VS Code workspace.');
       return;
     }
+    setSyncStep(1);
+    setIsVsCodeModalOpen(true);
+  };
 
+  // Step 2 & 3: Intelligent Codebase Scan & Integration Planning
+  const handleScanAndPlanSync = async () => {
+    if (!canvasHtml) return;
     if (!selectedProjectId) {
-      setIsVsCodeModalOpen(true);
+      setErrorNotice('Please select a target project.');
       return;
     }
 
-    setIsSyncingToVsCode(true);
-    setVsCodeSuccessNotice(null);
+    setIsPlanningSync(true);
+    setErrorNotice(null);
 
     try {
       if (syncMode === 'smart') {
-        const result = await syncVoiceCanvasToWorkspace(selectedProjectId, {
+        const planResult = await planVoiceCanvasSync(selectedProjectId, {
           canvasHtml,
           customInstruction: customSyncInstruction
         });
 
-        if (result && result.changes && result.changes.length > 0) {
-          setVsCodeSuccessNotice({
-            paths: result.changes.map(c => c.path),
-            summary: result.summary,
-            workspaceType: result.workspaceType,
-            projectId: selectedProjectId
-          });
-          setIsVsCodeModalOpen(false);
-          speakResponse(`Decomposed into ${result.changes.length} modular files and pushed to VS Code.`);
+        if (planResult && planResult.success) {
+          setSyncPlanData(planResult);
+          setSelectedProposalIndex(0);
+          setExcludedProposalPaths(new Set());
+          setSyncStep(2); // Move to review step
+          speakResponse(
+            `Scanned ${planResult.scan?.framework || 'your project'}. Review the integration plan.`
+          );
         } else {
-          throw new Error('AI decomposition returned empty file proposals.');
+          throw new Error(planResult?.error || 'Failed to produce integration plan.');
         }
       } else {
-        const result = await proposeCodeChange(selectedProjectId, {
+        // Single File Manual Mode
+        const change = await proposeCodeChange(selectedProjectId, {
           path: targetFilePath.trim() || 'src/components/VoiceComponent.jsx',
           proposedContent: canvasHtml,
-          description: 'Generated via Aethria Voice Studio with ElevenLabs'
+          description: 'Single component generated via Voice Studio'
         });
 
-        if (result) {
+        if (change) {
           setVsCodeSuccessNotice({
             paths: [targetFilePath.trim() || 'src/components/VoiceComponent.jsx'],
             summary: 'Single component change proposed',
             projectId: selectedProjectId
           });
-          setIsVsCodeModalOpen(false);
+          setSyncStep(4);
           speakResponse('Pushed to your VS Code workspace.');
         }
+      }
+    } catch (err) {
+      setErrorNotice(err.response?.data?.error || err.message || 'Failed to scan and plan sync');
+    } finally {
+      setIsPlanningSync(false);
+    }
+  };
+
+  // Toggle exclusion of a proposed file
+  const toggleProposalExclusion = (filePath) => {
+    setExcludedProposalPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(filePath)) {
+        next.delete(filePath);
+      } else {
+        next.add(filePath);
+      }
+      return next;
+    });
+  };
+
+  // Step 5: Apply & Commit Approved Proposals to Aethria Cloud / VS Code
+  const handleApplySyncProposals = async () => {
+    if (!syncPlanData || !syncPlanData.proposals) return;
+
+    const approvedProposals = syncPlanData.proposals.filter(
+      (p) => !excludedProposalPaths.has(p.path)
+    );
+
+    if (approvedProposals.length === 0) {
+      setErrorNotice('Please select at least one file proposal to synchronize.');
+      return;
+    }
+
+    setIsSyncingToVsCode(true);
+    setErrorNotice(null);
+
+    try {
+      const applyResult = await applyVoiceCanvasSync(selectedProjectId, {
+        proposals: approvedProposals,
+        summary: syncPlanData.summary,
+        workspaceType: syncPlanData.scan?.workspaceType
+      });
+
+      if (applyResult && applyResult.success) {
+        setVsCodeSuccessNotice({
+          paths: approvedProposals.map((p) => p.path),
+          summary: syncPlanData.summary,
+          workspaceType: syncPlanData.scan?.workspaceType,
+          framework: syncPlanData.scan?.framework,
+          projectId: selectedProjectId
+        });
+        setSyncStep(4);
+        speakResponse(
+          `Pushed ${approvedProposals.length} file changes to VS Code. Review in editor.`
+        );
+      } else {
+        throw new Error(applyResult?.error || 'Failed to apply changes to VS Code queue.');
       }
     } catch (err) {
       setErrorNotice(err.response?.data?.error || err.message || 'Failed to sync with VS Code');
@@ -214,6 +294,7 @@ export default function VoiceStudioPage({
       setIsSyncingToVsCode(false);
     }
   };
+
 
   // Silence Timer (5s auto-close)
   const resetSilenceTimer = () => {
@@ -364,7 +445,7 @@ export default function VoiceStudioPage({
         setErrorNotice('Canvas is empty. Create a component first.');
         return;
       }
-      handlePushToVsCode();
+      handleOpenVsCodeModal();
       return;
     }
 
@@ -722,7 +803,7 @@ export default function VoiceStudioPage({
             {/* THE CORE AETHRIA FEATURE: Push to VS Code Button */}
             {canvasHtml && (
               <button
-                onClick={() => setIsVsCodeModalOpen(true)}
+                onClick={handleOpenVsCodeModal}
                 className="px-3 py-1.5 rounded-lg bg-[#4F46E5] text-white hover:bg-[#4338CA] text-xs font-medium flex items-center gap-1.5 shadow-sm shadow-[#4F46E5]/25 transition-all cursor-pointer active:scale-95"
               >
                 <GitPullRequest className="w-3.5 h-3.5" />
@@ -848,7 +929,7 @@ export default function VoiceStudioPage({
                   <span>Download .html</span>
                 </button>
                 <button
-                  onClick={() => setIsVsCodeModalOpen(true)}
+                  onClick={handleOpenVsCodeModal}
                   className="px-3 py-1.5 rounded-lg bg-[#4F46E5] text-white font-medium text-xs flex items-center gap-1.5 hover:bg-[#4338CA] transition-all cursor-pointer"
                 >
                   <GitPullRequest className="w-3 h-3" />
@@ -899,152 +980,432 @@ export default function VoiceStudioPage({
           </div>
         )}
 
-        {/* Modal: Push Code to VS Code Workspace */}
+        {/* Modal: Intelligent VS Code Synchronization Workflow */}
         {isVsCodeModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="w-full max-w-md bg-white rounded-3xl p-6 border border-black/[0.08] shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center">
-                    <GitPullRequest className="w-4 h-4 text-[#4F46E5]" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
+            <div className="w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-7 border border-black/[0.08] shadow-2xl my-8 transition-all">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-black/[0.06] mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-[#4F46E5]/10 flex items-center justify-center text-[#4F46E5]">
+                    <GitPullRequest className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-[#1D1D1F]">Push to VS Code Workspace</h3>
-                    <p className="text-[11px] text-[#6E6E73]">Aethria Cloud Sync Pipeline</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setIsVsCodeModalOpen(false)}
-                  className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F]"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-xs font-medium text-[#1D1D1F] mb-1">Target Synced Project</label>
-                  {userProjects.length > 0 ? (
-                    <select
-                      value={selectedProjectId}
-                      onChange={(e) => setSelectedProjectId(e.target.value)}
-                      className="w-full bg-[#F4F5F7] border border-black/[0.06] rounded-xl px-3 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5]"
-                    >
-                      {userProjects.map((p) => (
-                        <option key={p._id} value={p._id}>
-                          {p.name} ({p.framework || 'project'})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-xs text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                      No synced projects found. Connect your workspace using the Aethria VS Code extension first, or download code directly.
+                    <h3 className="text-sm font-semibold text-[#1D1D1F] flex items-center gap-2">
+                      <span>Intelligent VS Code Synchronization</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] font-normal">
+                        Step {syncStep} of 4
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-[#6E6E73]">
+                      Context-aware codebase inspection & modular integration
                     </p>
-                  )}
-                </div>
-
-                {/* Mode Selector: Smart Decomposer vs Manual File */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium text-[#1D1D1F]">Sync Strategy</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSyncMode('smart')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                        syncMode === 'smart'
-                          ? 'border-[#4F46E5] bg-[#4F46E5]/5 text-[#1D1D1F]'
-                          : 'border-black/[0.06] bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
-                        <span className="text-xs font-semibold">Smart Modular</span>
-                      </div>
-                      <p className="text-[10px] leading-relaxed text-[#6E6E73]">
-                        Scans workspace, splits Navbar & Home Page, updates App.jsx with routing.
-                      </p>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSyncMode('manual')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
-                        syncMode === 'manual'
-                          ? 'border-[#4F46E5] bg-[#4F46E5]/5 text-[#1D1D1F]'
-                          : 'border-black/[0.06] bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Layers className="w-3.5 h-3.5 text-[#6E6E73]" />
-                        <span className="text-xs font-semibold">Single File</span>
-                      </div>
-                      <p className="text-[10px] leading-relaxed text-[#6E6E73]">
-                        Dumps the voice canvas directly into a single target file path.
-                      </p>
-                    </button>
                   </div>
                 </div>
-
-                {syncMode === 'smart' ? (
-                  <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1">
-                      Custom Architecture Directive <span className="text-[#86868B] font-normal">(Optional)</span>
-                    </label>
-                    <input 
-                      type="text"
-                      value={customSyncInstruction}
-                      onChange={(e) => setCustomSyncInstruction(e.target.value)}
-                      placeholder="e.g. Use React Router, place pages in src/pages/, no Tailwind if vanilla"
-                      className="w-full bg-[#F4F5F7] border border-black/[0.06] rounded-xl px-3 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5]"
-                    />
-                    <span className="text-[10px] text-[#86868B] mt-1 block">
-                      AI scans existing project files and creates necessary folders and modular components.
-                    </span>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-medium text-[#1D1D1F] mb-1">Target File Path in Workspace</label>
-                    <input 
-                      type="text"
-                      value={targetFilePath}
-                      onChange={(e) => setTargetFilePath(e.target.value)}
-                      placeholder="src/components/VoiceComponent.jsx"
-                      className="w-full bg-[#F4F5F7] border border-black/[0.06] rounded-xl px-3 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5]"
-                    />
-                    <span className="text-[10px] text-[#86868B] mt-1 block">
-                      VS Code will display this change as a proposed diff before applying.
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
                 <button
-                  type="button"
                   onClick={() => setIsVsCodeModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F4F5F7]"
+                  className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] transition-all cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePushToVsCode}
-                  disabled={isSyncingToVsCode || (!selectedProjectId && userProjects.length === 0)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] disabled:opacity-40 flex items-center gap-1.5 shadow-sm shadow-[#4F46E5]/25 cursor-pointer active:scale-95"
-                >
-                  {isSyncingToVsCode ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Syncing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <GitPullRequest className="w-3.5 h-3.5" />
-                      <span>Propose Diff to VS Code</span>
-                    </>
-                  )}
+                  <X className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Progress Steps Indicator */}
+              <div className="grid grid-cols-4 gap-1.5 mb-6 text-center">
+                {[
+                  { step: 1, label: '1. Setup' },
+                  { step: 2, label: '2. Scan & Plan' },
+                  { step: 3, label: '3. Review Diffs' },
+                  { step: 4, label: '4. Synced' }
+                ].map((s) => (
+                  <div
+                    key={s.step}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all ${
+                      syncStep === s.step
+                        ? 'bg-[#4F46E5] text-white font-semibold shadow-xs'
+                        : syncStep > s.step
+                        ? 'bg-emerald-50 text-emerald-700 font-medium'
+                        : 'bg-[#F4F5F7] text-[#86868B]'
+                    }`}
+                  >
+                    {s.label}
+                  </div>
+                ))}
+              </div>
+
+              {/* STEP 1: Select Project & Strategy */}
+              {syncStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                      Target VS Code Project
+                    </label>
+                    {userProjects.length > 0 ? (
+                      <select
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value)}
+                        className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] font-medium focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all"
+                      >
+                        {userProjects.map((p) => (
+                          <option key={p._id} value={p._id}>
+                            {p.name} ({p.framework || 'Project'})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="text-xs text-amber-800 bg-amber-50 p-3.5 rounded-xl border border-amber-200 leading-relaxed">
+                        No connected projects found in Aethria Cloud. Connect your workspace using the Aethria VS Code extension first, or download code directly.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mode Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-[#1D1D1F]">
+                      Integration Strategy
+                    </label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setSyncMode('smart')}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          syncMode === 'smart'
+                            ? 'border-[#4F46E5] bg-[#4F46E5]/5 text-[#1D1D1F] shadow-xs'
+                            : 'border-black/[0.06] bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Sparkles className="w-3.5 h-3.5 text-[#4F46E5]" />
+                          <span className="text-xs font-semibold">Intelligent Integration</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-[#6E6E73]">
+                          Scans project, updates existing components in-place, detects styling, and preserves routes.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSyncMode('manual')}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                          syncMode === 'manual'
+                            ? 'border-[#4F46E5] bg-[#4F46E5]/5 text-[#1D1D1F] shadow-xs'
+                            : 'border-black/[0.06] bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Layers className="w-3.5 h-3.5 text-[#6E6E73]" />
+                          <span className="text-xs font-semibold">Single File Override</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed text-[#6E6E73]">
+                          Dumps the entire canvas directly into a single target file path.
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {syncMode === 'smart' ? (
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                        Custom Architecture Directive <span className="text-[#86868B] font-normal">(Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={customSyncInstruction}
+                        onChange={(e) => setCustomSyncInstruction(e.target.value)}
+                        placeholder="e.g. Keep existing logo, update navbar links to match routes, preserve login state"
+                        className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all"
+                      />
+                      <span className="text-[10px] text-[#86868B] mt-1.5 block">
+                        Aethria will scan your existing files, identify your framework and styling, and adapt without forcing new dependencies.
+                      </span>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                        Target File Path
+                      </label>
+                      <input
+                        type="text"
+                        value={targetFilePath}
+                        onChange={(e) => setTargetFilePath(e.target.value)}
+                        placeholder="src/components/VoiceComponent.jsx"
+                        className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-black/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setIsVsCodeModalOpen(false)}
+                      className="px-4 py-2 rounded-xl text-xs font-medium text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleScanAndPlanSync}
+                      disabled={isPlanningSync || (!selectedProjectId && userProjects.length === 0)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] disabled:opacity-40 flex items-center gap-1.5 shadow-sm shadow-[#4F46E5]/25 cursor-pointer active:scale-95 transition-all"
+                    >
+                      {isPlanningSync ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Inspecting Codebase...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Scan Codebase & Plan Integration</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: Codebase Scan & Integration Plan Review */}
+              {syncStep === 2 && syncPlanData && (
+                <div className="space-y-4">
+                  {/* Codebase Inspection Card */}
+                  <div className="bg-[#FAFBFD] p-4 rounded-2xl border border-black/[0.06] space-y-3">
+                    <h4 className="text-xs font-semibold text-[#1D1D1F] flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-[#4F46E5]" />
+                      <span>Codebase Inspection Results</span>
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <div className="bg-white p-2.5 rounded-xl border border-black/[0.05]">
+                        <span className="text-[10px] text-[#86868B] block">Framework</span>
+                        <span className="text-xs font-semibold text-[#1D1D1F]">
+                          {syncPlanData.scan?.framework || 'Detected Stack'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-black/[0.05]">
+                        <span className="text-[10px] text-[#86868B] block">Styling System</span>
+                        <span className="text-xs font-semibold text-[#1D1D1F]">
+                          {syncPlanData.scan?.stylingSystem || 'Standard CSS'}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-black/[0.05]">
+                        <span className="text-[10px] text-[#86868B] block">Routing Setup</span>
+                        <span className="text-xs font-semibold text-[#1D1D1F]">
+                          {syncPlanData.scan?.hasRouter ? 'React Router' : 'Single Page / Static'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Discovered Components */}
+                    {syncPlanData.scan?.componentsDetected && syncPlanData.scan.componentsDetected.length > 0 && (
+                      <div className="pt-2 border-t border-black/[0.04]">
+                        <span className="text-[10px] font-semibold text-[#475569] uppercase tracking-wider block mb-1.5">
+                          Discovered Existing Components
+                        </span>
+                        <div className="space-y-1.5">
+                          {syncPlanData.scan.componentsDetected.map((comp, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-black/[0.04]">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <FileCode className="w-3.5 h-3.5 text-[#4F46E5]" />
+                                <span className="font-medium text-[#1D1D1F]">{comp.name}</span>
+                                <span className="text-[10px] font-mono text-[#86868B]">({comp.path})</span>
+                              </div>
+                              <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                Update in-place (No duplicate)
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Integration Plan Checklist */}
+                  <div className="bg-white p-4 rounded-2xl border border-black/[0.06] space-y-2.5">
+                    <h4 className="text-xs font-semibold text-[#1D1D1F] flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Integration Plan</span>
+                    </h4>
+                    <p className="text-xs text-[#475569] leading-relaxed">
+                      {syncPlanData.summary}
+                    </p>
+                    <div className="space-y-1.5 pt-1">
+                      {(syncPlanData.integrationPlan || []).map((step, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-xs text-[#1D1D1F]">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setSyncStep(1)}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-[#6E6E73] hover:text-[#1D1D1F] cursor-pointer"
+                    >
+                      &larr; Back to Setup
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSyncStep(3)}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] flex items-center gap-1.5 shadow-sm shadow-[#4F46E5]/25 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <span>Inspect Proposed Changes ({syncPlanData.proposals?.length || 0})</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: Review Proposed Diffs & Files */}
+              {syncStep === 3 && syncPlanData && (
+                <div className="space-y-4">
+                  {/* Proposal Files Tabs */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    {(syncPlanData.proposals || []).map((prop, idx) => {
+                      const isExcluded = excludedProposalPaths.has(prop.path);
+                      const isSelected = selectedProposalIndex === idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedProposalIndex(idx)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#0F172A] text-white shadow-xs'
+                              : 'bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F]'
+                          } ${isExcluded ? 'opacity-40 line-through' : ''}`}
+                        >
+                          <FileCode className="w-3 h-3" />
+                          <span>{prop.path.split('/').pop()}</span>
+                          <span
+                            className={`text-[9px] px-1 rounded uppercase font-mono ${
+                              prop.type === 'update'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {prop.type}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Active Proposal Preview */}
+                  {syncPlanData.proposals?.[selectedProposalIndex] && (
+                    <div className="bg-[#FAFBFD] p-3.5 rounded-2xl border border-black/[0.06] space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={!excludedProposalPaths.has(syncPlanData.proposals[selectedProposalIndex].path)}
+                            onChange={() => toggleProposalExclusion(syncPlanData.proposals[selectedProposalIndex].path)}
+                            className="rounded border-gray-300 text-[#4F46E5] focus:ring-[#4F46E5]"
+                          />
+                          <span className="text-xs font-semibold text-[#1D1D1F] font-mono">
+                            {syncPlanData.proposals[selectedProposalIndex].path}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-[#6E6E73]">
+                          {syncPlanData.proposals[selectedProposalIndex].description}
+                        </span>
+                      </div>
+
+                      {/* Code Preview Box */}
+                      <div className="bg-[#0F172A] text-slate-100 p-3 rounded-xl max-h-56 overflow-y-auto font-mono text-[11px] leading-relaxed">
+                        <pre>
+                          {syncPlanData.proposals[selectedProposalIndex].proposedContent?.slice(0, 1500) || '// Content ready'}
+                          {(syncPlanData.proposals[selectedProposalIndex].proposedContent?.length || 0) > 1500 ? '\n\n// ... remaining code' : ''}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Validation Checks */}
+                  <div className="flex flex-wrap gap-2 text-[10px]">
+                    {(syncPlanData.validationChecks || []).map((check, idx) => (
+                      <span key={idx} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span className="font-semibold">{check.label}:</span>
+                        <span>{check.details}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-3 border-t border-black/[0.06]">
+                    <button
+                      type="button"
+                      onClick={() => setSyncStep(2)}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-[#6E6E73] hover:text-[#1D1D1F] cursor-pointer"
+                    >
+                      &larr; Back to Plan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApplySyncProposals}
+                      disabled={isSyncingToVsCode}
+                      className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] flex items-center gap-2 shadow-sm shadow-[#4F46E5]/25 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSyncingToVsCode ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Pushing to VS Code...</span>
+                        </>
+                      ) : (
+                        <>
+                          <GitPullRequest className="w-3.5 h-3.5" />
+                          <span>Push Changes to VS Code Workspace</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Success & Instructions */}
+              {syncStep === 4 && (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCheck className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-[#1D1D1F]">
+                      ✦ Synchronized with VS Code!
+                    </h3>
+                    <p className="text-xs text-[#6E6E73] max-w-md mx-auto mt-1 leading-relaxed">
+                      Aethria has generated and queued your context-aware code proposals in the cloud.
+                    </p>
+                  </div>
+
+                  {/* Instructions Callout */}
+                  <div className="bg-[#FAFBFD] p-4 rounded-2xl border border-black/[0.06] text-left max-w-md mx-auto space-y-2">
+                    <h4 className="text-xs font-semibold text-[#1D1D1F] flex items-center gap-1.5">
+                      <Laptop className="w-3.5 h-3.5 text-[#4F46E5]" />
+                      <span>Next Steps in VS Code:</span>
+                    </h4>
+                    <ol className="text-xs text-[#475569] space-y-1.5 list-decimal list-inside leading-relaxed">
+                      <li>Open your connected VS Code workspace.</li>
+                      <li>Aethria will prompt you with <span className="font-semibold text-[#1D1D1F]">"Review Diff"</span>.</li>
+                      <li>Inspect the native side-by-side diff (<span className="font-mono text-[11px]">vscode.diff</span>) and click <span className="font-semibold text-emerald-600">"Apply Change"</span> to accept.</li>
+                    </ol>
+                  </div>
+
+                  <div className="pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsVsCodeModalOpen(false)}
+                      className="px-6 py-2 rounded-xl text-xs font-semibold text-white bg-[#0F172A] hover:bg-black cursor-pointer shadow-sm"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         )}

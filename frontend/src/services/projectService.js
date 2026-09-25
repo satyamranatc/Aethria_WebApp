@@ -195,10 +195,29 @@ export const fetchProjectArchitectureGraph = async (projectId) => {
   return response.data?.architecture || null;
 };
 
-export const syncVoiceCanvasToWorkspace = async (projectId, { canvasHtml, customInstruction = "" }) => {
+export const syncVoiceCanvasToWorkspace = async (projectId, { canvasHtml, customInstruction = "", action = "" }) => {
   const response = await apiClient.post(`/api/projects/${projectId}/ai/sync-voice-canvas`, {
+    canvasHtml,
+    customInstruction,
+    action
+  });
+  return response.data || null;
+};
+
+export const planVoiceCanvasSync = async (projectId, { canvasHtml, customInstruction = "" }) => {
+  const response = await apiClient.post(`/api/projects/${projectId}/ai/plan-voice-canvas-sync`, {
     canvasHtml,
     customInstruction
   });
   return response.data || null;
 };
+
+export const applyVoiceCanvasSync = async (projectId, { proposals, summary, workspaceType }) => {
+  const response = await apiClient.post(`/api/projects/${projectId}/ai/apply-voice-canvas-sync`, {
+    proposals,
+    summary,
+    workspaceType
+  });
+  return response.data || null;
+};
+

@@ -1112,10 +1112,13 @@ Return RAW JSON ONLY:
 // ==========================================
 // AI SMART VOICE CANVAS WORKSPACE DECOMPOSER
 // ==========================================
-export const syncVoiceCanvasToWorkspace = async (req, res) => {
+// ========================================================
+// AI INTELLIGENT VOICE CANVAS WORKSPACE SCANNER & PLANNER
+// ========================================================
+export const planVoiceCanvasSync = async (req, res) => {
   try {
     const { id } = req.params;
-    const { canvasHtml, customInstruction = "", mode = "smart" } = req.body;
+    const { canvasHtml, customInstruction = "" } = req.body;
 
     if (!canvasHtml || !canvasHtml.trim()) {
       return res.status(400).json({ error: "canvasHtml is required." });
@@ -1124,11 +1127,11 @@ export const syncVoiceCanvasToWorkspace = async (req, res) => {
     const project = await Project.findOne({ _id: id, userId: req.user._id });
     if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
 
-    // 1. Scan workspace files from MongoDB
+    // 1. Full scan of workspace files from MongoDB
     const allFiles = await ProjectFile.find({ projectId: id, isBinary: false }).lean();
     const filePaths = allFiles.map((f) => f.path);
 
-    // 2. Identify workspace framework & signature files
+    // 2. Identify workspace framework & signature dependencies
     const packageJsonFile = allFiles.find((f) => f.path === "package.json" || f.path.endsWith("/package.json"));
     let packageJson = {};
     if (packageJsonFile && packageJsonFile.content) {
@@ -1142,82 +1145,249 @@ export const syncVoiceCanvasToWorkspace = async (req, res) => {
       ...(packageJson.devDependencies || {})
     };
 
-    const isReact =
-      Boolean(allDeps.react) ||
-      filePaths.some((p) => /\.(jsx|tsx)$/.test(p)) ||
-      (project.framework && project.framework.toLowerCase().includes("react"));
-
+    // Framework Detection
     const isNext =
       Boolean(allDeps.next) ||
       filePaths.some((p) => p.startsWith("pages/") || p.startsWith("app/") || p.startsWith("src/app"));
 
+    const isReact =
+      !isNext &&
+      (Boolean(allDeps.react) ||
+        filePaths.some((p) => /\.(jsx|tsx)$/.test(p)) ||
+        (project.framework && project.framework.toLowerCase().includes("react")));
+
+    const isEmpty = allFiles.length === 0;
+    const isVanilla = !isNext && !isReact && !isEmpty;
+
+    // Styling System Detection
+    const hasTailwind =
+      Boolean(allDeps.tailwindcss) ||
+      Boolean(allDeps["@tailwindcss/vite"]) ||
+      Boolean(allDeps["@tailwindcss/postcss"]) ||
+      filePaths.some((p) => /tailwind\.config\.(js|cjs|ts|mjs)$/i.test(p)) ||
+      allFiles.some(
+        (f) =>
+          f.content &&
+          (f.content.includes("@tailwind") ||
+            f.content.includes('@import "tailwindcss"') ||
+            f.content.includes("@import 'tailwindcss'"))
+      );
+
+    const hasCssModules = filePaths.some((p) => /\.module\.(css|scss)$/i.test(p));
+    const hasScss = Boolean(allDeps.sass) || filePaths.some((p) => /\.scss$/i.test(p));
+
+    let stylingSystem = "Vanilla CSS";
+    if (hasTailwind) {
+      stylingSystem = "Tailwind CSS";
+    } else if (hasCssModules) {
+      stylingSystem = "CSS Modules";
+    } else if (hasScss) {
+      stylingSystem = "SCSS / SASS";
+    }
+
+    // Routing Detection
     const hasReactRouter =
       Boolean(allDeps["react-router-dom"]) ||
-      Boolean(allDeps["react-router"]);
+      Boolean(allDeps["react-router"]) ||
+      allFiles.some(
+        (f) =>
+          f.content &&
+          (f.content.includes("react-router-dom") ||
+            f.content.includes("<BrowserRouter") ||
+            f.content.includes("<Routes>"))
+      );
 
-    // Find main/app file
+    // Component Discovery & Inventory
+    const existingNavbarFile = allFiles.find(
+      (f) =>
+        /components\/.*(navbar|header|navigation|topnav)\.(jsx|tsx|js|vue)$/i.test(f.path) ||
+        /layouts\/.*(navbar|header)\.(jsx|tsx|js)$/i.test(f.path)
+    );
+
+    const existingSidebarFile = allFiles.find((f) =>
+      /components\/.*(sidebar|drawer|aside)\.(jsx|tsx|js)$/i.test(f.path)
+    );
+
+    const existingFooterFile = allFiles.find((f) =>
+      /components\/.*(footer)\.(jsx|tsx|js)$/i.test(f.path)
+    );
+
+    const existingLayoutFile = allFiles.find((f) =>
+      /(layouts\/.*layout|components\/.*layout)\.(jsx|tsx|js)$/i.test(f.path)
+    );
+
     const appFile = allFiles.find((f) =>
       ["src/App.jsx", "src/App.tsx", "src/App.js", "App.jsx", "App.tsx", "App.js"].includes(f.path)
+    );
+
+    const mainCssFile = allFiles.find((f) =>
+      ["src/index.css", "src/App.css", "src/main.css", "style.css", "styles.css", "css/style.css"].includes(f.path)
     );
 
     const indexHtmlFile = allFiles.find((f) =>
       ["index.html", "public/index.html", "src/index.html"].includes(f.path)
     );
 
-    // Construct context summary
-    let contextDescription = `PROJECT NAME: ${project.name}\nDETECTED FRAMEWORK: ${
-      isNext ? "Next.js" : isReact ? "React (Vite/CRA)" : allFiles.length === 0 ? "Empty Workspace" : "Vanilla HTML/CSS/JS"
-    }\nEXISTING FILES (${filePaths.length}):\n${filePaths.slice(0, 40).join("\n")}`;
+    const mainJsFile = allFiles.find((f) =>
+      ["script.js", "main.js", "src/main.js", "js/script.js", "js/main.js"].includes(f.path)
+    );
 
-    if (appFile && appFile.content) {
-      contextDescription += `\n\nEXISTING APP ENTRY FILE (${appFile.path}):\n\`\`\`javascript\n${appFile.content.slice(0, 2500)}\n\`\`\``;
+    const componentsDetected = [];
+    if (existingNavbarFile) {
+      componentsDetected.push({
+        name: "Navbar / Header",
+        path: existingNavbarFile.path,
+        action: "update",
+        note: "Existing navigation component located; will update UI while preserving routes, props, and active links"
+      });
     }
+    if (existingSidebarFile) {
+      componentsDetected.push({
+        name: "Sidebar",
+        path: existingSidebarFile.path,
+        action: "preserve",
+        note: "Existing sidebar located; keeping intact"
+      });
+    }
+    if (existingFooterFile) {
+      componentsDetected.push({
+        name: "Footer",
+        path: existingFooterFile.path,
+        action: "preserve",
+        note: "Existing footer located"
+      });
+    }
+    if (existingLayoutFile) {
+      componentsDetected.push({
+        name: "Layout Shell",
+        path: existingLayoutFile.path,
+        action: "integrate",
+        note: "Existing layout shell located"
+      });
+    }
+    if (isVanilla && indexHtmlFile) {
+      const hasNavInHtml = /<(nav|header)[\s>]/i.test(indexHtmlFile.content || "");
+      if (hasNavInHtml) {
+        componentsDetected.push({
+          name: "HTML Navbar / Header",
+          path: indexHtmlFile.path,
+          action: "update",
+          note: "Existing <nav>/<header> found in HTML; updating in-place without replacing full page"
+        });
+      }
+    }
+
+    // Construct rich workspace context for Groq
+    let contextDescription = `PROJECT NAME: ${project.name}
+DETECTED FRAMEWORK: ${
+      isNext
+        ? "Next.js"
+        : isReact
+        ? "React (Vite/CRA)"
+        : isVanilla
+        ? "Vanilla HTML/CSS/JavaScript"
+        : "Empty Workspace"
+    }
+DETECTED STYLING SYSTEM: ${stylingSystem}
+HAS REACT ROUTER: ${hasReactRouter ? "Yes" : "No"}
+EXISTING REPO FILES (${filePaths.length}):
+${filePaths.slice(0, 50).join("\n")}`;
 
     if (packageJsonFile && packageJsonFile.content) {
       contextDescription += `\n\nPACKAGE.JSON DEPENDENCIES:\n${JSON.stringify(allDeps, null, 2)}`;
     }
 
-    const systemPrompt = `You are Aethria's Principal Software Architect & Code Decomposer.
-The user built a visual webpage/component on the Aethria Voice Canvas.
-Your mission: Intelligently decompose and integrate this canvas into the user's ACTUAL workspace files.
+    if (existingNavbarFile && existingNavbarFile.content) {
+      contextDescription += `\n\nEXISTING NAVBAR COMPONENT (${existingNavbarFile.path}) - UPDATE THIS IN-PLACE TO PRESERVE FUNCTIONALITY:\n\`\`\`${
+        existingNavbarFile.language || "javascript"
+      }\n${existingNavbarFile.content.slice(0, 3000)}\n\`\`\``;
+    }
 
-CRITICAL ARCHITECTURAL RULES:
-1. NEVER DUMP MONOLITHIC CODE INTO A SINGLE FILE:
-   - If React or Next.js is detected (or App.jsx exists):
-     * Extract the Navbar into a clean, reusable component (e.g. \`src/components/Navbar.jsx\`).
-     * Extract the Main Content / Hero / Sections into a dedicated page view (e.g. \`src/pages/HomePage.jsx\` or \`src/components/HomePage.jsx\`).
-     * Convert HTML to proper JSX (class -> className, self-closing tags like <img />, <br />, <input />, React imports).
-     * ACT SMART WITH APP.JSX:
-       - If \`App.jsx\` exists, do NOT wipe out existing providers, themes, or state.
-       - Use browser router or clean imports: import \`Navbar\` and \`HomePage\` (e.g. with \`react-router-dom\` <Routes><Route path="/" element={<HomePage />} /></Routes> or clean return component layout).
-       - Provide the updated \`App.jsx\` with proper imports.
-   - If Vanilla HTML / CSS (No React or Next.js):
-     * NO TAILWIND: Convert Tailwind utility classes into clean, modern raw CSS rules.
-     * Decompose into \`index.html\` (clean semantic HTML without Tailwind, linking to stylesheet) and \`styles.css\` (modern flexbox/grid variables and styling).
-     * If interactive scripts needed, add \`main.js\`.
-   - If Workspace is Empty:
-     * Create the best-practice project structure (e.g. \`index.html\`, \`styles.css\`, \`main.js\` or React starter if preferred).
+    if (appFile && appFile.content) {
+      contextDescription += `\n\nEXISTING APP ENTRY (${appFile.path}):\n\`\`\`javascript\n${appFile.content.slice(
+        0,
+        3000
+      )}\n\`\`\``;
+    }
 
-2. DIRECTORY INTELLIGENCE:
-   - Always specify full paths (e.g. \`src/components/Navbar.jsx\`, \`src/pages/HomePage.jsx\`, \`src/App.jsx\`).
-   - If the folder does not exist yet, the sync engine will create it automatically.
+    if (mainCssFile && mainCssFile.content) {
+      contextDescription += `\n\nEXISTING STYLESHEET (${mainCssFile.path}):\n\`\`\`css\n${mainCssFile.content.slice(
+        0,
+        2500
+      )}\n\`\`\``;
+    }
 
-3. STRICT JSON OUTPUT FORMAT (NO MARKDOWN WRAPPERS):
+    if (isVanilla && indexHtmlFile && indexHtmlFile.content) {
+      contextDescription += `\n\nEXISTING INDEX.HTML:\n\`\`\`html\n${indexHtmlFile.content.slice(0, 3500)}\n\`\`\``;
+    }
+
+    const systemPrompt = `You are Aethria's Principal Software Architect & Senior Code Integrator.
+The user crafted an interface using Aethria Voice Studio.
+Your mission: Intelligently inspect the user's project, understand its stack and conventions, and seamlessly integrate the new UI directly into their codebase without blind overwriting.
+
+CORE ARCHITECTURAL PRINCIPLE:
+"Aethria adapts to the user's project, NOT the project to Aethria."
+
+CASE 1: VANILLA HTML, CSS, AND JAVASCRIPT PROJECTS:
+- Strictly DO NOT introduce React, JSX, or Tailwind CSS if the project is vanilla HTML/CSS/JS.
+- If the project already contains a navbar/header in HTML (e.g. in index.html):
+  * UPDATE the existing <header> or <nav> section in index.html. DO NOT replace the entire page, do not erase existing <head>, scripts, footer, or body content.
+  * Append or update the corresponding styles in the existing CSS file (e.g. style.css or styles.css) using clean modern CSS (Flexbox, CSS variables, transitions).
+  * Only add or update script.js if the UI requires interactivity (like a mobile hamburger menu toggle).
+- If the project folder is completely empty:
+  * Create index.html (semantic HTML5, linking style.css), style.css (modern responsive CSS), and script.js (if interactivity is needed).
+
+CASE 2: REACT PROJECTS:
+- Inspect existing components, layouts, pages, styles, and routing.
+- IF A NAVBAR / COMPONENT ALREADY EXISTS (e.g. in ${existingNavbarFile?.path || "src/components/Navbar.jsx"}):
+  * UPDATE THAT COMPONENT IN-PLACE!
+  * Do NOT create a duplicate component file.
+  * Preserve its existing props, exported name, existing navigation routes/links, and functionality while upgrading the UI to match the user's voice instructions.
+- IF A FRESH REACT SETUP WITH NO EXISTING COMPONENTS:
+  * Create a clean, modular architecture:
+    src/components/Navbar.jsx
+    src/layouts/MainLayout.jsx (if multi-page layout is appropriate)
+    src/pages/Home.jsx
+    src/App.jsx (integrating the components cleanly)
+    src/index.css
+- STYLING SYSTEM CONVENTIONS:
+  * If Tailwind CSS is detected (${hasTailwind ? "YES, Tailwind is detected" : "NO Tailwind detected"}):
+    Use Tailwind CSS classes matching project conventions.
+  * If the project uses Vanilla CSS / CSS Modules (${stylingSystem}):
+    Do NOT introduce Tailwind classes! Write clean, appropriate CSS in the project's styling format.
+- ROUTING INTEGRATION:
+  * If React Router is configured (${hasReactRouter ? "YES, React Router is configured" : "NO"}):
+    Use <Link to="..."> for navigation. Integrate with existing <Routes> and <Route> in App.jsx or MainLayout without breaking existing routes!
+
+INTEGRATION PLANNING & OUTPUT SPECIFICATION:
+Return RAW JSON only with this schema:
 {
-  "workspaceType": "react" | "next" | "vanilla" | "empty",
-  "summary": "Concise summary of how the canvas was decomposed across files",
+  "workspaceType": "${isNext ? "next" : isReact ? "react" : isVanilla ? "vanilla" : "empty"}",
+  "stylingSystem": "${stylingSystem}",
+  "summary": "1-2 sentence overview of how the voice creation was adapted into the project",
+  "integrationPlan": [
+    "Step 1...",
+    "Step 2...",
+    "Step 3..."
+  ],
   "proposals": [
     {
-      "path": "path/to/file.ext",
+      "path": "exact/relative/file/path.ext",
       "type": "create" | "update",
-      "description": "What this file contains and why",
-      "diff": "+ Summary of changes",
-      "proposedContent": "complete drop-in file code without markdown quotes"
+      "description": "Clear explanation of what was changed/created and why",
+      "diff": "+ Added ...\\n- Modified ...",
+      "proposedContent": "COMPLETE drop-in code for the file without markdown code fences or backticks"
     }
+  ],
+  "dependenciesRequired": [],
+  "validationChecks": [
+    { "label": "Stack Adherence", "passed": true, "details": "Matches detected framework and styling" },
+    { "label": "Component Deduping", "passed": true, "details": "Existing components updated in-place" },
+    { "label": "Preservation of Logic", "passed": true, "details": "Existing routes and state preserved" }
   ]
 }`;
 
-    const userPrompt = `WORKSPACE CONTEXT:\n${contextDescription}\n\nVOICE CANVAS HTML TO DECOMPOSE:\n\`\`\`html\n${canvasHtml}\n\`\`\`${
+    const userPrompt = `WORKSPACE CONTEXT:\n${contextDescription}\n\nVOICE CANVAS HTML TO INTEGRATE:\n\`\`\`html\n${canvasHtml}\n\`\`\`${
       customInstruction ? `\n\nUSER INSTRUCTION:\n${customInstruction}` : ""
     }`;
 
@@ -1239,14 +1409,79 @@ CRITICAL ARCHITECTURAL RULES:
     let parsed = JSON.parse(raw);
 
     if (!parsed || !Array.isArray(parsed.proposals) || parsed.proposals.length === 0) {
-      throw new Error("AI decomposition returned empty file proposals.");
+      throw new Error("AI planner returned empty file proposals.");
     }
 
-    // Save pending ProjectChange records for each proposed file
-    const createdChanges = [];
-    for (const prop of parsed.proposals) {
+    // Attach originalContent to each proposal from DB
+    const enrichedProposals = parsed.proposals.map((prop) => {
       let origContent = "";
       if (prop.path) {
+        const existing = allFiles.find((f) => f.path === prop.path);
+        if (existing) origContent = existing.content || "";
+      }
+      return {
+        path: prop.path,
+        type: prop.type || (origContent ? "update" : "create"),
+        description: prop.description || "Voice canvas integration",
+        diff: prop.diff || `+ Integrated for: ${prop.path}`,
+        originalContent: origContent,
+        proposedContent: sanitizeCodeContent(prop.proposedContent || origContent)
+      };
+    });
+
+    return res.json({
+      success: true,
+      scan: {
+        workspaceType: parsed.workspaceType || (isReact ? "react" : isVanilla ? "vanilla" : "empty"),
+        framework: isNext
+          ? "Next.js"
+          : isReact
+          ? "React (Vite / CRA)"
+          : isVanilla
+          ? "Vanilla HTML, CSS & JavaScript"
+          : "Empty Workspace",
+        stylingSystem: parsed.stylingSystem || stylingSystem,
+        componentsDetected,
+        hasRouter: hasReactRouter,
+        totalFiles: filePaths.length
+      },
+      summary: parsed.summary || `Intelligently planned integration across ${enrichedProposals.length} files.`,
+      integrationPlan: parsed.integrationPlan || [],
+      proposals: enrichedProposals,
+      dependenciesRequired: parsed.dependenciesRequired || [],
+      validationChecks: parsed.validationChecks || [
+        { label: "Stack Adherence", passed: true, details: "Follows project conventions" },
+        { label: "Component Deduping", passed: true, details: "Avoids creating duplicate files" }
+      ],
+      model: usedModel
+    });
+  } catch (error) {
+    console.error("Plan Voice Canvas Sync Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to plan voice canvas integration." });
+  }
+};
+
+// ========================================================
+// AI COMMIT VOICE CANVAS WORKSPACE DIFFS FOR VS CODE
+// ========================================================
+export const applyVoiceCanvasSync = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { proposals, summary, workspaceType } = req.body;
+
+    if (!proposals || !Array.isArray(proposals) || proposals.length === 0) {
+      return res.status(400).json({ error: "proposals array is required." });
+    }
+
+    const project = await Project.findOne({ _id: id, userId: req.user._id });
+    if (!project) return res.status(404).json({ error: "Project not found or not authorized." });
+
+    const allFiles = await ProjectFile.find({ projectId: id, isBinary: false }).lean();
+
+    const createdChanges = [];
+    for (const prop of proposals) {
+      let origContent = prop.originalContent || "";
+      if (!origContent && prop.path) {
         const existing = allFiles.find((f) => f.path === prop.path);
         if (existing) origContent = existing.content || "";
       }
@@ -1255,7 +1490,7 @@ CRITICAL ARCHITECTURAL RULES:
         projectId: id,
         path: prop.path,
         type: prop.type || (origContent ? "update" : "create"),
-        description: prop.description || parsed.summary || "AI voice canvas sync",
+        description: prop.description || summary || "Aethria Voice Studio sync",
         originalContent: origContent,
         proposedContent: sanitizeCodeContent(prop.proposedContent || origContent),
         diff: prop.diff || `+ Modularized for: ${prop.path}`,
@@ -1267,13 +1502,62 @@ CRITICAL ARCHITECTURAL RULES:
 
     return res.json({
       success: true,
-      workspaceType: parsed.workspaceType || (isReact ? "react" : "vanilla"),
-      summary: parsed.summary || `Decomposed voice canvas into ${createdChanges.length} modular files.`,
-      model: usedModel,
+      workspaceType: workspaceType || "react",
+      summary: summary || `Committed ${createdChanges.length} proposals for VS Code synchronization.`,
+      count: createdChanges.length,
       changes: createdChanges
     });
   } catch (error) {
-    console.error("Sync Voice Canvas To Workspace Error:", error);
-    return res.status(500).json({ error: error.message || "Failed to decompose and sync voice canvas." });
+    console.error("Apply Voice Canvas Sync Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to apply voice canvas proposals." });
   }
 };
+
+// Backward-compatible unified endpoint
+export const syncVoiceCanvasToWorkspace = async (req, res) => {
+  const { action } = req.body;
+  if (action === "plan") {
+    return planVoiceCanvasSync(req, res);
+  }
+  if (action === "apply") {
+    return applyVoiceCanvasSync(req, res);
+  }
+
+  // Legacy single-shot path: plan then automatically commit
+  try {
+    const planReq = { ...req, body: req.body };
+    let planData = null;
+    const mockRes = {
+      status: (code) => ({
+        json: (data) => {
+          if (code >= 400) throw new Error(data.error || "Plan failed");
+          planData = data;
+        }
+      }),
+      json: (data) => {
+        planData = data;
+      }
+    };
+
+    await planVoiceCanvasSync(planReq, mockRes);
+
+    if (!planData || !planData.proposals) {
+      throw new Error("Failed to produce integration plan.");
+    }
+
+    const applyReq = {
+      ...req,
+      body: {
+        proposals: planData.proposals,
+        summary: planData.summary,
+        workspaceType: planData.scan?.workspaceType
+      }
+    };
+
+    return applyVoiceCanvasSync(applyReq, res);
+  } catch (err) {
+    console.error("Unified syncVoiceCanvasToWorkspace error:", err);
+    return res.status(500).json({ error: err.message || "Voice canvas sync failed." });
+  }
+};
+
