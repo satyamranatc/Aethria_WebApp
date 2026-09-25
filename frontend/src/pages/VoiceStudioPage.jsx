@@ -20,7 +20,6 @@ import {
   Trash2,
   Download,
   PanelRightClose,
-  Radio,
   Play,
   ArrowLeft,
   GitPullRequest,
@@ -31,18 +30,31 @@ import {
   Terminal,
   ArrowRight,
   X,
-  CheckCheck
+  CheckCheck,
+  History,
+  Bookmark,
+  Plus,
+  Save,
+  Clock,
+  FolderPlus
 } from 'lucide-react';
 
 import SEOHead from '../components/common/SEOHead';
 import { generateCanvasUpdate } from '../services/builderGroqService';
-import { elevenLabsStudio, VERIFIED_ELEVENLABS_VOICES } from '../services/elevenlabsStudioService';
+import { elevenLabsStudio } from '../services/elevenlabsStudioService';
 import {
   fetchUserProjects,
+  createNewProject,
   proposeCodeChange,
   planVoiceCanvasSync,
   applyVoiceCanvasSync
 } from '../services/projectService';
+import {
+  fetchVoiceStudioSessions,
+  fetchVoiceStudioSessionById,
+  saveVoiceStudioSession,
+  deleteVoiceStudioSession
+} from '../services/voiceStudioService';
 
 export default function VoiceStudioPage({
   user,
@@ -85,6 +97,23 @@ export default function VoiceStudioPage({
   const [selectedProposalIndex, setSelectedProposalIndex] = useState(0);
   const [excludedProposalPaths, setExcludedProposalPaths] = useState(new Set());
 
+  // Project & Session History State
+  const [savedSessions, setSavedSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [currentSessionTitle, setCurrentSessionTitle] = useState('Untitled Voice Build');
+  const [saveTitleInput, setSaveTitleInput] = useState('');
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [newProjectForm, setNewProjectForm] = useState({
+    name: '',
+    framework: 'React / Vite',
+    description: ''
+  });
+
   const audioRef = useRef(null);
   const recognizerRef = useRef(null);
   const iframeRef = useRef(null);
@@ -92,19 +121,36 @@ export default function VoiceStudioPage({
   const silenceTimerRef = useRef(null);
   const countdownIntervalRef = useRef(null);
 
-  // Load user projects for VS Code sync
+  // Load user projects and saved voice sessions
+  const loadSavedSessions = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setIsLoadingSessions(true);
+    try {
+      const data = await fetchVoiceStudioSessions();
+      setSavedSessions(data || []);
+    } catch (err) {
+      console.warn('Failed to load saved sessions:', err);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserProjects()
         .then((projects) => {
           setUserProjects(projects || []);
-          if (projects && projects.length > 0) {
+          if (projects && projects.length > 0 && !selectedProjectId) {
             setSelectedProjectId(projects[0]._id);
           }
         })
         .catch((err) => console.warn('Failed to load projects for sync:', err));
+
+      loadSavedSessions();
+    } else {
+      setSavedSessions([]);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadSavedSessions, selectedProjectId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -292,6 +338,145 @@ export default function VoiceStudioPage({
       setErrorNotice(err.response?.data?.error || err.message || 'Failed to sync with VS Code');
     } finally {
       setIsSyncingToVsCode(false);
+    }
+  };
+
+  // Open Save Session Modal
+  const handleOpenSaveModal = () => {
+    if (!canvasHtml && chatHistory.length === 0) {
+      setErrorNotice('Nothing to save yet. Speak and generate an interface first.');
+      return;
+    }
+    if (!isAuthenticated) {
+      onOpenAuth?.('Sign in to save your voice builds and conversation history.');
+      return;
+    }
+    setSaveTitleInput(currentSessionTitle !== 'Untitled Voice Build' ? currentSessionTitle : '');
+    setIsSaveModalOpen(true);
+  };
+
+  // Save current build and spoken conversation
+  const handleSaveSessionSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!canvasHtml && chatHistory.length === 0) return;
+
+    const titleToUse =
+      saveTitleInput.trim() ||
+      currentSessionTitle ||
+      (chatHistory.length > 0 ? chatHistory[0].content.slice(0, 30) : 'Voice Build');
+
+    setIsSavingSession(true);
+    setErrorNotice(null);
+
+    try {
+      const saved = await saveVoiceStudioSession({
+        id: currentSessionId,
+        title: titleToUse,
+        projectId: selectedProjectId || null,
+        canvasHtml,
+        chatHistory,
+        selectedVoice,
+        viewport
+      });
+
+      if (saved) {
+        setCurrentSessionId(saved.id);
+        setCurrentSessionTitle(saved.title);
+        setIsSaveModalOpen(false);
+        await loadSavedSessions();
+        setVsCodeSuccessNotice({
+          paths: [],
+          summary: `Saved "${saved.title}" with ${chatHistory.length} voice turns.`,
+          workspaceType: 'session'
+        });
+        if (voiceEnabled) speakResponse('Saved build and conversation history.');
+      }
+    } catch (err) {
+      setErrorNotice(err.response?.data?.error || err.message || 'Failed to save session');
+    } finally {
+      setIsSavingSession(false);
+    }
+  };
+
+  // Continue a previous build
+  const handleContinueSession = async (sessionId) => {
+    setIsLoadingSessions(true);
+    try {
+      const session = await fetchVoiceStudioSessionById(sessionId);
+      if (session) {
+        setCanvasHtml(session.canvasHtml || '');
+        setChatHistory(session.chatHistory || []);
+        if (session.projectId) setSelectedProjectId(session.projectId);
+        if (session.selectedVoice) setSelectedVoice(session.selectedVoice);
+        if (session.viewport) setViewport(session.viewport);
+        setCurrentSessionId(session.id);
+        setCurrentSessionTitle(session.title);
+        setCanvasKey((prev) => prev + 1);
+        setIsHistoryDrawerOpen(false);
+        if (voiceEnabled) speakResponse(`Loaded ${session.title}. You can continue building.`);
+      }
+    } catch (err) {
+      setErrorNotice(err.response?.data?.error || err.message || 'Failed to load session');
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
+
+  // Delete saved session
+  const handleDeleteSession = async (sessionId, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await deleteVoiceStudioSession(sessionId);
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+        setCurrentSessionTitle('Untitled Voice Build');
+      }
+      await loadSavedSessions();
+    } catch (err) {
+      setErrorNotice(err.response?.data?.error || err.message || 'Failed to delete session');
+    }
+  };
+
+  // Start fresh canvas
+  const handleStartFreshCanvas = () => {
+    clearCanvas();
+    setCurrentSessionId(null);
+    setCurrentSessionTitle('Untitled Voice Build');
+    setIsHistoryDrawerOpen(false);
+  };
+
+  // Create New Project Directly from Voice Studio
+  const handleCreateNewProjectSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!newProjectForm.name.trim()) return;
+
+    if (!isAuthenticated) {
+      onOpenAuth?.('Sign in to create cloud projects.');
+      return;
+    }
+
+    setIsCreatingProject(true);
+    setErrorNotice(null);
+
+    try {
+      const created = await createNewProject({
+        name: newProjectForm.name.trim(),
+        framework: newProjectForm.framework,
+        description: newProjectForm.description.trim() || 'Created via Voice Studio',
+        projectType: 'frontend'
+      });
+
+      if (created) {
+        setUserProjects((prev) => [created, ...prev]);
+        setSelectedProjectId(created._id);
+        setIsCreateProjectModalOpen(false);
+        setNewProjectForm({ name: '', framework: 'React / Vite', description: '' });
+        if (voiceEnabled) speakResponse(`Created project ${created.name} and linked to Voice Studio.`);
+      }
+    } catch (err) {
+      setErrorNotice(err.response?.data?.error || err.message || 'Failed to create project');
+    } finally {
+      setIsCreatingProject(false);
     }
   };
 
@@ -762,21 +947,73 @@ export default function VoiceStudioPage({
       <main className="flex-1 h-1/2 md:h-full flex flex-col bg-[#F4F5F7] relative overflow-hidden">
         
         {/* Top Canvas Bar */}
-        <header className="h-13 border-b border-black/[0.06] px-4 sm:px-6 flex items-center justify-between bg-white/90 backdrop-blur-md relative z-10 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+        <header className="h-13 border-b border-black/[0.06] px-4 sm:px-6 flex items-center justify-between bg-white/90 backdrop-blur-md relative z-10 shadow-xs gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="text-xs font-semibold text-[#1D1D1F]">Canvas Studio</span>
             </div>
-            <span className="text-black/15">|</span>
-            <span className="text-[11px] text-[#6E6E73] font-mono">
-              {canvasHtml ? 'Live Render • Tailwind CSS' : 'Empty Canvas'}
-            </span>
+            
+            {/* Session / Project pill */}
+            <div className="hidden md:flex items-center gap-1.5 text-[11px] text-[#6E6E73] truncate">
+              <span className="text-black/15">|</span>
+              {currentSessionId ? (
+                <span className="font-medium text-[#1D1D1F] bg-[#F4F5F7] px-2 py-0.5 rounded-md border border-black/[0.06] truncate max-w-[140px]" title={currentSessionTitle}>
+                  {currentSessionTitle}
+                </span>
+              ) : (
+                <span className="font-mono text-[#86868B]">
+                  {canvasHtml ? 'Live Render • Tailwind CSS' : 'Empty Canvas'}
+                </span>
+              )}
+
+              {selectedProjectId && userProjects.length > 0 && (
+                <span className="bg-indigo-50 text-[#4F46E5] font-semibold px-2 py-0.5 rounded-md border border-indigo-100 text-[10px] truncate max-w-[120px]">
+                  {userProjects.find((p) => p._id === selectedProjectId)?.name || 'Linked Project'}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Quick Actions: New Project & Saved Builds */}
+            <button
+              onClick={() => setIsCreateProjectModalOpen(true)}
+              title="Create New Project"
+              className="px-2.5 py-1.5 rounded-lg bg-[#F4F5F7] hover:bg-[#EAEBED] border border-black/[0.06] text-[#1D1D1F] text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <FolderPlus className="w-3.5 h-3.5 text-[#4F46E5]" />
+              <span className="hidden sm:inline">New Project</span>
+            </button>
+
+            <button
+              onClick={() => setIsHistoryDrawerOpen(true)}
+              title="Saved Builds & History"
+              className="px-2.5 py-1.5 rounded-lg bg-[#F4F5F7] hover:bg-[#EAEBED] border border-black/[0.06] text-[#1D1D1F] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer relative"
+            >
+              <History className="w-3.5 h-3.5 text-[#6E6E73]" />
+              <span className="hidden sm:inline">Saved Builds</span>
+              {savedSessions.length > 0 && (
+                <span className="px-1.5 py-0.5 bg-[#1D1D1F] text-white text-[9px] font-bold rounded-full leading-none">
+                  {savedSessions.length}
+                </span>
+              )}
+            </button>
+
+            {/* Save Current Session Button */}
+            {(canvasHtml || chatHistory.length > 0) && (
+              <button
+                onClick={handleOpenSaveModal}
+                title="Save this build and spoken conversation"
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Save Build</span>
+              </button>
+            )}
+
             {/* Viewport switchers */}
-            <div className="hidden sm:flex items-center bg-[#F4F5F7] border border-black/[0.06] rounded-lg p-0.5">
+            <div className="hidden lg:flex items-center bg-[#F4F5F7] border border-black/[0.06] rounded-lg p-0.5">
               <button
                 onClick={() => setViewport('desktop')}
                 title="Desktop Viewport"
@@ -856,7 +1093,7 @@ export default function VoiceStudioPage({
                 <p className="text-xs text-[#6E6E73] leading-relaxed max-w-xs mb-5">
                   Say "make a modern navbar" or "create a SaaS pricing section". The AI renders components live with Tailwind and lets you push directly to your VS Code repository.
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
                   <button 
                     onClick={() => handleCommand('make a modern navbar')}
                     className="px-3.5 py-1.5 rounded-full bg-[#1D1D1F] text-white text-xs font-medium hover:bg-black transition-all cursor-pointer active:scale-95"
@@ -870,6 +1107,18 @@ export default function VoiceStudioPage({
                     "Aethria hero header"
                   </button>
                 </div>
+
+                {savedSessions.length > 0 && (
+                  <div className="pt-3 border-t border-black/[0.06] w-full flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => setIsHistoryDrawerOpen(true)}
+                      className="text-xs text-[#4F46E5] hover:text-[#4338CA] font-semibold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                      <span>Continue from {savedSessions.length} saved build{savedSessions.length > 1 ? 's' : ''}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               /* Live Rendered Canvas with Smooth Shadow & Border */
@@ -1038,9 +1287,19 @@ export default function VoiceStudioPage({
               {syncStep === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
-                      Target VS Code Project
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-semibold text-[#1D1D1F]">
+                        Target VS Code Project
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsCreateProjectModalOpen(true)}
+                        className="text-[11px] font-semibold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Create Project</span>
+                      </button>
+                    </div>
                     {userProjects.length > 0 ? (
                       <select
                         value={selectedProjectId}
@@ -1054,8 +1313,15 @@ export default function VoiceStudioPage({
                         ))}
                       </select>
                     ) : (
-                      <div className="text-xs text-amber-800 bg-amber-50 p-3.5 rounded-xl border border-amber-200 leading-relaxed">
-                        No connected projects found in Aethria Cloud. Connect your workspace using the Aethria VS Code extension first, or download code directly.
+                      <div className="text-xs text-amber-800 bg-amber-50 p-3.5 rounded-xl border border-amber-200 leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <span>No projects found yet in Aethria Cloud. Create a project to sync.</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsCreateProjectModalOpen(true)}
+                          className="shrink-0 px-3 py-1.5 rounded-lg bg-[#4F46E5] text-white font-semibold text-[11px] hover:bg-[#4338CA] cursor-pointer shadow-xs self-start sm:self-auto"
+                        >
+                          + Create Project
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1405,6 +1671,396 @@ export default function VoiceStudioPage({
                   </div>
                 </div>
               )}
+
+            </div>
+          </div>
+        )}
+
+        {/* 1. SAVE VOICE BUILD MODAL */}
+        {isSaveModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-black/[0.08] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-black/[0.06]">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/15">
+                    <Save className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1D1D1F]">Save Voice Build</h3>
+                    <p className="text-[11px] text-[#6E6E73]">Preserve your spoken conversations and generated UI</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSaveModalOpen(false)}
+                  className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveSessionSubmit} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                    Build Title
+                  </label>
+                  <input
+                    type="text"
+                    value={saveTitleInput}
+                    onChange={(e) => setSaveTitleInput(e.target.value)}
+                    placeholder="e.g. Modern SaaS Hero with Pricing"
+                    autoFocus
+                    className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all font-medium"
+                  />
+                </div>
+
+                {/* What is captured */}
+                <div className="bg-[#FAFBFD] p-3.5 rounded-2xl border border-black/[0.05] space-y-2">
+                  <span className="text-[10px] font-semibold text-[#6E6E73] uppercase tracking-wider block">
+                    What will be preserved:
+                  </span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-[#1D1D1F]">
+                    <div className="flex items-center gap-1.5">
+                      <Mic className="w-3.5 h-3.5 text-[#4F46E5]" />
+                      <span>{chatHistory.length} voice turns</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Code className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Live Tailwind code</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Voice: {selectedVoice.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Monitor className="w-3.5 h-3.5 text-[#6E6E73]" />
+                      <span className="capitalize">{viewport} View</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Link to project (optional) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#1D1D1F]">
+                      Link to Project <span className="text-[#86868B] font-normal">(Optional)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSaveModalOpen(false);
+                        setIsCreateProjectModalOpen(true);
+                      }}
+                      className="text-[11px] text-[#4F46E5] hover:text-[#4338CA] font-medium cursor-pointer"
+                    >
+                      + New Project
+                    </button>
+                  </div>
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all font-medium"
+                  >
+                    <option value="">No Project Linked (Global Build)</option>
+                    {userProjects.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name} ({p.framework || 'Project'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-black/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => setIsSaveModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingSession}
+                    className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-emerald-600/25 cursor-pointer active:scale-95 transition-all"
+                  >
+                    {isSavingSession ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving Build...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save Build</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* 2. SAVED BUILDS & HISTORY DRAWER */}
+        {isHistoryDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs">
+            <div className="bg-white w-full max-w-md sm:max-w-lg h-full shadow-2xl border-l border-black/[0.08] flex flex-col animate-in slide-in-from-right duration-200">
+              
+              {/* Drawer Header */}
+              <div className="px-6 py-4 border-b border-black/[0.06] flex items-center justify-between bg-white/80 backdrop-blur-md">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center border border-[#4F46E5]/15">
+                    <History className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1D1D1F]">Saved Builds & History</h3>
+                    <p className="text-[11px] text-[#6E6E73]">
+                      {savedSessions.length} build{savedSessions.length !== 1 ? 's' : ''} stored in Aethria Cloud
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Action Bar */}
+              <div className="px-6 py-3 bg-[#FAFBFD] border-b border-black/[0.04] flex items-center justify-between">
+                <span className="text-[11px] font-medium text-[#6E6E73]">
+                  Restore conversations, voice state, and code
+                </span>
+                <button
+                  type="button"
+                  onClick={handleStartFreshCanvas}
+                  className="text-xs font-semibold text-[#4F46E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Start Fresh Canvas</span>
+                </button>
+              </div>
+
+              {/* Sessions List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-3.5">
+                {isLoadingSessions ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-[#6E6E73] space-y-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-[#4F46E5]" />
+                    <span className="text-xs font-medium">Loading saved builds...</span>
+                  </div>
+                ) : savedSessions.length === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#F4F5F7] text-[#86868B] flex items-center justify-center mx-auto">
+                      <Bookmark className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-[#1D1D1F]">No saved builds yet</h4>
+                    <p className="text-xs text-[#6E6E73] max-w-xs mx-auto leading-relaxed">
+                      Build an interface with voice chat, then click "Save Build" to preserve your conversation, code, and project history.
+                    </p>
+                  </div>
+                ) : (
+                  savedSessions.map((session) => {
+                    const isCurrentlyActive = currentSessionId === session.id;
+                    const project = userProjects.find((p) => p._id === session.projectId);
+                    const dateStr = session.updatedAt
+                      ? new Date(session.updatedAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : '';
+
+                    return (
+                      <div
+                        key={session.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          isCurrentlyActive
+                            ? 'border-[#4F46E5] bg-[#4F46E5]/5 shadow-sm'
+                            : 'border-black/[0.06] bg-white hover:border-black/[0.12] hover:shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-semibold text-[#1D1D1F] truncate">
+                                {session.title}
+                              </h4>
+                              {isCurrentlyActive && (
+                                <span className="shrink-0 px-2 py-0.5 rounded-full bg-[#4F46E5] text-white text-[9px] font-bold">
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                            {dateStr && (
+                              <span className="text-[10px] text-[#86868B] flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3" />
+                                <span>{dateStr}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteSession(session.id, e)}
+                            title="Delete saved build"
+                            className="p-1 rounded-md text-[#86868B] hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Metadata Pills */}
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3 text-[10px]">
+                          <span className="px-2 py-0.5 rounded-md bg-[#F4F5F7] text-[#475569] font-medium flex items-center gap-1">
+                            <Mic className="w-3 h-3 text-[#4F46E5]" />
+                            <span>{session.chatHistory?.length || 0} turns</span>
+                          </span>
+                          {project && (
+                            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-[#4F46E5] font-semibold border border-indigo-100">
+                              {project.name}
+                            </span>
+                          )}
+                          {session.viewport && (
+                            <span className="px-2 py-0.5 rounded-md bg-[#F4F5F7] text-[#6E6E73] capitalize">
+                              {session.viewport}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Continue Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleContinueSession(session.id)}
+                          className={`w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            isCurrentlyActive
+                              ? 'bg-[#4F46E5] text-white hover:bg-[#4338CA]'
+                              : 'bg-[#0F172A] text-white hover:bg-black shadow-xs'
+                          }`}
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>{isCurrentlyActive ? 'Currently Loaded (Continue)' : 'Continue Building'}</span>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="p-4 border-t border-black/[0.06] bg-[#FAFBFD] flex items-center justify-between text-xs text-[#6E6E73]">
+                <span>Continuing restores canvas, chat, & voice state.</span>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryDrawerOpen(false)}
+                  className="font-semibold text-[#1D1D1F] hover:underline cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* 3. CREATE NEW PROJECT MODAL */}
+        {isCreateProjectModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-black/[0.08] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              
+              <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-black/[0.06]">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center border border-[#4F46E5]/15">
+                    <FolderPlus className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1D1D1F]">Create New Project</h3>
+                    <p className="text-[11px] text-[#6E6E73]">Directly link to Voice Studio and VS Code</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateProjectModalOpen(false)}
+                  className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateNewProjectSubmit} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                    Project Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newProjectForm.name}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, name: e.target.value })}
+                    placeholder="e.g. My NextGen App"
+                    autoFocus
+                    className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                    Framework Stack
+                  </label>
+                  <select
+                    value={newProjectForm.framework}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, framework: e.target.value })}
+                    className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all font-medium"
+                  >
+                    <option value="React / Vite">React + Vite + Tailwind</option>
+                    <option value="Next.js">Next.js (App Router)</option>
+                    <option value="Vanilla HTML/CSS/JS">Vanilla HTML / Modern CSS / JS</option>
+                    <option value="Vue">Vue.js / Vite</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                    Description <span className="text-[#86868B] font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={newProjectForm.description}
+                    onChange={(e) => setNewProjectForm({ ...newProjectForm, description: e.target.value })}
+                    placeholder="e.g. Real-time SaaS dashboard with authentication and charts"
+                    className="w-full bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2 text-xs text-[#1D1D1F] focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-black/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateProjectModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingProject || !newProjectForm.name.trim()}
+                    className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-[#4F46E5]/25 cursor-pointer active:scale-95 transition-all"
+                  >
+                    {isCreatingProject ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Creating Project...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Create & Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
 
             </div>
           </div>

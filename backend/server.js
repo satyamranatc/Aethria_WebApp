@@ -1,8 +1,10 @@
+import http from "http";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import { Server } from "socket.io";
 import connectDB from "./config/dbConfig.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -11,6 +13,8 @@ import chatRoutes from "./routes/chatRoutes.js";
 import ttsRoutes from "./routes/ttsRoutes.js";
 import diagramRoutes from "./routes/diagramRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import voiceStudioSessionRoutes from "./routes/voiceStudioSessionRoutes.js";
+import { initVoiceStudioSockets } from "./sockets/voiceStudioSocket.js";
 
 dotenv.config();
 
@@ -20,7 +24,18 @@ if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process
 }
 
 const app = express();
+const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// Initialize Socket.io with permissive CORS for local React Native & Web pairing
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+initVoiceStudioSockets(io);
 
 // Trust proxy for hosted reverse-proxies (Render, Vercel, Cloudflare)
 app.set("trust proxy", 1);
@@ -114,6 +129,7 @@ app.use("/api/chat", aiLimiter, chatRoutes);
 app.use("/api/tts", aiLimiter, ttsRoutes);
 app.use("/api/diagram", aiLimiter, diagramRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/voice-studio/sessions", voiceStudioSessionRoutes);
 
 // Global Safe Error Handling Middleware
 app.use((err, req, res, next) => {
@@ -123,6 +139,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+httpServer.listen(PORT, () => {
+  console.log("Server & WebSocket running on port " + PORT);
 });
