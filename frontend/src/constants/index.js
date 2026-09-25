@@ -17,6 +17,8 @@ import {
   Volume2
 } from 'lucide-react';
 
+export const APK_DOWNLOAD_URL = 'https://github.com/satyamranatc/Aethria_WebApp/releases/download/v1.0.0-mobile/Aethria-Remote.apk';
+
 export const APP_INFO = {
   name: 'Aethria',
   tagline: 'Your codebase. Connected to AI.',
@@ -25,6 +27,7 @@ export const APP_INFO = {
   creator: 'Satyam Rana',
   creatorWebsite: 'https://satyamrana.in',
   siteUrl: 'https://www.aethria.in',
+  apkDownloadUrl: APK_DOWNLOAD_URL,
   version: '3.0.0'
 };
 

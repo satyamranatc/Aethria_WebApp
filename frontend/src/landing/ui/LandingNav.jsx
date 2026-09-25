@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FolderCode, LogOut, User, Smartphone } from 'lucide-react';
 import MagneticButton from './MagneticButton';
+import { APK_DOWNLOAD_URL } from '../../constants';
 
 const LINKS = [
   { href: '#product', label: 'Product' },
@@ -70,8 +71,7 @@ export default function LandingNav({
 
         <div className="landing-nav-actions">
           <a
-            href="/Aethria-Remote.apk"
-            download="Aethria-Remote.apk"
+            href={APK_DOWNLOAD_URL}
             className="landing-ghost flex items-center gap-1.5 !text-xs !font-semibold text-[#1D1D1F] hover:!text-[#4F46E5] hover:!border-[#4F46E5]/40 no-underline transition-all"
             title="Download Aethria Remote Android APK (157 MB)"
             data-cursor="view"

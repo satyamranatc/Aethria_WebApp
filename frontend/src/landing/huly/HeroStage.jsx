@@ -3,6 +3,7 @@ import { Smartphone, Download } from 'lucide-react';
 import { gsap, useGSAP } from '../gsapSetup';
 import HeroAtmosphere from './HeroAtmosphere';
 import ProductFrame from './ProductFrame';
+import { APK_DOWNLOAD_URL } from '../../constants';
 
 export default function HeroStage({ onConnect }) {
   const rootRef = useRef(null);
@@ -39,8 +40,7 @@ export default function HeroStage({ onConnect }) {
               <span aria-hidden="true">→</span>
             </button>
             <a
-              href="/Aethria-Remote.apk"
-              download="Aethria-Remote.apk"
+              href={APK_DOWNLOAD_URL}
               className="landing-ghost flex items-center gap-2 px-4 py-2.5 !text-xs !font-semibold uppercase tracking-wider !text-[#1D1D1F] hover:!text-[#4F46E5] !border-black/10 hover:!border-[#4F46E5]/40 no-underline shadow-sm hover:shadow transition-all"
               title="Download Aethria Remote Android APK (157 MB)"
             >
