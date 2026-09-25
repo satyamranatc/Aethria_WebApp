@@ -1,5 +1,6 @@
 import React from 'react';
 import { Smartphone, Download } from 'lucide-react';
+import { APK_DOWNLOAD_URL } from '../../constants';
 
 export default function JoinSection({ onConnect }) {
   return (
@@ -16,8 +17,7 @@ export default function JoinSection({ onConnect }) {
             <span aria-hidden="true">→</span>
           </button>
           <a
-            href="/Aethria-Remote.apk"
-            download="Aethria-Remote.apk"
+            href={APK_DOWNLOAD_URL}
             className="huly-ghost-btn flex items-center gap-2 no-underline"
             title="Download Aethria Remote Android APK (157 MB)"
           >

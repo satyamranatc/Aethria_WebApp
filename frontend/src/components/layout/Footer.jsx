@@ -1,5 +1,6 @@
 import React from 'react';
 import { Smartphone } from 'lucide-react';
+import { APK_DOWNLOAD_URL } from '../../constants';
 
 export default function Footer() {
   return (
@@ -25,8 +26,7 @@ export default function Footer() {
 
         <div className="flex items-center gap-6 flex-wrap">
           <a
-            href="/Aethria-Remote.apk"
-            download="Aethria-Remote.apk"
+            href={APK_DOWNLOAD_URL}
             className="flex items-center gap-1.5 text-[#1D1D1F] hover:text-[#4F46E5] transition-colors font-medium no-underline"
           >
             <Smartphone className="w-3.5 h-3.5 text-[#4F46E5]" />

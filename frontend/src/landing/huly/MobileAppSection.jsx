@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Smartphone, Download, CheckCircle2, Wifi, Mic, Sparkles, ShieldCheck, ArrowDown } from 'lucide-react';
+import { APK_DOWNLOAD_URL } from '../../constants';
 
 export default function MobileAppSection() {
   const [downloading, setDownloading] = useState(false);
@@ -161,8 +162,7 @@ export default function MobileAppSection() {
                 </div>
 
                 <a
-                  href="/Aethria-Remote.apk"
-                  download="Aethria-Remote.apk"
+                  href={APK_DOWNLOAD_URL}
                   onClick={handleDownloadClick}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#4F46E5] hover:bg-[#4338CA] active:scale-[0.98] text-white text-sm font-semibold tracking-wide shadow-md shadow-[#4F46E5]/25 transition-all no-underline"
                 >
