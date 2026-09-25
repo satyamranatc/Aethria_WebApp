@@ -55,6 +55,7 @@ import {
   saveVoiceStudioSession,
   deleteVoiceStudioSession
 } from '../services/voiceStudioService';
+import { io } from 'socket.io-client';
 
 export default function VoiceStudioPage({
   user,
@@ -62,6 +63,13 @@ export default function VoiceStudioPage({
   onOpenAuth
 }) {
   const navigate = useNavigate();
+
+  // Real-Time Phone Remote Sync State
+  const [isPhoneRemoteConnected, setIsPhoneRemoteConnected] = useState(false);
+  const [phoneRemoteRoomId, setPhoneRemoteRoomId] = useState('AETH-STUDIO');
+  const [isPhonePairingModalOpen, setIsPhonePairingModalOpen] = useState(false);
+  const [phonePairingCopied, setPhonePairingCopied] = useState(false);
+  const socketRef = useRef(null);
 
   // Voice & Interaction State
   const [state, setState] = useState('idle'); // 'idle' | 'listening' | 'thinking' | 'speaking'
@@ -728,6 +736,77 @@ export default function VoiceStudioPage({
     stopListening();
   };
 
+  // Real-Time Socket Connection for Android Remote Control
+  useEffect(() => {
+    const socketUrl =
+      import.meta.env.VITE_BACKEND_URL ||
+      (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')
+        ? import.meta.env.VITE_API_URL
+        : 'https://aethria-backend.onrender.com');
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling']
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log(`[VoiceStudio] Connected to sync server. Joining room ${phoneRemoteRoomId}`);
+      socket.emit('studio:join', {
+        roomId: phoneRemoteRoomId,
+        role: 'desktop'
+      });
+    });
+
+    socket.on('studio:peer_status', (data) => {
+      setIsPhoneRemoteConnected(data.hasMobile || false);
+    });
+
+    socket.on('studio:remote_voice_command', (data) => {
+      if (data && data.text) {
+        console.log('[VoiceStudio] Executing remote voice command from phone:', data.text);
+        handleCommand(data.text);
+      }
+    });
+
+    socket.on('studio:remote_control_action', (data) => {
+      if (!data) return;
+      console.log('[VoiceStudio] Remote control action received:', data.action);
+      if (data.action === 'set_viewport' && data.payload) {
+        setViewport(data.payload);
+      } else if (data.action === 'save_build') {
+        handleOpenSaveModal();
+      } else if (data.action === 'clear_canvas') {
+        clearCanvas();
+      } else if (data.action === 'push_vscode') {
+        handleOpenVsCodeModal();
+      } else if (data.action === 'toggle_code') {
+        setIsCodePanelOpen((prev) => !prev);
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [phoneRemoteRoomId]);
+
+  // Broadcast Desktop State Updates to Android Remote
+  useEffect(() => {
+    if (socketRef.current && socketRef.current.connected) {
+      const lastSpoken = chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'assistant'
+        ? chatHistory[chatHistory.length - 1].content
+        : null;
+
+      socketRef.current.emit('studio:state_update', {
+        status: state,
+        hasCanvas: !!canvasHtml,
+        viewport,
+        title: currentSessionTitle,
+        turnsCount: chatHistory.length,
+        lastSpoken
+      });
+    }
+  }, [state, canvasHtml, viewport, currentSessionTitle, chatHistory]);
+
   return (
     <div className="h-screen w-screen bg-[#F4F5F7] text-[#1D1D1F] flex flex-col md:flex-row overflow-hidden font-sans selection:bg-[#4F46E5]/15 selection:text-[#4F46E5]">
       <SEOHead title="Aethria Voice Studio — Hands-Free Live Website & Component Builder" description="Speak components to life on a live canvas with ElevenLabs and Groq LPU, and push code directly to VS Code." />
@@ -1011,6 +1090,23 @@ export default function VoiceStudioPage({
                 <span className="hidden sm:inline">Save Build</span>
               </button>
             )}
+
+            {/* Phone Remote Control Pairing */}
+            <button
+              onClick={() => setIsPhonePairingModalOpen(true)}
+              title="Pair Android Remote Control"
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
+                isPhoneRemoteConnected
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-xs'
+                  : 'bg-[#F4F5F7] hover:bg-[#EAEBED] text-[#1D1D1F] border-black/[0.06]'
+              }`}
+            >
+              <Smartphone className={`w-3.5 h-3.5 ${isPhoneRemoteConnected ? 'text-emerald-600' : 'text-[#4F46E5]'}`} />
+              <span className="hidden sm:inline">
+                {isPhoneRemoteConnected ? 'Remote Synced' : 'Pair Phone'}
+              </span>
+              <span className={`w-1.5 h-1.5 rounded-full ${isPhoneRemoteConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+            </button>
 
             {/* Viewport switchers */}
             <div className="hidden lg:flex items-center bg-[#F4F5F7] border border-black/[0.06] rounded-lg p-0.5">
@@ -2062,6 +2158,104 @@ export default function VoiceStudioPage({
                 </div>
               </form>
 
+            </div>
+          </div>
+        )}
+
+        {/* 4. ANDROID PHONE REMOTE PAIRING MODAL */}
+        {isPhonePairingModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-black/[0.08] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-6 pt-6 pb-4 flex items-center justify-between border-b border-black/[0.06]">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center border border-[#4F46E5]/15">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#1D1D1F]">Android Remote Control</h3>
+                    <p className="text-[11px] text-[#6E6E73]">Live voice & viewport sync with mobile</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPhonePairingModalOpen(false)}
+                  className="p-1.5 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F4F5F7] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Status Card */}
+                <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                  isPhoneRemoteConnected
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-[#FAFBFD] border-black/[0.06] text-[#1D1D1F]'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-3 h-3 rounded-full ${isPhoneRemoteConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}></span>
+                    <div>
+                      <span className="text-xs font-semibold block">
+                        {isPhoneRemoteConnected ? '✦ Android Phone Connected!' : 'Waiting for Android App...'}
+                      </span>
+                      <span className="text-[10px] text-[#6E6E73] block mt-0.5">
+                        {isPhoneRemoteConnected
+                          ? 'Speak on your phone to build on this canvas in real time.'
+                          : 'Launch the React Native app on your device to connect.'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Studio Pairing Code */}
+                <div>
+                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
+                    Studio Pairing Code
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={phoneRemoteRoomId}
+                      onChange={(e) => setPhoneRemoteRoomId(e.target.value.toUpperCase())}
+                      className="flex-1 bg-[#F4F5F7] border border-black/[0.08] rounded-xl px-3.5 py-2.5 text-xs text-[#1D1D1F] font-mono font-bold tracking-wider focus:outline-none focus:border-[#4F46E5] focus:bg-white transition-all uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(phoneRemoteRoomId);
+                        setPhonePairingCopied(true);
+                        setTimeout(() => setPhonePairingCopied(false), 2000);
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl bg-[#F4F5F7] hover:bg-[#EAEBED] border border-black/[0.06] text-xs font-medium text-[#1D1D1F] flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {phonePairingCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{phonePairingCopied ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-[#F8F9FB] p-3.5 rounded-2xl border border-black/[0.05] space-y-1.5 text-xs text-[#475569]">
+                  <span className="text-[10px] font-semibold text-[#1D1D1F] uppercase tracking-wider block">
+                    How it works:
+                  </span>
+                  <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed">
+                    <li>Open <span className="font-semibold text-[#1D1D1F]">Aethria Remote</span> in Expo / Android Studio.</li>
+                    <li>Ensure code matches <span className="font-mono font-bold text-[#4F46E5]">{phoneRemoteRoomId}</span>.</li>
+                    <li>Your phone acts as a low-latency mic & remote without rendering heavy web previews.</li>
+                  </ul>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsPhonePairingModalOpen(false)}
+                    className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#0F172A] hover:bg-black cursor-pointer shadow-sm"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

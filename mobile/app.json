@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Aethria Remote",
+    "slug": "aethria-remote",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FBFBFD",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.aethria.remote"
+    },
+    "android": {
+      "package": "com.aethria.remote",
+      "adaptiveIcon": {
+        "backgroundColor": "#FBFBFD"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
