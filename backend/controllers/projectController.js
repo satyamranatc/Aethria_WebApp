@@ -551,19 +551,26 @@ export const syncProject = async (req, res) => {
       language = "typescript",
       gitBranch = "main",
       metadata = {},
-      files = []
+      files = [],
+      projectId = null
     } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: "Project name is required." });
+    if (!name && !projectId) {
+      return res.status(400).json({ error: "Project name or projectId is required." });
     }
 
-    let project = await Project.findOne({ userId, name });
+    let project = null;
+    if (projectId) {
+      project = await Project.findOne({ _id: projectId, userId });
+    }
+    if (!project && name) {
+      project = await Project.findOne({ userId, name });
+    }
 
     if (!project) {
       project = new Project({
         userId,
-        name,
+        name: name || "Synced Project",
         workspacePath,
         framework,
         language,
@@ -571,6 +578,7 @@ export const syncProject = async (req, res) => {
         metadata
       });
     } else {
+      if (name && !project.name) project.name = name;
       project.workspacePath = workspacePath || project.workspacePath;
       project.framework = framework || project.framework;
       project.language = language || project.language;

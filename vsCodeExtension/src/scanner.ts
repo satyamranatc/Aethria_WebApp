@@ -257,9 +257,19 @@ export async function scanWorkspace(rootPath: string): Promise<ProjectScanResult
 
   crawl(rootPath);
 
-  // Set primary language
+  // Set primary language and refine framework detection
   if (files.some((f) => f.extension === '.ts' || f.extension === '.tsx')) {
     primaryLanguage = 'typescript';
+  }
+
+  if (framework === 'generic') {
+    const hasHtml = files.some((f) => f.extension === '.html');
+    const hasCss = files.some((f) => f.extension === '.css');
+    const hasJs = files.some((f) => f.extension === '.js');
+    if (hasHtml || (hasCss && hasJs)) {
+      framework = 'Vanilla HTML/CSS/JS';
+      if (hasHtml) primaryLanguage = 'html';
+    }
   }
 
   const languages = Array.from(langCountMap.entries())

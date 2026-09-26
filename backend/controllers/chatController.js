@@ -1,3 +1,7 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+import Groq from "groq-sdk";
 import { executeGroqChatWithFallback } from "../utils/groqClient.js";
 
 export const handleChat = async (req, res) => {
@@ -109,5 +113,52 @@ ${formattedConversation}`;
   } catch (error) {
     console.error("Voice Summarization Error:", error);
     return res.status(500).json({ error: error.message || "Failed to summarize voice session." });
+  }
+};
+
+export const transcribeAudio = async (req, res) => {
+  let tmpFilePath = null;
+  try {
+    const { audioBase64, format = "m4a", language = "en" } = req.body;
+
+    if (!audioBase64) {
+      return res.status(400).json({ error: "audioBase64 is required." });
+    }
+
+    const apiKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_FALLBACK;
+    if (!apiKey) {
+      return res.status(500).json({ error: "Groq API key not configured on server." });
+    }
+
+    const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, "");
+    const buffer = Buffer.from(cleanBase64, "base64");
+
+    const ext = format.startsWith(".") ? format : `.${format}`;
+    tmpFilePath = path.join(os.tmpdir(), `aethria_rec_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+    await fs.promises.writeFile(tmpFilePath, buffer);
+
+    const groq = new Groq({ apiKey });
+    const transcription = await groq.audio.transcriptions.create({
+      file: fs.createReadStream(tmpFilePath),
+      model: "whisper-large-v3",
+      language: language === "auto" ? undefined : language,
+      temperature: 0.0,
+      response_format: "json"
+    });
+
+    return res.json({
+      success: true,
+      text: transcription.text ? transcription.text.trim() : "",
+      duration: transcription.duration
+    });
+  } catch (error) {
+    console.error("Whisper Transcription Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to transcribe audio." });
+  } finally {
+    if (tmpFilePath && fs.existsSync(tmpFilePath)) {
+      try {
+        await fs.promises.unlink(tmpFilePath);
+      } catch (e) {}
+    }
   }
 };

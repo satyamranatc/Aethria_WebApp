@@ -13,7 +13,32 @@ export function initVoiceStudioSockets(io) {
     // 1. Join a Studio Pairing Room (e.g., "AETH-7492" or "user_<id>")
     socket.on("studio:join", ({ roomId, role = "mobile" }) => {
       if (!roomId) return;
-      currentRoomId = roomId.trim().toUpperCase();
+      const newRoomId = roomId.trim().toUpperCase();
+
+      // If socket is already in a different room, clean up previous room first
+      if (currentRoomId && currentRoomId !== newRoomId && activeRooms.has(currentRoomId)) {
+        socket.leave(currentRoomId);
+        const prevRoom = activeRooms.get(currentRoomId);
+        if (clientRole === "desktop") {
+          prevRoom.desktopSockets.delete(socket.id);
+        } else {
+          prevRoom.mobileSockets.delete(socket.id);
+        }
+
+        if (prevRoom.desktopSockets.size === 0 && prevRoom.mobileSockets.size === 0) {
+          activeRooms.delete(currentRoomId);
+        } else {
+          io.to(currentRoomId).emit("studio:peer_status", {
+            hasDesktop: prevRoom.desktopSockets.size > 0,
+            hasMobile: prevRoom.mobileSockets.size > 0,
+            desktopCount: prevRoom.desktopSockets.size,
+            mobileCount: prevRoom.mobileSockets.size,
+            leftRole: clientRole
+          });
+        }
+      }
+
+      currentRoomId = newRoomId;
       clientRole = role;
 
       socket.join(currentRoomId);
@@ -86,6 +111,28 @@ export function initVoiceStudioSockets(io) {
     socket.on("studio:chat_message", (message) => {
       if (!currentRoomId) return;
       socket.to(currentRoomId).emit("studio:new_chat_message", message);
+    });
+
+    // 6. Project Selection Sync
+    socket.on("studio:select_project", (data) => {
+      if (!currentRoomId) return;
+      console.log(`[Socket] Project selected in ${currentRoomId}:`, data?.projectName || data?.projectId);
+      socket.to(currentRoomId).emit("studio:project_selected", {
+        ...data,
+        sender: clientRole,
+        timestamp: Date.now()
+      });
+    });
+
+    // 7. Project Created Sync
+    socket.on("studio:project_created", (data) => {
+      if (!currentRoomId) return;
+      console.log(`[Socket] New project created in ${currentRoomId}:`, data?.project?.name);
+      socket.to(currentRoomId).emit("studio:project_created", {
+        ...data,
+        sender: clientRole,
+        timestamp: Date.now()
+      });
     });
 
     // Clean disconnect

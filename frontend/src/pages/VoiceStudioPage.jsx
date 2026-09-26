@@ -36,7 +36,8 @@ import {
   Plus,
   Save,
   Clock,
-  FolderPlus
+  FolderPlus,
+  FolderGit2
 } from 'lucide-react';
 
 import SEOHead from '../components/common/SEOHead';
@@ -66,10 +67,13 @@ export default function VoiceStudioPage({
 
   // Real-Time Phone Remote Sync State
   const [isPhoneRemoteConnected, setIsPhoneRemoteConnected] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [phoneRemoteRoomId, setPhoneRemoteRoomId] = useState('AETH-STUDIO');
   const [isPhonePairingModalOpen, setIsPhonePairingModalOpen] = useState(false);
   const [phonePairingCopied, setPhonePairingCopied] = useState(false);
   const socketRef = useRef(null);
+  const canvasHistoryRef = useRef([]);
+  const actionsRef = useRef({});
 
   // Voice & Interaction State
   const [state, setState] = useState('idle'); // 'idle' | 'listening' | 'thinking' | 'speaking'
@@ -93,6 +97,7 @@ export default function VoiceStudioPage({
   // VS Code Sync State
   const [userProjects, setUserProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [sidebarTab, setSidebarTab] = useState('projects'); // 'projects' | 'assistant'
   const [targetFilePath, setTargetFilePath] = useState('src/components/VoiceComponent.jsx');
   const [syncMode, setSyncMode] = useState('smart'); // 'smart' | 'manual'
   const [customSyncInstruction, setCustomSyncInstruction] = useState('');
@@ -628,6 +633,13 @@ export default function VoiceStudioPage({
     const trimmed = commandText.trim();
     if (!trimmed) return;
 
+    if (!selectedProjectId) {
+      setErrorNotice('Please select or create an Aethria Cloud Project before building.');
+      setSidebarTab('projects');
+      if (voiceEnabled) speakResponse('Please select or create an Aethria Cloud Project first.');
+      return;
+    }
+
     stopListening();
     stopAllAudio();
 
@@ -665,6 +677,9 @@ export default function VoiceStudioPage({
       const { speech, html } = await generateCanvasUpdate(newHistory, canvasHtml);
 
       if (html && html.trim().length > 15) {
+        if (canvasHtml) {
+          canvasHistoryRef.current.push(canvasHtml);
+        }
         setCanvasHtml(html);
         setCanvasKey(prev => prev + 1);
       }
@@ -730,11 +745,39 @@ export default function VoiceStudioPage({
   };
 
   const clearCanvas = () => {
+    if (canvasHtml) {
+      canvasHistoryRef.current.push(canvasHtml);
+    }
     setCanvasHtml('');
     setChatHistory([]);
     stopAllAudio();
     stopListening();
   };
+
+  const handleUndo = useCallback(() => {
+    if (canvasHistoryRef.current.length > 0) {
+      const prevHtml = canvasHistoryRef.current.pop();
+      setCanvasHtml(prevHtml);
+      setCanvasKey(prev => prev + 1);
+      setErrorNotice(null);
+      if (voiceEnabled) speakResponse("Restored previous canvas version.");
+    } else {
+      setErrorNotice("No previous canvas version to undo.");
+    }
+  }, [voiceEnabled]);
+
+  // Keep actionsRef synced on every render to eliminate stale closures in socket callbacks
+  useEffect(() => {
+    actionsRef.current = {
+      handleCommand,
+      setViewport,
+      handleOpenSaveModal,
+      clearCanvas,
+      handleOpenVsCodeModal,
+      setIsCodePanelOpen,
+      handleUndo
+    };
+  });
 
   // Real-Time Socket Connection for Android Remote Control
   useEffect(() => {
@@ -744,17 +787,30 @@ export default function VoiceStudioPage({
         ? import.meta.env.VITE_API_URL
         : 'https://aethria-backend.onrender.com');
     const socket = io(socketUrl, {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log(`[VoiceStudio] Connected to sync server. Joining room ${phoneRemoteRoomId}`);
+      setIsSocketConnected(true);
       socket.emit('studio:join', {
         roomId: phoneRemoteRoomId,
         role: 'desktop'
       });
+    });
+
+    socket.on('disconnect', () => {
+      setIsSocketConnected(false);
+      setIsPhoneRemoteConnected(false);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('[VoiceStudio] Socket connect error:', err.message);
+      setIsSocketConnected(false);
     });
 
     socket.on('studio:peer_status', (data) => {
@@ -764,7 +820,7 @@ export default function VoiceStudioPage({
     socket.on('studio:remote_voice_command', (data) => {
       if (data && data.text) {
         console.log('[VoiceStudio] Executing remote voice command from phone:', data.text);
-        handleCommand(data.text);
+        actionsRef.current.handleCommand?.(data.text);
       }
     });
 
@@ -772,26 +828,54 @@ export default function VoiceStudioPage({
       if (!data) return;
       console.log('[VoiceStudio] Remote control action received:', data.action);
       if (data.action === 'set_viewport' && data.payload) {
-        setViewport(data.payload);
+        actionsRef.current.setViewport?.(data.payload);
       } else if (data.action === 'save_build') {
-        handleOpenSaveModal();
+        actionsRef.current.handleOpenSaveModal?.();
       } else if (data.action === 'clear_canvas') {
-        clearCanvas();
+        actionsRef.current.clearCanvas?.();
       } else if (data.action === 'push_vscode') {
-        handleOpenVsCodeModal();
+        actionsRef.current.handleOpenVsCodeModal?.();
       } else if (data.action === 'toggle_code') {
-        setIsCodePanelOpen((prev) => !prev);
+        actionsRef.current.setIsCodePanelOpen?.((prev) => !prev);
+      } else if (data.action === 'undo') {
+        actionsRef.current.handleUndo?.();
+      }
+    });
+
+    socket.on('studio:project_selected', (data) => {
+      if (data && data.projectId) {
+        console.log('[VoiceStudio] Remote changed active project to:', data.projectName || data.projectId);
+        setSelectedProjectId(data.projectId);
+      }
+    });
+
+    socket.on('studio:project_created', (data) => {
+      if (data && data.project) {
+        console.log('[VoiceStudio] Remote created new project:', data.project.name);
+        setUserProjects((prev) => [data.project, ...prev]);
+        setSelectedProjectId(data.project._id || data.project.id);
       }
     });
 
     return () => {
       socket.disconnect();
     };
+  }, []);
+
+  // Update room pairing without destroying socket connection
+  useEffect(() => {
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('studio:join', {
+        roomId: phoneRemoteRoomId,
+        role: 'desktop'
+      });
+    }
   }, [phoneRemoteRoomId]);
 
   // Broadcast Desktop State Updates to Android Remote
   useEffect(() => {
     if (socketRef.current && socketRef.current.connected) {
+      const activeProject = userProjects.find((p) => p._id === selectedProjectId);
       const lastSpoken = chatHistory.length > 0 && chatHistory[chatHistory.length - 1].role === 'assistant'
         ? chatHistory[chatHistory.length - 1].content
         : null;
@@ -802,10 +886,15 @@ export default function VoiceStudioPage({
         viewport,
         title: currentSessionTitle,
         turnsCount: chatHistory.length,
-        lastSpoken
+        lastSpoken,
+        activeProjectId: selectedProjectId || null,
+        activeProjectName: activeProject?.name || null,
+        activeProjectFramework: activeProject?.framework || null,
+        activeProjectWorkspace: activeProject?.workspacePath || null,
+        activeProjectFilesCount: activeProject?.filesCount || 0
       });
     }
-  }, [state, canvasHtml, viewport, currentSessionTitle, chatHistory]);
+  }, [state, canvasHtml, viewport, currentSessionTitle, chatHistory, selectedProjectId, userProjects]);
 
   return (
     <div className="h-screen w-screen bg-[#F4F5F7] text-[#1D1D1F] flex flex-col md:flex-row overflow-hidden font-sans selection:bg-[#4F46E5]/15 selection:text-[#4F46E5]">
@@ -878,8 +967,123 @@ export default function VoiceStudioPage({
           </div>
         </div>
 
-        {/* Conversation Stream */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 text-left">
+        {/* Apple Segmented Tabs: Projects vs AI Assistant */}
+        <div className="px-3 pt-2.5 pb-2 bg-white border-b border-black/[0.05]">
+          <div className="flex items-center p-0.5 rounded-xl bg-[#F4F5F7] border border-black/[0.05]">
+            <button
+              onClick={() => setSidebarTab('projects')}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                sidebarTab === 'projects'
+                  ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+              }`}
+            >
+              <Folder className="w-3.5 h-3.5" />
+              <span>Projects</span>
+              {userProjects.length > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+                  sidebarTab === 'projects' ? 'bg-[#4F46E5]/10 text-[#4F46E5]' : 'bg-black/5 text-[#86868B]'
+                }`}>
+                  {userProjects.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setSidebarTab('assistant')}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                sidebarTab === 'assistant'
+                  ? 'bg-white text-[#1D1D1F] shadow-xs font-semibold'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>AI Assistant</span>
+            </button>
+          </div>
+        </div>
+
+        {sidebarTab === 'projects' ? (
+          /* Projects List in Sidebar */
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5 text-left">
+            <button
+              onClick={() => {
+                setNewProjectForm({ name: '', description: '', framework: 'React', language: 'javascript' });
+                setIsNewProjectModalOpen(true);
+              }}
+              className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#4F46E5]/40 hover:border-[#4F46E5] bg-[#4F46E5]/5 hover:bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <FolderPlus className="w-4 h-4" />
+              <span>Create New Project</span>
+            </button>
+
+            {userProjects.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-xs font-semibold text-[#1D1D1F] mb-1">No Projects Found</p>
+                <p className="text-[11px] text-[#6E6E73] max-w-[200px] mx-auto">
+                  Create a cloud project to start building and sync with VS Code.
+                </p>
+              </div>
+            ) : (
+              userProjects.map((p) => {
+                const isSelected = selectedProjectId === p._id;
+                return (
+                  <div
+                    key={p._id}
+                    onClick={() => {
+                      setSelectedProjectId(p._id);
+                      if (socketRef.current && socketRef.current.connected) {
+                        socketRef.current.emit('studio:select_project', {
+                          projectId: p._id,
+                          projectName: p.name,
+                          framework: p.framework
+                        });
+                      }
+                      setSidebarTab('assistant');
+                    }}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-white border-[#4F46E5] shadow-xs ring-1 ring-[#4F46E5]/20'
+                        : 'bg-[#F9FAFB] hover:bg-[#F3F4F6] border-black/[0.06]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? 'bg-[#4F46E5]' : 'bg-gray-300'}`} />
+                          <h4 className={`text-xs font-semibold truncate ${isSelected ? 'text-[#4F46E5]' : 'text-[#1D1D1F]'}`}>
+                            {p.name}
+                          </h4>
+                        </div>
+                        {p.workspacePath ? (
+                          <p className="text-[10px] text-[#6E6E73] truncate mt-1 flex items-center gap-1">
+                            <span className="text-emerald-600 font-semibold">⚡ VS Code:</span>
+                            <span className="font-mono">{p.workspacePath.split('/').slice(-2).join('/')}</span>
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-[#8E8E93] mt-1">Cloud Workspace</p>
+                        )}
+                      </div>
+
+                      <span className="text-[9px] font-semibold px-2 py-0.5 rounded-md bg-white border border-black/[0.06] text-[#6E6E73] shrink-0">
+                        {p.framework || 'React'}
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-black/[0.04] flex items-center justify-between text-[10px] text-[#86868B]">
+                      <span>{p.filesCount || 0} files</span>
+                      <span className="text-[#4F46E5] font-medium flex items-center gap-0.5">
+                        {isSelected ? 'Active ✓' : 'Select'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          /* Conversation Stream */
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-left">
           {chatHistory.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-3">
               <div className="h-10 w-10 rounded-2xl bg-[#4F46E5]/10 border border-[#4F46E5]/15 flex items-center justify-center mb-3">
@@ -960,6 +1164,7 @@ export default function VoiceStudioPage({
 
           <div ref={chatEndRef} />
         </div>
+      )}
 
         {/* Bottom Control Dock */}
         <div className="p-4 border-t border-black/[0.06] bg-white">
@@ -1105,7 +1310,13 @@ export default function VoiceStudioPage({
               <span className="hidden sm:inline">
                 {isPhoneRemoteConnected ? 'Remote Synced' : 'Pair Phone'}
               </span>
-              <span className={`w-1.5 h-1.5 rounded-full ${isPhoneRemoteConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></span>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                isPhoneRemoteConnected
+                  ? 'bg-emerald-500 animate-pulse'
+                  : isSocketConnected
+                  ? 'bg-indigo-500'
+                  : 'bg-amber-400 animate-ping'
+              }`}></span>
             </button>
 
             {/* Viewport switchers */}
@@ -1178,7 +1389,42 @@ export default function VoiceStudioPage({
           
           {/* Canvas Rendering Area */}
           <div className="flex-1 bg-[#F4F5F7] flex items-center justify-center p-4 sm:p-8 relative overflow-auto">
-            {!canvasHtml ? (
+            {!selectedProjectId ? (
+              <div className="max-w-md w-full flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-black/[0.06] bg-white shadow-xs">
+                <div className="h-14 w-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+                  <FolderGit2 className="w-7 h-7 text-amber-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-[#1D1D1F] mb-1.5 tracking-tight">
+                  Choose a Project to Start
+                </h2>
+                <p className="text-xs text-[#6E6E73] leading-relaxed max-w-xs mb-5">
+                  Voice Studio links every canvas component to a cloud project and its assigned VS Code repository. Select an existing project or create a new one to begin.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 w-full max-w-xs">
+                  <button 
+                    onClick={() => {
+                      setIsSidebarOpen(true);
+                      setSidebarTab('projects');
+                    }}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-[#1D1D1F] text-white text-xs font-medium hover:bg-black transition-all cursor-pointer active:scale-95 shadow-xs flex items-center justify-center gap-1.5"
+                  >
+                    <FolderGit2 className="w-4 h-4 text-white" />
+                    <span>Open Projects Tab</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsSidebarOpen(true);
+                      setSidebarTab('projects');
+                      setIsNewProjectModalOpen(true);
+                    }}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-[#F4F5F7] border border-black/[0.08] text-xs text-[#1D1D1F] font-medium hover:bg-[#EAEBED] transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ New Project</span>
+                  </button>
+                </div>
+              </div>
+            ) : !canvasHtml ? (
               <div className="max-w-md w-full flex flex-col items-center justify-center text-center p-8 rounded-3xl border border-black/[0.06] bg-white shadow-xs">
                 <div className="h-12 w-12 rounded-2xl bg-[#4F46E5]/10 border border-[#4F46E5]/15 flex items-center justify-center mb-4">
                   <Laptop className="w-6 h-6 text-[#4F46E5]" />
@@ -2190,18 +2436,32 @@ export default function VoiceStudioPage({
                 <div className={`p-4 rounded-2xl border flex items-center justify-between ${
                   isPhoneRemoteConnected
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : isSocketConnected
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
                     : 'bg-[#FAFBFD] border-black/[0.06] text-[#1D1D1F]'
                 }`}>
                   <div className="flex items-center gap-2.5">
-                    <span className={`w-3 h-3 rounded-full ${isPhoneRemoteConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}></span>
+                    <span className={`w-3 h-3 rounded-full ${
+                      isPhoneRemoteConnected
+                        ? 'bg-emerald-500 animate-pulse'
+                        : isSocketConnected
+                        ? 'bg-indigo-500'
+                        : 'bg-amber-400 animate-ping'
+                    }`}></span>
                     <div>
                       <span className="text-xs font-semibold block">
-                        {isPhoneRemoteConnected ? '✦ Android Phone Connected!' : 'Waiting for Android App...'}
+                        {isPhoneRemoteConnected
+                          ? '✦ Android Phone Connected!'
+                          : isSocketConnected
+                          ? '✦ Sync Server Online — Waiting for Phone'
+                          : 'Connecting to Aethria Sync Server...'}
                       </span>
                       <span className="text-[10px] text-[#6E6E73] block mt-0.5">
                         {isPhoneRemoteConnected
                           ? 'Speak on your phone to build on this canvas in real time.'
-                          : 'Launch the React Native app on your device to connect.'}
+                          : isSocketConnected
+                          ? `Ready in room ${phoneRemoteRoomId}. Enter this code on your mobile remote.`
+                          : 'Connecting to WebSocket bridge...'}
                       </span>
                     </div>
                   </div>
@@ -2209,9 +2469,18 @@ export default function VoiceStudioPage({
 
                 {/* Studio Pairing Code */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D1D1F] mb-1.5">
-                    Studio Pairing Code
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-[#1D1D1F]">
+                      Studio Pairing Code
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setPhoneRemoteRoomId(`AETH-${Math.floor(1000 + Math.random() * 9000)}`)}
+                      className="text-[11px] text-[#4F46E5] hover:text-[#4338CA] font-medium cursor-pointer"
+                    >
+                      Generate New Code
+                    </button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
@@ -2240,8 +2509,8 @@ export default function VoiceStudioPage({
                     How it works:
                   </span>
                   <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed">
-                    <li>Open <span className="font-semibold text-[#1D1D1F]">Aethria Remote</span> in Expo / Android Studio.</li>
-                    <li>Ensure code matches <span className="font-mono font-bold text-[#4F46E5]">{phoneRemoteRoomId}</span>.</li>
+                    <li>Open <span className="font-semibold text-[#1D1D1F]">Aethria Remote</span> on Android / Expo.</li>
+                    <li>Ensure room code matches <span className="font-mono font-bold text-[#4F46E5]">{phoneRemoteRoomId}</span>.</li>
                     <li>Your phone acts as a low-latency mic & remote without rendering heavy web previews.</li>
                   </ul>
                 </div>

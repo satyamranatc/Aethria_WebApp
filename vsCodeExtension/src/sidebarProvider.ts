@@ -42,6 +42,9 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
         case 'openWeb':
           vscode.commands.executeCommand('aethria.openWeb');
           break;
+        case 'assignProject':
+          vscode.commands.executeCommand('aethria.assignProject');
+          break;
         case 'fixCode':
           vscode.commands.executeCommand('aethria.fixCode');
           break;
@@ -56,6 +59,7 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
     if (!this._view) return;
 
     const isAuthed = await this.authManager.isAuthenticated();
+    const projectDetails = this.syncService.getActiveProjectDetails();
 
     // Base64 Data URL for logo rendering
     let logoDataUrl = '';
@@ -71,10 +75,10 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
       ).toString();
     }
 
-    this._view.webview.html = this.getHtmlContent(isAuthed, logoDataUrl);
+    this._view.webview.html = this.getHtmlContent(isAuthed, logoDataUrl, projectDetails);
   }
 
-  private getHtmlContent(isAuthed: boolean, logoSrc: string): string {
+  private getHtmlContent(isAuthed: boolean, logoSrc: string, projectDetails?: { id: string | null; name: string | null; framework: string | null }): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -379,6 +383,30 @@ export class AethriaSidebarProvider implements vscode.WebviewViewProvider {
   ${
     isAuthed
       ? `
+    <!-- Linked Project Section -->
+    <div class="section-title">Aethria Cloud Project</div>
+    <div style="background: var(--apple-card-bg); border: 1px solid var(--apple-card-border); border-radius: var(--apple-radius-md); padding: 10px 12px; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+        <span style="font-weight: 600; font-size: 12px; color: var(--apple-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">
+          ${projectDetails?.name || 'No Project Assigned'}
+        </span>
+        <span style="font-size: 9.5px; padding: 2px 6px; border-radius: 6px; background: rgba(99, 102, 241, 0.15); color: #818CF8; font-weight: 600; text-transform: uppercase;">
+          ${projectDetails?.framework || 'Auto'}
+        </span>
+      </div>
+      <div style="font-size: 10px; color: var(--apple-text-secondary); margin-bottom: 8px;">
+        ${projectDetails?.id ? 'Linked & ready for AI Canvas push' : 'Select a cloud project to enable smart push'}
+      </div>
+      <button class="action-btn-card" style="padding: 7px 10px; font-size: 11px; justify-content: center; width: 100%; border-color: rgba(99, 102, 241, 0.25);" onclick="sendMessage('assignProject')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; flex-shrink: 0;">
+          <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+          <path d="M12 10v6"/>
+          <path d="m9 13 3-3 3 3"/>
+        </svg>
+        <span style="font-weight: 600;">${projectDetails?.id ? 'Switch / Reassign Project' : 'Assign to Cloud Project'}</span>
+      </button>
+    </div>
+
     <!-- AI Actions -->
     <div class="section-title">AI Actions</div>
     <div class="action-grid">

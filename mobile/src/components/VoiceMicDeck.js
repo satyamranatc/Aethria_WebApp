@@ -7,9 +7,12 @@ import {
   Animated,
   TextInput,
   ScrollView,
-  Keyboard
+  Keyboard,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
-import { Mic, MicOff, ArrowUp } from 'lucide-react-native';
+import { Mic, MicOff, ArrowUp, Sparkles } from 'lucide-react-native';
+import { Audio } from 'expo-av';
 import { THEME } from '../constants/theme';
 
 const SUGGESTIONS = [
@@ -26,39 +29,46 @@ export default function VoiceMicDeck({
   onStartListening,
   onStopListening,
   onSendCommand,
-  desktopState
+  desktopState,
+  serverUrl = 'https://aethria-backend.onrender.com'
 }) {
   const [textInput, setTextInput] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recordingRef = useRef(null);
+  const inputRef = useRef(null);
   
   // Siri-like pulse animation for mic button
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
 
+  const activeListening = isListening || isRecording;
+
   useEffect(() => {
-    if (isListening) {
+    if (activeListening) {
       Animated.loop(
         Animated.sequence([
           Animated.parallel([
             Animated.timing(pulseAnim, {
-              toValue: 1.14,
-              duration: 750,
+              toValue: 1.18,
+              duration: 700,
               useNativeDriver: true
             }),
             Animated.timing(glowAnim, {
               toValue: 1,
-              duration: 750,
+              duration: 700,
               useNativeDriver: true
             })
           ]),
           Animated.parallel([
             Animated.timing(pulseAnim, {
               toValue: 1,
-              duration: 750,
+              duration: 700,
               useNativeDriver: true
             }),
             Animated.timing(glowAnim, {
               toValue: 0.25,
-              duration: 750,
+              duration: 700,
               useNativeDriver: true
             })
           ])
@@ -68,13 +78,108 @@ export default function VoiceMicDeck({
       pulseAnim.setValue(1);
       glowAnim.setValue(0);
     }
-  }, [isListening]);
+  }, [activeListening]);
+
+  // Start real audio recording
+  const startAudioRecording = async () => {
+    try {
+      if (!Audio || !Audio.requestPermissionsAsync) {
+        throw new Error('Native audio recording not available in this environment.');
+      }
+
+      const perm = await Audio.requestPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          'Microphone Permission',
+          'Please allow microphone access to record voice commands, or use keyboard voice dictation.',
+          [{ text: 'OK', onPress: () => inputRef.current?.focus() }]
+        );
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+      onStartListening?.();
+    } catch (err) {
+      console.warn('Audio record fallback:', err.message);
+      setIsRecording(false);
+      onStopListening?.();
+      inputRef.current?.focus();
+    }
+  };
+
+  // Stop recording & transcribe with Groq Whisper
+  const stopAudioRecording = async () => {
+    if (!recordingRef.current) {
+      setIsRecording(false);
+      onStopListening?.();
+      return;
+    }
+
+    try {
+      setIsRecording(false);
+      onStopListening?.();
+      setIsTranscribing(true);
+
+      await recordingRef.current.stopAndUnloadAsync();
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+
+      if (!uri) {
+        setIsTranscribing(false);
+        return;
+      }
+
+      // Read audio blob as base64
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64Data = reader.result;
+          const transcribeRes = await fetch(`${serverUrl}/api/chat/transcribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audioBase64: base64Data,
+              format: 'm4a'
+            })
+          });
+
+          const data = await transcribeRes.json();
+          if (data && data.text && data.text.trim()) {
+            console.log('[VoiceMic] Whisper Transcribed:', data.text);
+            onSendCommand(data.text.trim());
+          } else {
+            console.log('[VoiceMic] Whisper returned empty transcription');
+          }
+        } catch (postErr) {
+          console.error('[VoiceMic] Transcription upload error:', postErr);
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error('[VoiceMic] Stop recording error:', err);
+      setIsTranscribing(false);
+    }
+  };
 
   const handleMicPress = () => {
-    if (isListening) {
-      onStopListening?.();
+    if (activeListening) {
+      stopAudioRecording();
     } else {
-      onStartListening?.();
+      startAudioRecording();
     }
   };
 
@@ -127,12 +232,14 @@ export default function VoiceMicDeck({
         <TouchableOpacity
           style={[
             styles.micButton,
-            isListening && styles.micButtonActive
+            activeListening && styles.micButtonActive
           ]}
           onPress={handleMicPress}
           activeOpacity={0.85}
         >
-          {isListening ? (
+          {isTranscribing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : activeListening ? (
             <MicOff size={28} color="#FFFFFF" strokeWidth={2.2} />
           ) : (
             <Mic size={28} color="#FFFFFF" strokeWidth={2.2} />
@@ -140,8 +247,10 @@ export default function VoiceMicDeck({
         </TouchableOpacity>
 
         <Text style={styles.micStatusLabel}>
-          {isListening
-            ? 'Listening...'
+          {isTranscribing
+            ? 'Transcribing voice...'
+            : activeListening
+            ? 'Listening... Tap to send'
             : desktopState?.status === 'thinking'
             ? 'Designing interface...'
             : 'Tap to speak'}
@@ -151,6 +260,7 @@ export default function VoiceMicDeck({
       {/* Text Command Input */}
       <View style={styles.inputContainer}>
         <TextInput
+          ref={inputRef}
           style={styles.inputField}
           placeholder="Describe an interface or type an idea..."
           placeholderTextColor="#8E8E93"

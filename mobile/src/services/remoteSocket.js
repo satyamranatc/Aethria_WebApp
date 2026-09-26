@@ -85,6 +85,14 @@ class RemoteSocketService {
     this.socket.on('studio:new_chat_message', (msg) => {
       this.emitState('chat_message', msg);
     });
+
+    this.socket.on('studio:project_selected', (data) => {
+      this.emitState('project_selected', data);
+    });
+
+    this.socket.on('studio:project_created', (data) => {
+      this.emitState('project_created', data);
+    });
   }
 
   disconnect() {
@@ -119,6 +127,30 @@ class RemoteSocketService {
     this.socket.emit('studio:control_action', {
       action,
       payload,
+      timestamp: Date.now()
+    });
+    return true;
+  }
+
+  // Synchronize active project selection with desktop
+  selectProject(project) {
+    if (!this.socket || !this.isConnected || !project) return false;
+    console.log(`[RemoteSocket] Selecting project: ${project.name}`);
+    this.socket.emit('studio:select_project', {
+      projectId: project._id || project.id,
+      projectName: project.name,
+      framework: project.framework,
+      workspacePath: project.workspacePath,
+      timestamp: Date.now()
+    });
+    return true;
+  }
+
+  // Broadcast newly created project to desktop
+  notifyProjectCreated(project) {
+    if (!this.socket || !this.isConnected || !project) return false;
+    this.socket.emit('studio:project_created', {
+      project,
       timestamp: Date.now()
     });
     return true;

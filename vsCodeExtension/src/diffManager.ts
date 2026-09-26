@@ -17,7 +17,7 @@ export class DiffManager {
 
   async reviewAndApplyChange(change: RemoteChangeRequest): Promise<boolean> {
     const localFilePath = path.join(this.workspaceRoot, change.path);
-    const localUri = vscode.Uri.file(localFilePath);
+    let localUri = vscode.Uri.file(localFilePath);
 
     // Create temporary file URI for the proposed content
     const tempDir = path.join(this.workspaceRoot, '.aethria-temp');
@@ -29,25 +29,37 @@ export class DiffManager {
     fs.writeFileSync(tempFilePath, change.proposedContent, 'utf8');
     const tempUri = vscode.Uri.file(tempFilePath);
 
+    // If local file does not exist yet on disk, create an empty placeholder in tempDir so vscode.diff doesn't fail
+    let emptyPlaceholderPath: string | null = null;
+    if (!fs.existsSync(localFilePath)) {
+      emptyPlaceholderPath = path.join(tempDir, `empty_${path.basename(change.path)}`);
+      fs.writeFileSync(emptyPlaceholderPath, '', 'utf8');
+      localUri = vscode.Uri.file(emptyPlaceholderPath);
+    }
+
     const title = `Aethria Review: ${change.path} (${change.description || 'Suggested Edit'})`;
 
     // Open Native VS Code Diff Editor
     await vscode.commands.executeCommand('vscode.diff', localUri, tempUri, title);
 
+    const isNewFile = !fs.existsSync(localFilePath);
+    const actionLabel = isNewFile ? 'Create File' : 'Apply Change';
+
     const choice = await vscode.window.showInformationMessage(
-      `Aethria wants to modify "${change.path}": ${change.description || 'Apply AI edits?'}`,
+      `Aethria wants to ${isNewFile ? 'create' : 'modify'} "${change.path}": ${change.description || 'Apply AI edits?'}`,
       { modal: false },
-      'Apply Change',
+      actionLabel,
       'Reject'
     );
 
-    // Cleanup temp file
+    // Cleanup temp files
     try {
       if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+      if (emptyPlaceholderPath && fs.existsSync(emptyPlaceholderPath)) fs.unlinkSync(emptyPlaceholderPath);
       if (fs.existsSync(tempDir) && fs.readdirSync(tempDir).length === 0) fs.rmdirSync(tempDir);
     } catch (e) {}
 
-    if (choice === 'Apply Change') {
+    if (choice === actionLabel) {
       try {
         const parentDir = path.dirname(localFilePath);
         if (!fs.existsSync(parentDir)) {

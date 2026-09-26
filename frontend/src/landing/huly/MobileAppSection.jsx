@@ -153,11 +153,14 @@ export default function MobileAppSection() {
                   <div className="flex items-center gap-2">
                     <span className="text-base font-bold text-[#1D1D1F]">Aethria Remote APK</span>
                     <span className="px-2 py-0.5 rounded-full bg-[#34C759]/15 text-[#248A3D] text-[11px] font-semibold">
-                      v1.0.0
+                      v1.1.0
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] text-[10px] font-semibold">
+                      Latest
                     </span>
                   </div>
                   <p className="text-xs text-[#86868B] mt-1">
-                    Android 9.0+ · ARM64 / Universal · 76 MB
+                    Android 9.0+ · ARM64 / Universal · Neural Voice Mic & Cloud Projects Sync
                   </p>
                 </div>
 

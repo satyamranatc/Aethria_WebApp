@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import axios from 'axios';
 import { scanWorkspace } from './scanner';
 import { AuthManager } from './auth';
@@ -12,6 +13,8 @@ export class SyncService {
   private syncTimeout: NodeJS.Timeout | null = null;
   private pollInterval: NodeJS.Timeout | null = null;
   private activeProjectId: string | null = null;
+  private activeProjectName: string | null = null;
+  private activeProjectFramework: string | null = null;
   private onStateChangeCallback?: () => void;
   private notifiedChangeIds = new Set<string>();
 
@@ -32,6 +35,97 @@ export class SyncService {
 
   public getActiveProjectId(): string | null {
     return this.activeProjectId;
+  }
+
+  public getActiveProjectDetails() {
+    return {
+      id: this.activeProjectId,
+      name: this.activeProjectName,
+      framework: this.activeProjectFramework
+    };
+  }
+
+  public async assignProject(): Promise<boolean> {
+    const token = await this.authManager.getToken();
+    const serverUrl = await this.authManager.getServerUrl();
+    if (!token) {
+      vscode.window.showInformationMessage('Please connect your Aethria account first.');
+      return false;
+    }
+
+    try {
+      const res = await axios.get(`${serverUrl}/api/projects`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const projects = res.data?.projects || [];
+
+      interface ProjectQuickPickItem extends vscode.QuickPickItem {
+        projectId?: string;
+        isCreate?: boolean;
+        projectName?: string;
+        framework?: string;
+      }
+
+      const items: ProjectQuickPickItem[] = projects.map((p: any) => ({
+        label: `$(folder) ${p.name}`,
+        description: `${p.framework || 'Web'} • ${p.stats?.totalFiles || 0} files`,
+        detail: p.description || (p.workspacePath ? `Linked: ${p.workspacePath}` : 'Cloud Project'),
+        projectId: p._id,
+        projectName: p.name,
+        framework: p.framework
+      }));
+
+      items.unshift({
+        label: '$(plus) Create New Aethria Cloud Project',
+        description: 'Initialize a fresh cloud project for this folder',
+        isCreate: true
+      });
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Select an Aethria Cloud Project to link with this VS Code workspace'
+      });
+
+      if (!selected) return false;
+
+      if (selected.isCreate) {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        const defaultName = workspaceFolders && workspaceFolders.length > 0 ? path.basename(workspaceFolders[0].uri.fsPath) : 'My Project';
+        const nameInput = await vscode.window.showInputBox({
+          prompt: 'Enter name for new Aethria Cloud Project',
+          value: defaultName
+        });
+        if (!nameInput || !nameInput.trim()) return false;
+
+        const createRes = await axios.post(
+          `${serverUrl}/api/projects`,
+          { name: nameInput.trim(), framework: 'generic' },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const newProj = createRes.data?.project;
+        if (newProj?._id) {
+          this.activeProjectId = newProj._id;
+          this.activeProjectName = newProj.name;
+          this.activeProjectFramework = newProj.framework;
+          await vscode.workspace.getConfiguration('aethria').update('projectId', newProj._id, vscode.ConfigurationTarget.Workspace);
+          vscode.window.showInformationMessage(`✓ Created and assigned project "${newProj.name}"!`);
+          this.notifyStateChange();
+          await this.syncCurrentWorkspace(false);
+          return true;
+        }
+      } else if (selected.projectId) {
+        this.activeProjectId = selected.projectId;
+        this.activeProjectName = selected.projectName || selected.label.replace('$(folder) ', '');
+        this.activeProjectFramework = selected.framework || null;
+        await vscode.workspace.getConfiguration('aethria').update('projectId', selected.projectId, vscode.ConfigurationTarget.Workspace);
+        vscode.window.showInformationMessage(`✓ Assigned workspace to "${this.activeProjectName}"!`);
+        this.notifyStateChange();
+        await this.syncCurrentWorkspace(false);
+        return true;
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to assign project: ${err.response?.data?.error || err.message}`);
+    }
+    return false;
   }
 
   public async syncCurrentWorkspace(silent = false): Promise<boolean> {
@@ -64,12 +158,19 @@ export class SyncService {
       // 1. Scan workspace with .gitignore compliance & .env protection
       const scanResult = await scanWorkspace(rootPath);
 
+      // Check configured or cached projectId
+      const configProjectId = vscode.workspace.getConfiguration('aethria').get<string>('projectId');
+      const targetProjectId = this.activeProjectId || (configProjectId && configProjectId.trim() ? configProjectId.trim() : null);
+
       this.statusBarItem.text = `$(sync~spin) Syncing ${scanResult.files.length} files...`;
 
       // 2. Incremental Sync with SHA-256 Hashes
       const response = await axios.post(
         `${serverUrl}/api/projects/sync`,
-        scanResult,
+        {
+          ...scanResult,
+          ...(targetProjectId ? { projectId: targetProjectId } : {})
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -81,15 +182,17 @@ export class SyncService {
 
       if (response.data?.success) {
         const result = response.data.syncResult;
-        this.activeProjectId = response.data.project?._id || null;
+        this.activeProjectId = response.data.project?._id || this.activeProjectId;
+        this.activeProjectName = response.data.project?.name || scanResult.name;
+        this.activeProjectFramework = response.data.project?.framework || scanResult.framework;
 
         this.statusBarItem.text = `$(check) Aethria Synced (${result.total} files)`;
-        this.statusBarItem.tooltip = `Last synced: ${new Date().toLocaleTimeString()}\nCreated: ${result.created}, Updated: ${result.updated}, Deleted: ${result.deleted}`;
+        this.statusBarItem.tooltip = `Project: ${this.activeProjectName} (${this.activeProjectFramework})\nLast synced: ${new Date().toLocaleTimeString()}\nCreated: ${result.created}, Updated: ${result.updated}, Deleted: ${result.deleted}`;
         this.statusBarItem.command = 'aethria.openWeb';
 
         if (!silent) {
           vscode.window.showInformationMessage(
-            `✓ Aethria Synced "${scanResult.name}": ${result.created} new, ${result.updated} updated.`
+            `✓ Aethria Synced "${this.activeProjectName}": ${result.created} new, ${result.updated} updated.`
           );
         }
 

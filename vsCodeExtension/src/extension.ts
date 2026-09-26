@@ -67,6 +67,14 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Command: Assign / Link Project
+  context.subscriptions.push(
+    vscode.commands.registerCommand('aethria.assignProject', async () => {
+      await syncService.assignProject();
+      sidebarProvider.updateWebview();
+    })
+  );
+
   // Command: Manual Sync
   context.subscriptions.push(
     vscode.commands.registerCommand('aethria.sync', async () => {

@@ -31,7 +31,7 @@ export default function RemoteHeader({
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: isReady ? '#10B981' : '#6366F1' }
+              { backgroundColor: isReady ? '#10B981' : isConnected ? '#6366F1' : '#F59E0B' }
             ]}
           />
           <Text style={styles.statusText}>
