@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Settings, LogOut } from 'lucide-react-native';
+import { Settings, LogOut, User } from 'lucide-react-native';
 
 export default function RemoteHeader({
   isConnected,
@@ -8,7 +8,8 @@ export default function RemoteHeader({
   roomId,
   onOpenSettings,
   currentUser,
-  onLogout
+  onLogout,
+  onOpenProfile
 }) {
   const isReady = isConnected && hasDesktopPeer;
 
@@ -39,14 +40,16 @@ export default function RemoteHeader({
           </Text>
         </View>
 
-        {/* User Sign Out if authenticated */}
-        {currentUser && currentUser.email && (
+        {/* User Profile Avatar */}
+        {currentUser && (
           <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={onLogout}
+            style={styles.profileAvatarBtn}
+            onPress={onOpenProfile}
             activeOpacity={0.7}
           >
-            <LogOut size={16} color="#6E6E73" />
+            <Text style={styles.profileAvatarText}>
+              {((currentUser.name || 'D').charAt(0)).toUpperCase()}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -131,5 +134,23 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.06)',
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  profileAvatarBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700'
   }
 });

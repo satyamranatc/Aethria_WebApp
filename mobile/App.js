@@ -14,6 +14,7 @@ import RemoteControlDeck from './src/components/RemoteControlDeck';
 import ChatTimeline from './src/components/ChatTimeline';
 import VoiceMicDeck from './src/components/VoiceMicDeck';
 import PairingModal from './src/components/PairingModal';
+import ProfileModal from './src/components/ProfileModal';
 import AuthSplashScreen from './src/screens/AuthSplashScreen';
 import { THEME } from './src/constants/theme';
 
@@ -48,6 +49,7 @@ export default function App() {
   ]);
   const [isListening, setIsListening] = useState(false);
   const [isPairingModalOpen, setIsPairingModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [roomId, setRoomId] = useState('AETH-STUDIO');
   const [serverUrl, setServerUrl] = useState('https://aethria-backend.onrender.com');
 
@@ -379,6 +381,7 @@ export default function App() {
             onOpenSettings={() => setIsPairingModalOpen(true)}
             currentUser={currentUser}
             onLogout={handleLogout}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
           />
 
           {/* 2. Active Cloud Project Bar & VS Code Stats */}
@@ -414,7 +417,17 @@ export default function App() {
         </KeyboardAvoidingView>
       )}
 
-      {/* 6. Pairing Modal */}
+      {/* 6. Profile & Account Modal */}
+      <ProfileModal
+        visible={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        currentUser={currentUser}
+        serverUrl={serverUrl}
+        activeProject={activeProject}
+        onLogout={handleLogout}
+      />
+
+      {/* 7. Pairing Modal */}
       <PairingModal
         visible={isPairingModalOpen}
         onClose={() => setIsPairingModalOpen(false)}
