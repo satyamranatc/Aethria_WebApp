@@ -37,7 +37,8 @@ import {
   Save,
   Clock,
   FolderPlus,
-  FolderGit2
+  FolderGit2,
+  Folder
 } from 'lucide-react';
 
 import SEOHead from '../components/common/SEOHead';
