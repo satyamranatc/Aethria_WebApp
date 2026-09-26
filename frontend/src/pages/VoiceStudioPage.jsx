@@ -177,6 +177,17 @@ export default function VoiceStudioPage({
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Aethria Canvas Preview</title>
+  <script>
+    (function() {
+      var origWarn = console.warn;
+      console.warn = function() {
+        if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].includes('cdn.tailwindcss.com')) {
+          return;
+        }
+        origWarn.apply(console, arguments);
+      };
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -198,8 +209,10 @@ export default function VoiceStudioPage({
 <body class="bg-white text-[#1d1d1f] p-4 sm:p-8 transition-all duration-300 min-h-screen">
   ${bodyContent}
   <script>
-    if (window.lucide) window.lucide.createIcons();
-    setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 100);
+    try {
+      if (window.lucide) window.lucide.createIcons();
+      setTimeout(function() { if (window.lucide) window.lucide.createIcons(); }, 100);
+    } catch(e) {}
   </script>
 </body>
 </html>`;
@@ -207,10 +220,8 @@ export default function VoiceStudioPage({
 
   useEffect(() => {
     if (iframeRef.current && canvasHtml) {
-      const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow.document;
-      doc.open();
-      doc.write(generateFullHtmlDocument(canvasHtml));
-      doc.close();
+      // Using srcdoc completely isolates script evaluation scopes and avoids doc.write identifier collisions
+      iframeRef.current.srcdoc = generateFullHtmlDocument(canvasHtml);
     }
   }, [canvasHtml, viewport]);
 
@@ -1010,7 +1021,7 @@ export default function VoiceStudioPage({
             <button
               onClick={() => {
                 setNewProjectForm({ name: '', description: '', framework: 'React', language: 'javascript' });
-                setIsNewProjectModalOpen(true);
+                setIsCreateProjectModalOpen(true);
               }}
               className="w-full py-2.5 px-3 rounded-xl border border-dashed border-[#4F46E5]/40 hover:border-[#4F46E5] bg-[#4F46E5]/5 hover:bg-[#4F46E5]/10 text-[#4F46E5] text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
@@ -1416,7 +1427,7 @@ export default function VoiceStudioPage({
                     onClick={() => {
                       setIsSidebarOpen(true);
                       setSidebarTab('projects');
-                      setIsNewProjectModalOpen(true);
+                      setIsCreateProjectModalOpen(true);
                     }}
                     className="w-full sm:w-auto px-4 py-2.5 rounded-full bg-[#F4F5F7] border border-black/[0.08] text-xs text-[#1D1D1F] font-medium hover:bg-[#EAEBED] transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
                   >
@@ -1477,54 +1488,62 @@ export default function VoiceStudioPage({
                   ref={iframeRef} 
                   title="Aethria Live Webpage" 
                   className="w-full h-full border-0 bg-white"
+                  srcDoc={canvasHtml ? generateFullHtmlDocument(canvasHtml) : ''}
                 />
               </div>
             )}
           </div>
 
-          {/* Minimizable Live Code Panel on the Side */}
+          {/* Clean, Elegant Source Code Panel on the Side */}
           {isCodePanelOpen && canvasHtml && (
-            <aside className="w-80 lg:w-96 h-full bg-white border-l border-black/[0.08] flex flex-col justify-between shrink-0 shadow-lg z-20">
-              <div className="p-3 border-b border-black/[0.06] flex items-center justify-between bg-white">
+            <aside className="w-80 lg:w-96 h-full bg-[#FAFAFC] border-l border-black/[0.06] flex flex-col justify-between shrink-0 z-20 shadow-xs">
+              {/* Header */}
+              <div className="h-12 px-3.5 border-b border-black/[0.06] flex items-center justify-between bg-white">
                 <div className="flex items-center gap-2">
-                  <Code className="w-3.5 h-3.5 text-[#4F46E5]" />
-                  <span className="text-xs font-semibold text-[#1D1D1F] tracking-wide uppercase">Tailwind Code</span>
+                  <div className="h-6 w-6 rounded-md bg-black/[0.04] flex items-center justify-center">
+                    <Code className="w-3.5 h-3.5 text-[#1D1D1F]" />
+                  </div>
+                  <span className="text-xs font-semibold text-[#1D1D1F] tracking-tight">Source Code</span>
+                  <span className="text-[10px] text-[#86868B] px-1.5 py-0.5 rounded-full bg-black/[0.03] font-medium">Tailwind</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={copyCodeToClipboard}
                     title="Copy Code"
-                    className="p-1.5 rounded-lg bg-[#F4F5F7] hover:bg-[#EAEBED] border border-black/[0.06] text-[#6E6E73] hover:text-[#1D1D1F] transition-all cursor-pointer"
+                    className="h-7 px-2.5 rounded-lg border border-black/[0.06] bg-white hover:bg-[#F4F5F7] text-[11px] text-[#1D1D1F] font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                   >
-                    {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#6E6E73]" />}
+                    <span>{copiedCode ? 'Copied' : 'Copy'}</span>
                   </button>
                   <button
                     onClick={() => setIsCodePanelOpen(false)}
-                    title="Minimize Code"
-                    className="p-1.5 rounded-lg bg-[#F4F5F7] hover:bg-[#EAEBED] border border-black/[0.06] text-[#6E6E73] hover:text-[#1D1D1F] transition-all cursor-pointer"
+                    title="Close Code Panel"
+                    className="h-7 w-7 rounded-lg border border-black/[0.06] bg-white hover:bg-[#F4F5F7] text-[#6E6E73] hover:text-[#1D1D1F] flex items-center justify-center transition-all cursor-pointer"
                   >
                     <PanelRightClose className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              <div className="flex-1 p-4 overflow-auto font-mono text-[11px] leading-relaxed text-[#1D1D1F] bg-[#FAFBFD]">
-                <pre className="whitespace-pre-wrap">{canvasHtml}</pre>
+              {/* Code Pre Area */}
+              <div className="flex-1 p-4 overflow-auto font-mono text-[11px] leading-relaxed text-[#1D1D1F] bg-white select-text">
+                <pre className="whitespace-pre-wrap font-mono text-[#1D1D1F]/90 selection:bg-[#4F46E5]/15">{canvasHtml}</pre>
               </div>
 
-              <div className="p-3 border-t border-black/[0.06] bg-white flex items-center justify-between">
+              {/* Footer Actions */}
+              <div className="p-3 border-t border-black/[0.06] bg-white flex items-center justify-between gap-2">
                 <button
                   onClick={downloadCode}
-                  className="px-3 py-1.5 rounded-lg bg-[#F4F5F7] hover:bg-[#EAEBED] text-[#1D1D1F] font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-3 py-2 rounded-xl border border-black/[0.08] bg-[#F4F5F7] hover:bg-[#EAEBED] text-[#1D1D1F] font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-97"
                 >
-                  <Download className="w-3 h-3" />
+                  <Download className="w-3.5 h-3.5 text-[#6E6E73]" />
                   <span>Download .html</span>
                 </button>
                 <button
                   onClick={handleOpenVsCodeModal}
-                  className="px-3 py-1.5 rounded-lg bg-[#4F46E5] text-white font-medium text-xs flex items-center gap-1.5 hover:bg-[#4338CA] transition-all cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#1D1D1F] hover:bg-black text-white font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-97"
                 >
-                  <GitPullRequest className="w-3 h-3" />
+                  <GitPullRequest className="w-3.5 h-3.5 text-white" />
                   <span>Push to VS Code</span>
                 </button>
               </div>
